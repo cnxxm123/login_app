@@ -25,7 +25,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 #   - 留空 ""（或注释掉本行）时，依次回退到环境变量 TEXT_DIR，再回退到项目内 text/。
 # 本机（无 F 盘）不指定目录，留空回退到项目内 text/；如需浏览其他文件夹，
 # 把下面路径字符串替换成目标目录即可（例如 CONTENT_PATH = r"D:\我的资料"）。
-CONTENT_PATH = ""
+CONTENT_PATH = "F:\sex"
 
 # 内容目录最终取值：CONTENT_PATH（本文件直接指定）> 环境变量 TEXT_DIR > 项目内 text/
 TEXT_DIR = (
