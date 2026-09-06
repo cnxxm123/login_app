@@ -1,0 +1,435 @@
+
+        /* 阅读页外层容器：限宽居中（内容不套公共卡片，doc 本身即卡片） */
+        .view-wrap { max-width: 1120px; margin: 26px auto 48px; padding: 0 20px; }
+        .toolbar { max-width: 1080px; margin: 22px auto 0; padding: 0 20px; }
+        .toolbar .back {
+            display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); text-decoration: none;
+            font-size: 14px; background: var(--surface); padding: 8px 16px; border-radius: 8px;
+            border: 1px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,.05); transition: all .2s;
+        }
+        .toolbar .back:hover { color: var(--primary); border-color: var(--primary); transform: translateX(-2px); }
+        .doc {
+            max-width: 1080px; margin: 14px auto 48px; padding: 32px 40px;
+            background: var(--surface); border-radius: 16px; box-shadow: 0 8px 30px rgba(0, 0, 0, .08);
+        }
+        .meta { color: var(--text-3); font-size: 12px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+        .meta .badge {
+            background: var(--primary); color: #fff; padding: 3px 12px;
+            border-radius: 999px; font-size: 12px; font-weight: 600;
+        }
+        .note {
+            color: var(--text-3); font-size: 14px; padding: 40px 0; text-align: center;
+            border: 2px dashed var(--border); border-radius: 12px;
+        }
+        /* 视频：自定义播放器样式已独立到 static/css/player.css（控制栏/进度条/倍速等） */
+        /* 音频：浏览器原生播放器（直接加载 /media 二进制流） */
+        .native-audio {
+            width: 100%; border-radius: 10px; margin-top: 4px;
+        }
+        /* 音视频连播工具条：上一首/下一首 + 播放列表开关 */
+        .pl-toolbar {
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+            margin: 10px 0 0;
+        }
+        .pl-nav {
+            border: 1px solid var(--border); background: var(--surface); color: var(--text);
+            padding: 7px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; font-family: inherit;
+            transition: all .15s;
+        }
+        .pl-nav:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .pl-count { font-size: 12px; color: var(--text-3); }
+        /* 连播列表：可折叠面板，列出目录内全部同类媒体，当前项高亮 */
+        .pl-panel {
+            margin-top: 10px; border: 1px solid var(--border); border-radius: 10px;
+            background: var(--surface-2); overflow: hidden;
+        }
+        .pl-panel[hidden] { display: none; }
+        .pl-head {
+            display: flex; align-items: center; gap: 8px; padding: 9px 14px;
+            font-size: 13px; color: #475569; cursor: pointer; user-select: none;
+            border-bottom: 1px solid var(--border); background: var(--surface);
+        }
+        .pl-head:hover { color: var(--primary); }
+        .pl-head .pl-caret { font-size: 11px; color: var(--text-3); transition: transform .2s; }
+        .pl-head.open .pl-caret { transform: rotate(90deg); }
+        .pl-list { max-height: 260px; overflow-y: auto; }
+        .pl-item {
+            display: flex; align-items: center; gap: 8px; width: 100%;
+            padding: 8px 14px; border: none; background: transparent; cursor: pointer;
+            font-size: 13px; color: var(--text); text-align: left; font-family: inherit;
+            transition: background .15s;
+        }
+        .pl-item:hover { background: var(--accent-soft); }
+        .pl-item.active { background: var(--primary); color: #fff; font-weight: 600; }
+        .pl-item .pl-idx { color: var(--text-3); font-size: 12px; min-width: 22px; }
+        .pl-item.active .pl-idx { color: rgba(255,255,255,.8); }
+        .pl-item .pl-name { flex: 1; word-break: break-all; line-height: 1.4; }
+        body.dark .pl-nav { background: var(--surface); border-color: var(--border); color: var(--text-2); }
+        body.dark .pl-nav:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+        body.dark .pl-panel { background: #17171d; border-color: var(--border); }
+        body.dark .pl-head { background: var(--surface); border-color: var(--border); color: var(--text-3); }
+        body.dark .pl-item { color: var(--text-2); }
+        body.dark .pl-item:hover { background: var(--border); }
+        body.dark .pl-item .pl-idx { color: var(--text-2); }
+        /* Office 预览：内容样式沿用 .md-body（表格/标题排版已覆盖） */
+        .office-body { line-height: 1.85; font-size: 15px; color: #24292e; word-break: break-word; }
+        body.dark .office-body { color: var(--text-2); }
+        /* 正文排版：限宽提升长文阅读舒适度（表格等仍可横向滚动） */
+        .doc .md-body, .doc .office-body { max-width: 72ch; margin-left: auto; margin-right: auto; }
+        /* 阅读进度条：顶部细线，随滚动填充，文案页/图片浏览都有反馈 */
+        .reading-bar {
+            position: fixed; top: 0; left: 0; height: 3px; width: 0;
+            background: linear-gradient(90deg, var(--primary), var(--primary-2));
+            border-radius: 0 3px 3px 0; z-index: 300; pointer-events: none;
+            transition: width .1s linear; box-shadow: 0 0 8px rgba(79, 94, 232, .35);
+        }
+        body.dark .reading-bar { box-shadow: 0 0 8px rgba(139, 148, 255, .4); }
+        /* 通用按钮（PDF 新标签打开等） */
+        .nav-btn {
+            display: inline-block; color: #fff; text-decoration: none;
+            background: var(--primary);
+            padding: 8px 20px; border-radius: 999px; font-size: 13px; transition: all .2s;
+        }
+        .nav-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(79, 94, 232, .3); }
+        /* 工具栏：返回按钮 + 右侧"目录"按钮 */
+        .toolbar { display: flex; justify-content: space-between; align-items: center; }
+        .tool-btn {
+            color: var(--text-2); text-decoration: none; font-size: 14px; background: var(--surface); padding: 8px 16px; border-radius: 8px;
+            border: 1px solid var(--border); box-shadow: 0 2px 8px rgba(0, 0, 0, .05); cursor: pointer; font-family: inherit;
+            display: inline-flex; align-items: center; gap: 6px; transition: all .2s;
+        }
+        /* 当前文件标签行：胶囊式展示 + 逐个移除 + 编辑按钮 */
+        .tags-row {
+            display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+            max-width: 1080px; margin: 10px auto 0; padding: 0 20px;
+        }
+        .tags-label { color: var(--text-3); font-size: 13px; }
+        .tag-pill {
+            display: inline-flex; align-items: center; gap: 4px;
+            background: var(--accent-soft); color: var(--primary); border-radius: 999px;
+            font-size: 12.5px; padding: 3px 10px;
+        }
+        .tag-pill button {
+            border: none; background: transparent; color: inherit; cursor: pointer;
+            font-size: 11px; padding: 0; line-height: 1; opacity: .7; font-family: inherit;
+        }
+        .tag-pill button:hover { opacity: 1; }
+        .tags-edit {
+            border: 1px dashed var(--border-strong); background: transparent; color: var(--primary);
+            border-radius: 999px; font-size: 12px; padding: 3px 12px; cursor: pointer;
+            font-family: inherit; transition: all .2s;
+        }
+        .tags-edit:hover { background: var(--accent-soft); border-color: var(--primary); }
+        body.dark .tags-label { color: var(--text-2); }
+        body.dark .tag-pill { background: var(--border); color: var(--primary-2); }
+        body.dark .tags-edit { border-color: var(--border-strong); color: var(--primary-2); }
+        body.dark .tags-edit:hover { background: var(--border); border-color: var(--primary); }
+        .tool-btn:hover { color: var(--primary); border-color: var(--primary); }
+        /* 工具栏右侧按钮组（编辑 / 目录），与左侧"返回"按钮分居两端 */
+        .toolbar-right { display: flex; align-items: center; gap: 8px; }
+        /* "已保存"提示：保存后短暂出现在底部居中，随后淡出消失 */
+        .save-toast {
+            position: fixed; left: 50%; bottom: 36px; transform: translateX(-50%);
+            background: #16a34a; color: #fff; font-size: 14px; padding: 10px 22px;
+            border-radius: 999px; box-shadow: 0 8px 24px rgba(0,0,0,.25);
+            z-index: 200; transition: opacity .6s; font-family: inherit;
+        }
+        .save-toast.hide { opacity: 0; }
+        /* 目录（TOC）侧边面板：固定右侧，可滚动 */
+        .toc-panel {
+            position: fixed; top: 76px; right: 20px; bottom: 20px; width: 240px;
+            background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, .12); padding: 14px 16px; overflow-y: auto; z-index: 50;
+        }
+        .toc-panel .toc-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 10px; letter-spacing: 1px; }
+        .toc-panel ul { list-style: none; padding: 0; margin: 0; }
+        .toc-panel li { margin: 4px 0; }
+        .toc-panel li a {
+            display: block; color: var(--text-2); text-decoration: none; font-size: 13px;
+            padding: 5px 8px; border-radius: 6px; transition: all .15s; line-height: 1.5;
+        }
+        .toc-panel li a:hover { background: var(--accent-soft); color: var(--primary); }
+        .toc-panel li.toc-h2 a { padding-left: 20px; }  /* 二级标题缩进 */
+        .toc-panel li.toc-h3 a { padding-left: 34px; }  /* 三级标题再缩进 */
+        /* ===== 图片阅读器工具栏（模式切换、翻页、缩放、全屏）===== */
+        .reader-bar {
+            display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+            padding: 12px 14px; margin-bottom: 16px;
+            background: var(--surface-2); border: 1px solid #eef2f7; border-radius: 12px;
+        }
+        /* 阅读模式分段控制器：单页 / 长条 */
+        .seg {
+            display: flex; gap: 3px; padding: 3px;
+            background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+        }
+        .seg-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            border: none; background: transparent; color: var(--text-2);
+            padding: 7px 13px; border-radius: 8px; cursor: pointer;
+            font-size: 13px; font-family: inherit; transition: all .18s;
+        }
+        .seg-btn:hover { color: var(--primary); background: var(--accent-soft); }
+        .seg-btn:active { transform: scale(.94); }
+        .seg-btn.active {
+            background: var(--primary); color: #fff;
+            box-shadow: 0 2px 8px rgba(79, 94, 232, .35);  /* 选中项：主色底 + 柔和投影 */
+        }
+        /* 翻页组 / 工具组 */
+        .nav-group { display: flex; align-items: center; gap: 8px; }
+        .pg-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            border: 1px solid var(--border); background: var(--surface); color: var(--text);
+            padding: 7px 13px; border-radius: 10px; cursor: pointer;
+            font-size: 13px; font-family: inherit; transition: all .15s;
+        }
+        .pg-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--accent-soft); }
+        .pg-btn:active { transform: scale(.95); background: var(--primary); color: #fff; border-color: var(--primary); }
+        .reader-pos {
+            font-size: 13px; color: var(--text-2); min-width: 56px; text-align: center;
+            font-variant-numeric: tabular-nums;  /* 数字等宽，切页不跳动 */
+        }
+        /* 圆形图标按钮（缩放 / 全屏） */
+        .icon-btn {
+            width: 36px; height: 36px;
+            display: inline-flex; align-items: center; justify-content: center;
+            border: 1px solid var(--border); background: var(--surface); color: var(--text-2);
+            border-radius: 50%; cursor: pointer; font-size: 12px; font-family: inherit;
+            transition: all .15s;
+        }
+        .icon-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--accent-soft); }
+        .icon-btn:active { transform: scale(.9); background: var(--primary); color: #fff; border-color: var(--primary); }
+        .icon-btn svg { width: 16px; height: 16px; }
+        /* 单页阅读器容器：深色底居中显示当前图片 */
+        .reader-single {
+            position: relative;  /* 供全屏浮动按钮定位 */
+            display: flex; justify-content: center; align-items: flex-start;
+            background: #17171d; border-radius: 10px; padding: 12px; min-height: 200px; overflow: auto;
+            margin-bottom: 18px;
+        }
+        .reader-single img {
+            max-width: 100%; height: auto; object-fit: contain; border-radius: 6px;
+            transform-origin: center top; transition: transform .1s;
+        }
+        /* 全屏浮动翻页按钮：默认隐藏，仅单页容器全屏时显示（长条模式走滚动，不显示） */
+        .fs-nav {
+            display: none; position: absolute; top: 50%; transform: translateY(-50%);
+            width: 44px; height: 44px; border: none; border-radius: 50%;
+            background: rgba(23, 23, 29, .55); color: #fff; font-size: 18px; line-height: 1;
+            cursor: pointer; z-index: 10; transition: background .15s;
+        }
+        .fs-nav:hover { background: rgba(23, 23, 29, .85); }
+        .fs-prev { left: 12px; }
+        .fs-next { right: 12px; }
+        .reader-single:-webkit-full-screen .fs-nav,
+        .reader-single:fullscreen .fs-nav { display: block; }
+        /* 图片预览：长条漫画式，全部图片纵向排成一列。
+           容器整体可缩放（长条模式下 +/− 会缩放整条），原点在顶部便于阅读 */
+        .img-strip { transform-origin: center top; transition: transform .1s; }
+        /* 关键修复：hidden 属性必须能真正隐藏容器。
+           上面的 .reader-single 设置了 display:flex，
+           而类样式优先级高于浏览器默认的 [hidden]（display:none），
+           会导致单页容器即使 hidden 也一直显示（长条模式下单张图残留）。
+           用 [hidden] 选择器强制 display:none，让单页/长条容器按模式正确切换。 */
+        .reader-single[hidden],
+        .img-strip[hidden] { display: none; }
+        /* 长条容器全屏时：整条高度远超视口，保证可以上下滚动看完整个长条
+           （不设置的话部分浏览器全屏时没有滚动条，会误以为只有一张图） */
+        .img-strip:fullscreen { overflow-y: auto; }
+        .img-strip .img-item {
+            display: flex; justify-content: center; margin-bottom: 18px;
+            scroll-margin-top: 12px;  /* 滚动定位时避开顶部工具栏 */
+        }
+        .img-strip .img-item img {
+            max-width: 100%; height: auto; object-fit: contain; border-radius: 8px;
+            box-shadow: 0 4px 18px rgba(0, 0, 0, .15);
+        }
+        /* 正文 Markdown 排版（GitHub 风格） */
+        .md-body { line-height: 1.85; font-size: 15px; color: #24292e; word-break: break-word; }
+        .md-body h1, .md-body h2, .md-body h3, .md-body h4, .md-body h5, .md-body h6 {
+            margin: 1.2em 0 .5em; color: #1f2937; font-weight: 600;
+        }
+        .md-body h1 { font-size: 1.7em; padding-bottom: .3em; border-bottom: 1px solid #eaecef; }
+        .md-body h2 { font-size: 1.4em; padding-bottom: .2em; border-bottom: 1px solid #eaecef; }
+        .md-body h3 { font-size: 1.18em; }
+        .md-body p { margin: .7em 0; }
+        .md-body a { color: #0366d6; text-decoration: none; }
+        .md-body a:hover { text-decoration: underline; }
+        .md-body ul, .md-body ol { padding-left: 1.7em; margin: .7em 0; }
+        .md-body li { margin: .25em 0; }
+        .md-body li::marker { color: var(--primary); }
+        .md-body blockquote {
+            border-left: 4px solid var(--primary); margin: .9em 0; padding: .3em 1em;
+            color: #6b7280; background: var(--surface-2); border-radius: 0 8px 8px 0;
+        }
+        .md-body code {
+            background: var(--surface-2); padding: .15em .4em; border-radius: 5px;
+            font-family: Consolas, "Courier New", monospace; font-size: 13px;
+            color: #be185d;
+        }
+        .md-body pre {
+            background: #17171d; color: var(--border); padding: 16px 18px; border-radius: 10px;
+            overflow-x: auto; line-height: 1.6;
+        }
+        .md-body pre code { background: none; padding: 0; color: inherit; font-size: 13.5px; }
+        .md-body table { border-collapse: collapse; margin: .9em 0; width: 100%; display: block; overflow-x: auto; }
+        .md-body th, .md-body td { border: 1px solid var(--border); padding: 8px 14px; }
+        .md-body th { background: var(--surface-2); font-weight: 600; }
+        .md-body tr:nth-child(2n) td { background: #fafbfc; }
+        .md-body img { max-width: 100%; border-radius: 8px; }
+        .md-body hr { border: none; border-top: 1px solid #eaecef; margin: 1.4em 0; }
+        .md-body strong { color: #1f2937; }
+
+        /* ===== 暗色阅读模式（body.dark 时覆盖，公共底色见 common.css）===== */
+        body.dark .toolbar .back { background: var(--surface); border-color: var(--border); color: var(--text-3); }
+        body.dark .toolbar .back:hover { color: var(--primary-2); border-color: var(--primary); }
+        body.dark .doc { background: var(--surface); box-shadow: 0 8px 30px rgba(0, 0, 0, .35); }
+        body.dark .meta { color: var(--text-2); }
+        body.dark .note { border-color: var(--border); color: var(--text-3); }
+        body.dark .img-strip .img-item img { box-shadow: 0 4px 18px rgba(0, 0, 0, .45); }
+        body.dark .md-body { color: var(--text-2); }
+        body.dark .md-body h1, body.dark .md-body h2, body.dark .md-body h3,
+        body.dark .md-body h4, body.dark .md-body h5, body.dark .md-body h6,
+        body.dark .md-body strong { color: var(--text); }
+        body.dark .md-body h1, body.dark .md-body h2 { border-bottom-color: var(--border); }
+        body.dark .md-body a { color: #7dd3fc; }
+        body.dark .md-body blockquote { color: var(--text-3); background: #17171d; }
+        body.dark .md-body code { background: #17171d; color: #f9a8d4; }
+        body.dark .md-body th, body.dark .md-body td { border-color: var(--border); }
+        body.dark .md-body th { background: #17171d; }
+        body.dark .md-body tr:nth-child(2n) td { background: #17171d; }
+        /* 暗色：阅读器工具栏 / TOC 面板 / 工具栏按钮 */
+        body.dark .tool-btn { background: var(--surface); border-color: var(--border); color: var(--text-3); }
+        body.dark .tool-btn:hover { color: var(--primary-2); border-color: var(--primary); }
+        body.dark .toc-panel { background: var(--surface); border-color: var(--border); }
+        body.dark .toc-panel .toc-title { color: var(--text-2); }
+        body.dark .toc-panel li a { color: var(--text-3); }
+        body.dark .toc-panel li a:hover { background: var(--border); color: var(--primary-2); }
+        body.dark .reader-bar { background: #17171d; border-color: var(--border); }
+        body.dark .seg { background: var(--surface); border-color: var(--border); }
+        body.dark .seg-btn { color: var(--text-3); }
+        body.dark .seg-btn:hover { color: var(--primary-2); background: var(--border); }
+        body.dark .reader-pos { color: var(--text-3); }
+        body.dark .pg-btn, body.dark .icon-btn { background: var(--surface); border-color: var(--border); color: var(--text-3); }
+        body.dark .pg-btn:hover, body.dark .icon-btn:hover { color: var(--primary-2); border-color: var(--primary); }
+
+        /* ===== 看图模式：隐藏左侧导航栏，图片区占满整行（沉浸阅读）===== */
+        body.no-sidebar { padding-left: 0; }
+        body.no-sidebar .sidebar { display: none; }
+
+        /* ===== 视频播放页（B 站式布局）：无左侧导航栏，播放器居中靠左 + 右侧"接下来播放"列表 ===== */
+        body.video-page .view-wrap { max-width: 1500px; }
+        body.video-page .toolbar { max-width: 1460px; }
+        body.video-page .tags-row { max-width: 1460px; }
+        /* 视频页去掉正文卡片的留白/圆角，让播放器全宽铺开（卡片感由播放器自身保留） */
+        body.video-page .doc {
+            max-width: none; margin: 0; padding: 0;
+            background: transparent; border-radius: 0; box-shadow: none;
+        }
+        /* 播放页双栏网格：主列（播放器+信息）自适应 + 右侧固定宽度列表 */
+        .vp-page {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 320px;
+            gap: 20px;
+            align-items: start;
+            margin: 14px auto 48px;
+        }
+        .vp-main { min-width: 0; }
+        /* 播放器：16:9 自适应宽度，超高限制，圆角卡片 */
+        .vp { position: relative; width: 100%; }
+        .vp-video {
+            display: block; width: 100%; height: auto;
+            max-height: 82vh; background: #000;
+            border-radius: 12px; box-shadow: 0 8px 30px rgba(0, 0, 0, .18);
+        }
+        /* 播放器下方标题信息（B 站式：文件标题 + 类型标签） */
+        .vp-info { display: flex; align-items: center; gap: 12px; margin: 14px 2px 0; flex-wrap: wrap; }
+        .vp-title { font-size: 18px; font-weight: 700; color: var(--text); margin: 0; flex: 1; min-width: 0; }
+        .vp-badge { font-size: 12px; color: var(--primary-2); border: 1px solid var(--primary); border-radius: 6px; padding: 2px 8px; }
+        /* 右侧"接下来播放"列表 */
+        .vp-side { position: sticky; top: 14px; }
+        .vp-side-title {
+            display: flex; align-items: baseline; justify-content: space-between;
+            font-size: 15px; font-weight: 700; color: var(--text);
+            padding: 4px 2px 10px;
+        }
+        .vp-side-count { font-size: 12px; font-weight: 400; color: var(--text-3); }
+        .vp-side .pl-list { max-height: calc(100vh - 170px); overflow-y: auto; }
+        /* 列表项：缩略图 + 文件名，当前播放高亮 */
+        .vp-side .pl-item {
+            display: flex; align-items: center; gap: 10px;
+            width: 100%; padding: 8px; margin-bottom: 4px;
+            background: transparent; border: 1px solid transparent; border-radius: 10px;
+            text-align: left; cursor: pointer;
+        }
+        .vp-side .pl-item:hover { background: var(--surface-2); }
+        .vp-side .pl-item.active { background: var(--surface-2); border-color: var(--primary); }
+        .vp-side .pl-thumb {
+            flex: 0 0 auto; width: 116px; height: 65px; border-radius: 8px; overflow: hidden;
+            background: #000; position: relative;
+        }
+        .vp-side .pl-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .vp-side .pl-item.active .pl-thumb::after {
+            content: "▶"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 18px; background: rgba(0, 0, 0, .35);
+        }
+        .vp-side .pl-idx { display: none; }
+        .vp-side .pl-name {
+            font-size: 13px; color: var(--text-2); line-height: 1.4;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+        }
+        .vp-side .pl-item.active .pl-name { color: var(--primary-2); font-weight: 600; }
+
+        /* ===== 宽屏模式：播放器撑满可用宽度（右侧列表收窄），B 站宽屏样式 ===== */
+        .vp-page.wide { grid-template-columns: minmax(0, 1fr) 280px; }
+        .vp-page.wide .vp-video { max-height: 92vh; }
+
+        /* ===== 网页全屏模式：隐藏页面其余元素，播放器铺满浏览器窗口 ===== */
+        body.vp-web-full .view-wrap > .toolbar,
+        body.vp-web-full .tags-row,
+        body.vp-web-full .reading-bar,
+        body.vp-web-full .vp-info,
+        body.vp-web-full .vp-side { display: none; }
+        body.vp-web-full .vp-page { display: block; margin: 0; }
+        body.vp-web-full .vp-main { width: 100%; }
+        body.vp-web-full .vp {
+            position: fixed; inset: 0; z-index: 9999;
+            background: #000; display: flex; align-items: center; justify-content: center;
+        }
+        body.vp-web-full .vp-video { max-height: 100vh; height: 100%; width: 100%; border-radius: 0; box-shadow: none; }
+
+        /* ===== 移动端 / 平板适配（≤1024px）===== */
+        @media (max-width: 1024px) {
+            /* 正文容器：缩小左右留白，窄屏更充分利用宽度 */
+            .doc { padding: 20px 16px; }
+            .toolbar { padding: 0 12px; flex-wrap: wrap; gap: 8px; }
+            .toolbar-right { gap: 6px; }
+            .tool-btn { padding: 10px 14px; font-size: 13.5px; }   /* 加大触控面积 */
+            /* 视频播放页：双栏改单栏，列表移到播放器下方 */
+            .vp-page { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+            .vp-side { position: static; }
+            .vp-side .pl-list { max-height: 50vh; }
+            .vp-page.wide { grid-template-columns: minmax(0, 1fr); }
+            /* 目录面板：由右侧固定栏改为"底部抽屉"，占满宽度、限高可滚动 */
+            .toc-panel {
+                top: auto; right: 0; bottom: 0; left: 0;
+                width: 100%; max-height: 60vh; border-radius: 16px 16px 0 0;
+                padding: 12px 14px;
+            }
+            /* 图片阅读器：工具条收紧间距，单页容器留白缩小 */
+            .reader-bar { gap: 10px; padding: 10px; }
+            .reader-single { padding: 6px; }
+            .img-strip .img-item { margin-bottom: 10px; }
+            /* 图片操作按钮加大触控面积：模式分段器占满整行，图标按钮放大 */
+            .seg { flex: 1; }
+            .seg-btn { flex: 1; justify-content: center; padding: 9px 10px; }
+            .nav-group { flex: 1; justify-content: center; }
+            .pg-btn { min-height: 40px; }
+            .icon-btn { width: 40px; height: 40px; }
+            /* "已保存"提示：上移避开底部导航栏 */
+            .save-toast { bottom: calc(76px + env(safe-area-inset-bottom)); }
+            /* 标签行按钮：加大触控面积 */
+            .tag-pill { padding: 5px 12px; }
+            .tag-pill button { font-size: 12px; }
+            .tags-edit { padding: 5px 14px; }
+        }
+    

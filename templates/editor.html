@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>编辑 - {{ filename }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/editor.css') }}">
+</head>
+<body>
+    {% include 'nav.html' %}
+    <div class="view-wrap">
+    <div class="toolbar">
+        <div class="toolbar-right">
+            <a class="tool-btn" href="{{ url_for('view.view_file', subpath=path) }}">← 返回查看</a>
+            <a class="tool-btn" href="{{ url_for('browser.browse', subpath=parent) if parent else url_for('browser.main') }}">📁 目录</a>
+        </div>
+        <div class="toolbar-right">
+            <!-- 保存：正常态显示"保存"；保存中禁用并显示"保存中…" -->
+            <button class="tool-btn save-btn" id="save-btn" type="button">💾 保存</button>
+        </div>
+    </div>
+
+    <div class="file-meta">
+        <span class="name">{{ filename }}</span>
+        <span class="enc-badge">原编码 {{ enc }}</span>
+        <span class="dirty-mark" id="dirty-mark">● 有未保存的修改</span>
+    </div>
+
+    <div class="editor-wrap">
+        <!-- 文本域：只读属性在保存提交时移除，防止浏览器拦截初始内容为空时的校验 -->
+        <textarea class="editor" id="editor" spellcheck="false">{{ content }}</textarea>
+    </div>
+    <div class="key-hint">提示：按 <b>Ctrl + S</b> 保存；保存后统一转换为 UTF-8 编码写回文件。</div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+    <script>
+        // ===== 页面配置：后端注入，供 editor.js 使用 =====
+        window.EDITOR_CONFIG = {
+    urls: { save: "{{ url_for('manage.save', subpath=path) }}" }
+};
+    </script>
+    <script src="{{ url_for('static', filename='js/editor.js') }}"></script>
+</body>
+</html>

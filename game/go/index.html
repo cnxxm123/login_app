@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>围棋</title>
+<style>
+    :root { --bg:#16161b; --card:#24242b; --line:#3a3a44; --text:#e2e8f0; --muted:#94a3b8; --accent:#22c55e; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:linear-gradient(135deg,#16161b,#24242b); color:var(--text); font-family:"Segoe UI","Microsoft YaHei",sans-serif; min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:20px; }
+    .topbar { width:100%; max-width:460px; display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+    .topbar h1 { font-size:22px; letter-spacing:1px; color:var(--accent); }
+    .topbar a { color:var(--muted); text-decoration:none; font-size:13px; border:1px solid var(--line); padding:6px 12px; border-radius:8px; transition:.2s; }
+    .topbar a:hover { color:var(--text); border-color:var(--muted); }
+    .panel { width:100%; max-width:460px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.4); }
+    .stat-row { display:flex; gap:10px; margin-bottom:14px; }
+    .stat { flex:1; background:#16161b; border:1px solid var(--line); border-radius:12px; padding:10px; text-align:center; }
+    .stat .label { font-size:11px; color:var(--muted); }
+    .stat .val { font-size:20px; font-weight:700; color:var(--accent); }
+    .stat .val.w { color:#e2e8f0; }
+    #board { display:block; width:100%; max-width:460px; height:auto; touch-action:none; border-radius:12px;
+        /* 仿木质棋盘：暖色渐变 + 顶部受光、四周内阴影，营造立体厚度 */
+        background:
+            radial-gradient(900px 380px at 50% -10%, rgba(255,235,190,.55), rgba(255,235,190,0) 62%),
+            linear-gradient(165deg, #e7c890 0%, #d6ae6e 46%, #c69a58 100%);
+        box-shadow:
+            inset 0 3px 10px rgba(120,80,30,.38),
+            inset 0 -3px 8px rgba(255,235,190,.28),
+            inset 3px 0 8px rgba(120,80,30,.22),
+            inset -3px 0 8px rgba(120,80,30,.22),
+            0 12px 32px rgba(0,0,0,.45);
+    }
+    .ctrl { display:flex; gap:10px; margin-top:12px; }
+    .btn { flex:1; background:var(--accent); color:#052e16; border:none; padding:10px 0; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; touch-action:manipulation; }
+    .btn.alt { background:#475569; color:#e2e8f0; }
+    .hint { margin-top:12px; font-size:12px; color:var(--muted); text-align:center; line-height:1.7; }
+    .wrap { position:relative; }
+    /* 项目约定：必须显式声明该规则，hidden 属性才能真正控制遮罩显隐 */
+    .overlay { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; background:rgba(2,6,23,.86); border-radius:12px; text-align:center; padding:16px; }
+    .overlay[hidden] { display:none; }
+    .overlay > div[hidden] { display:none; }
+    .overlay h2 { font-size:26px; }
+    .overlay .btn { width:auto; padding:10px 28px; }
+    .row-label { font-size:12px; color:var(--muted); margin-top:2px; }
+    .opt-row { display:flex; gap:8px; }
+    .obtn { flex:1; background:#3a3a44; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px 0; font-size:13px; cursor:pointer; touch-action:manipulation; }
+    .obtn.on { background:var(--accent); color:#052e16; border-color:var(--accent); font-weight:700; }
+    .intro { font-size:13px; color:var(--muted); line-height:1.7; max-width:340px; }
+    .score-box { background:#16161b; border:1px solid var(--line); border-radius:10px; padding:10px 14px; font-size:14px; line-height:1.9; color:var(--text); }
+</style>
+</head>
+<body>
+    <div class="topbar">
+        <h1>⚫ 围棋</h1>
+        <a href="/game">← 返回游戏大厅</a>
+    </div>
+    <div class="panel">
+        <div class="stat-row">
+            <div class="stat"><div class="label">当前回合</div><div class="val" id="turn">⚫ 黑</div></div>
+            <div class="stat"><div class="label">黑方提子</div><div class="val" id="capB">0</div></div>
+            <div class="stat"><div class="label">白方提子</div><div class="val w" id="capW">0</div></div>
+        </div>
+        <div class="wrap">
+            <canvas id="board"></canvas>
+            <div class="overlay" id="overlay">
+                <div id="ovSetup">
+                    <h2>⚫ 围棋</h2>
+                    <div class="intro">轮流在交叉点落子，围住并提掉对方棋子<br>气尽则提 · 禁自杀 · 禁打劫<br>双方连续弃权即终局数子判负</div>
+                    <div class="row-label">对弈模式</div>
+                    <div class="opt-row" id="modeRow">
+                        <button class="obtn on" data-m="ai">人机对战</button>
+                        <button class="obtn" data-m="pvp">双人对弈</button>
+                    </div>
+                    <div class="row-label">棋盘大小</div>
+                    <div class="opt-row" id="sizeRow">
+                        <button class="obtn on" data-s="9">9×9</button>
+                        <button class="obtn" data-s="13">13×13</button>
+                        <button class="obtn" data-s="19">19×19</button>
+                    </div>
+                    <button class="btn" id="startBtn">开始对弈</button>
+                </div>
+                <div id="ovResult" hidden>
+                    <h2 id="resultTitle"></h2>
+                    <div class="score-box" id="resultScore"></div>
+                    <button class="btn" id="againBtn">再来一局</button>
+                    <button class="btn alt" id="menuBtn">返回设置</button>
+                </div>
+            </div>
+        </div>
+        <div class="ctrl">
+            <button class="btn alt" id="undoBtn">悔棋</button>
+            <button class="btn alt" id="passBtn">弃权</button>
+            <button class="btn" id="restartBtn">重新开始</button>
+        </div>
+        <div class="hint" id="statsLine">执黑先行 · 手机点按 / 电脑点击均可 · 白方贴目 7.5 目</div>
+    </div>
+
+<script>
+(function () {
+    // ================= 基本配置与状态 =================
+    var CELL = 30, MARGIN = 4;          // 单元格与棋盘边距（逻辑坐标）
+    var EMPTY = 0, BLACK = 1, WHITE = 2;
+    var KOMI = 7.5;                     // 白方贴目（半目可避免平局）
+    var DIRS = [[1,0],[-1,0],[0,1],[0,-1]];  // 上下左右四个相邻方向
+
+    var N, board, turn, playing, thinking; // 棋盘大小 / 局面 / 当前方 / 对局中 / AI思考中
+    var capBlack = 0, capWhite = 0;       // 被提掉的黑子数 / 被提掉的白子数
+    var passed = 0, moves = 0, lastMove = null, hover = null;
+    var history = [];                     // 每手后的局面哈希，用于劫争判断
+    var movesLog = [];                    // 每手快照栈，用于悔棋
+    var mode = "ai";                      // ai=人机(黑) / pvp=双人
+
+    var cv = document.getElementById("board"), ctx = cv.getContext("2d");
+    var DPR = Math.min(window.devicePixelRatio || 1, 3);  // 高清屏适配
+    var M;  // 画布逻辑尺寸（随棋盘大小变化）
+
+    // 顶部信息元素
+    var turnEl = document.getElementById("turn"),
+        capBEl = document.getElementById("capB"), capWEl = document.getElementById("capW"),
+        statsLine = document.getElementById("statsLine"),
+        overlay = document.getElementById("overlay"),
+        ovSetup = document.getElementById("ovSetup"), ovResult = document.getElementById("ovResult"),
+        resultTitle = document.getElementById("resultTitle"), resultScore = document.getElementById("resultScore"),
+        startBtn = document.getElementById("startBtn"), againBtn = document.getElementById("againBtn"),
+        menuBtn = document.getElementById("menuBtn"),
+        undoBtn = document.getElementById("undoBtn"), passBtn = document.getElementById("passBtn"),
+        restartBtn = document.getElementById("restartBtn");
+
+    // ================= 音频（Web Audio 合成音效）=================
+    var actx = null;
+    function audio() {
+        if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
+        return actx;
+    }
+    // 播放一个短音：freq频率 / dur时长 / type波形 / vol音量
+    function beep(freq, dur, type, vol) {
+        var a = audio(); if (!a) return;
+        var o = a.createOscillator(), g = a.createGain();
+        o.type = type; o.frequency.value = freq;
+        g.gain.value = vol; g.gain.exponentialRampToValueAtTime(.001, a.currentTime + dur);
+        o.connect(g); g.connect(a.destination);
+        o.start(); o.stop(a.currentTime + dur);
+    }
+    function sPlace()   { beep(520, .06, "sine", .28); }          // 落子：清脆短音
+    function sCapture() { beep(160, .16, "square", .22); }        // 提子：低沉厚音
+    function sEnd(win)  {                                         // 终局：胜利上行 / 失败下行
+        if (win) { beep(392,.12,"triangle",.3); setTimeout(function(){beep(523,.12,"triangle",.3);},120);
+                   setTimeout(function(){beep(659,.18,"triangle",.3);},240); }
+        else     { beep(330,.14,"sine",.3); setTimeout(function(){beep(247,.2,"sine",.3);},150); }
+    }
+
+    // ================= 棋盘初始化 =================
+    function newBoard() {
+        board = [];
+        for (var i = 0; i < N; i++) board.push(new Array(N).fill(EMPTY));
+    }
+    function boardHash() { return board.map(function (row) { return row.join(""); }).join("|"); }
+
+    function inB(r, c) { return r >= 0 && r < N && c >= 0 && c < N; }
+
+    // ================= 棋组与气 =================
+    // 返回包含 (r,c) 的整块同色棋子的坐标列表（洪水填充）
+    function getGroup(r, c) {
+        var color = board[r][c];
+        if (color === EMPTY) return [];
+        var out = [], stack = [{ r: r, c: c }], seen = {};
+        seen[r * N + c] = true;
+        while (stack.length) {
+            var p = stack.pop();
+            out.push(p);
+            for (var i = 0; i < 4; i++) {
+                var nr = p.r + DIRS[i][0], nc = p.c + DIRS[i][1];
+                if (inB(nr, nc) && !seen[nr * N + nc] && board[nr][nc] === color) {
+                    seen[nr * N + nc] = true; stack.push({ r: nr, c: nc });
+                }
+            }
+        }
+        return out;
+    }
+    // 计算一块棋的气（紧邻的空点，去重后计数）
+    function countLib(group) {
+        var libs = {}, n = 0;
+        for (var i = 0; i < group.length; i++) {
+            var p = group[i];
+            for (var d = 0; d < 4; d++) {
+                var nr = p.r + DIRS[d][0], nc = p.c + DIRS[d][1];
+                if (inB(nr, nc) && board[nr][nc] === EMPTY && !libs[nr * N + nc]) {
+                    libs[nr * N + nc] = true; n++;
+                }
+            }
+        }
+        return n;
+    }
+
+    // ================= 落子核心（模拟 + 合法性 + 提子）=================
+    // 在 (r,c) 落 color 子，只做"分析"，不真正提交局面：
+    // 返回 {legal, captured(被提子坐标数组), ownLib(己方气), atari(打吃对方组数)}
+    // 处理：提子（对方气尽即提）、禁自杀（己方气尽且未提子）、禁打劫（还原上一手局面）
+    function analyzeMove(r, c, color) {
+        board[r][c] = color;                 // 临时放子
+        var opp = 3 - color, captured = [], atari = 0;
+        for (var d = 0; d < 4; d++) {
+            var nr = r + DIRS[d][0], nc = c + DIRS[d][1];
+            if (inB(nr, nc) && board[nr][nc] === opp) {
+                var grp = getGroup(nr, nc), lib = countLib(grp);
+                if (lib === 0) { for (var i = 0; i < grp.length; i++) { captured.push(grp[i]); board[grp[i].r][grp[i].c] = EMPTY; } }
+                else if (lib === 1) atari++;   // 把对方打成只剩一口气（打吃）
+            }
+        }
+        var ownLib = countLib(getGroup(r, c)); // 提子后己方新块的气
+        // 劫争：本手后局面若与"上一手之前"完全相同（即提回一子），判为打劫
+        var prev2 = history.length >= 2 ? history[history.length - 2] : null;
+        var ko = boardHash() === prev2;
+        var legal = ownLib > 0 && !ko;
+        // 还原局面（把临时子取走，被提的子放回）
+        board[r][c] = EMPTY;
+        for (var j = 0; j < captured.length; j++) board[captured[j].r][captured[j].c] = opp;
+        return { legal: legal, captured: captured, ownLib: ownLib, atari: atari };
+    }
+
+    // 真正落一手棋：非法返回 false，合法则提交局面并推进状态
+    function doPlace(r, c, color) {
+        var a = analyzeMove(r, c, color);
+        if (!a.legal) return false;
+        board[r][c] = color;
+        for (var i = 0; i < a.captured.length; i++) board[a.captured[i].r][a.captured[i].c] = EMPTY;
+        if (color === BLACK) capWhite += a.captured.length;   // 黑提白，计入黑方提子
+        else                 capBlack += a.captured.length;   // 白提黑，计入白方提子
+        lastMove = { r: r, c: c };
+        moves++; passed = 0;                                   // 落子即打断连续弃权
+        history.push(boardHash());
+        turn = 3 - color;
+        pushLog();
+        if (a.captured.length > 0) sCapture(); else sPlace();
+        draw(); updateInfo();
+        return true;
+    }
+
+    // 弃权（pass）：连续两次弃权即终局
+    function doPass(color) {
+        lastMove = null;
+        passed++;
+        turn = 3 - color;
+        pushLog();
+        sPlace();
+        draw(); updateInfo();
+        if (passed >= 2) return endGame();
+        if (mode === "ai" && turn === WHITE) aiThink();       // 人机模式轮到 AI
+    }
+
+    // ================= 悔棋（快照栈）=================
+    function pushLog() {
+        movesLog.push({ snap: board.map(function (r) { return r.slice(); }),
+            capBlack: capBlack, capWhite: capWhite, passed: passed, lastMove: lastMove, nextTurn: turn });
+    }
+    function restoreSnap(e) {
+        board = e.snap.map(function (r) { return r.slice(); });
+        capBlack = e.capBlack; capWhite = e.capWhite; passed = e.passed; lastMove = e.lastMove; turn = e.nextTurn;
+    }
+    function undo() {
+        if (!playing || thinking || !movesLog.length) return;
+        // 人机模式退两手（自己的一手 + AI 的回手），双人退一手
+        var n = mode === "ai" ? 2 : 1, cnt = 0;
+        while (movesLog.length && cnt < n) { movesLog.pop(); cnt++; }
+        if (movesLog.length) restoreSnap(movesLog[movesLog.length - 1]);
+        else { newBoard(); capBlack = 0; capWhite = 0; passed = 0; lastMove = null; turn = BLACK; }
+        draw(); updateInfo();
+    }
+
+    // ================= 终局数子（简化日本规则：子空 + 提子 + 贴目）=================
+    function countScore() {
+        var vis = board.map(function (r) { return r.map(function () { return false; }); });
+        var bt = 0, wt = 0;
+        for (var r = 0; r < N; r++) for (var c = 0; c < N; c++) {
+            if (board[r][c] !== EMPTY || vis[r][c]) continue;
+            // 从空点洪水填充，统计该区域的边界触及哪些颜色
+            var stack = [{ r: r, c: c }], cnt = 0, tb = false, tw = false;
+            vis[r][c] = true;
+            while (stack.length) {
+                var p = stack.pop(); cnt++;
+                for (var d = 0; d < 4; d++) {
+                    var nr = p.r + DIRS[d][0], nc = p.c + DIRS[d][1];
+                    if (!inB(nr, nc)) continue;
+                    if (board[nr][nc] === EMPTY) { if (!vis[nr][nc]) { vis[nr][nc] = true; stack.push({ r: nr, c: nc }); } }
+                    else if (board[nr][nc] === BLACK) tb = true;
+                    else tw = true;
+                }
+            }
+            if (tb && !tw) bt += cnt;   // 只被黑围住 → 黑地
+            else if (tw && !tb) wt += cnt;
+        }
+        var blackScore = bt + capWhite;             // 黑方：子空 + 提掉的白子
+        var whiteScore = wt + capBlack + KOMI;      // 白方：子空 + 提掉的黑子 + 贴目
+        return { bt: bt, wt: wt, blackScore: blackScore, whiteScore: whiteScore };
+    }
+    function endGame() {
+        playing = false;
+        var sc = countScore(), winner;
+        if (sc.blackScore > sc.whiteScore) winner = BLACK;
+        else if (sc.whiteScore > sc.blackScore) winner = WHITE;
+        else winner = 0;
+        resultTitle.textContent = winner === BLACK ? "⚫ 黑方获胜" : winner === WHITE ? "⚪ 白方获胜" : "🤝 平局";
+        resultScore.innerHTML =
+            "黑方 <b>" + sc.blackScore + " 目</b>（子空 " + sc.bt + " + 提子 " + capWhite + "）<br>" +
+            "白方 <b>" + sc.whiteScore + " 目</b>（子空 " + sc.wt + " + 提子 " + capBlack + " + 贴目 " + KOMI + "）";
+        ovSetup.hidden = true; ovResult.hidden = false; overlay.hidden = false;
+        if (mode === "ai") saveResult(winner);
+        sEnd(winner === BLACK);
+    }
+    // 记录人机战绩到 localStorage
+    function saveResult(winner) {
+        var s;
+        try { s = JSON.parse(localStorage.getItem("go_stats") || '{"wins":0,"losses":0,"games":0}'); }
+        catch (e) { s = { wins: 0, losses: 0, games: 0 }; }
+        s.games++;
+        if (winner === BLACK) s.wins++; else if (winner === WHITE) s.losses++;
+        localStorage.setItem("go_stats", JSON.stringify(s));
+    }
+    function loadStats() {
+        try { return JSON.parse(localStorage.getItem("go_stats") || '{"wins":0,"losses":0,"games":0}'); }
+        catch (e) { return { wins: 0, losses: 0, games: 0 }; }
+    }
+
+    // ================= 人机 AI（启发式贪心）=================
+    // 判定 (r,c) 落子是否紧邻"只剩一口气"的己方棋组（即在救活被叫吃的棋）
+    function savesAtari(r, c, color) {
+        for (var d = 0; d < 4; d++) {
+            var nr = r + DIRS[d][0], nc = c + DIRS[d][1];
+            if (inB(nr, nc) && board[nr][nc] === color) {
+                var grp = getGroup(nr, nc);
+                if (countLib(grp) === 1) return true;
+            }
+        }
+        return false;
+    }
+    // 生成候选点：只考虑已有棋子周围 2 格内的空点，减少搜索量
+    function candidates() {
+        var set = {}, list = [];
+        for (var r = 0; r < N; r++) for (var c = 0; c < N; c++) {
+            if (board[r][c] === EMPTY) continue;
+            for (var dr = -2; dr <= 2; dr++) for (var dc = -2; dc <= 2; dc++) {
+                var nr = r + dr, nc = c + dc;
+                if (inB(nr, nc) && board[nr][nc] === EMPTY && !set[nr * N + nc]) {
+                    set[nr * N + nc] = true; list.push({ r: nr, c: nc });
+                }
+            }
+        }
+        if (!list.length) list.push({ r: Math.floor(N / 2), c: Math.floor(N / 2) });  // 空盘落天元
+        return list;
+    }
+    // 对某候选点打分：提子价值 > 打吃 > 连接与气 > 中央控制
+    function scoreEval(a, r, c) {
+        var s = 0;
+        s += a.captured.length * 120 + (a.captured.length > 0 ? 60 : 0);  // 提子价值最高
+        if (a.ownLib === 1) s -= 35;        // 单气自填：危险
+        else s += a.ownLib * 3;             // 气多更安全
+        s += a.atari * 25;                  // 打吃对方
+        var ed = Math.min(r, c, N - 1 - r, N - 1 - c);
+        s += ed * 1.2;                      // 偏向中央便于扩张
+        return s;
+    }
+    function aiMove() {
+        var best = null, bestScore = -1e9, cands = candidates();
+        for (var i = 0; i < cands.length; i++) {
+            var p = cands[i], a = analyzeMove(p.r, p.c, WHITE);
+            if (!a.legal) continue;
+            var s = scoreEval(a, p.r, p.c);
+            if (savesAtari(p.r, p.c, WHITE)) s += 60;   // 救活被叫吃的己方棋组：高优先级
+            if (s > bestScore) { bestScore = s; best = p; }
+        }
+        // 价值太低则弃权（通常发生在双方无地可争的终局）
+        if (!best || bestScore < 12) return doPass(WHITE);
+        doPlace(best.r, best.c, WHITE);
+    }
+    function aiThink() {
+        thinking = true;
+        setTimeout(function () { thinking = false; aiMove(); }, 380);
+    }
+
+    // ================= 回合流转 =================
+    function afterMove() {
+        if (mode === "ai" && turn === WHITE) aiThink();  // 人机：玩家落子后轮到 AI
+    }
+
+    // ================= 绘制 =================
+    function starPoints() {   // 各棋盘的星位（0 起始下标）
+        if (N === 9)  return [[2,2],[2,6],[6,2],[6,6],[4,4]];
+        if (N === 13) return [[3,3],[3,9],[9,3],[9,9],[6,6],[3,6],[6,3],[6,9],[9,6]];
+        return [[3,3],[3,9],[3,15],[9,3],[9,9],[9,15],[15,3],[15,9],[15,15]];
+    }
+    function drawPiece(x, y, color) {   // 立体棋子：径向渐变 + 投影 + 高光
+        ctx.save();
+        ctx.shadowColor = "rgba(30,20,5,.45)"; ctx.shadowBlur = 5; ctx.shadowOffsetY = 2;
+        var g = ctx.createRadialGradient(x - 4, y - 4, 2, x, y, CELL * .46);
+        if (color === BLACK) { g.addColorStop(0, "#4b5568"); g.addColorStop(1, "#0b1020"); }
+        else { g.addColorStop(0, "#ffffff"); g.addColorStop(1, "#9aa7b8"); }
+        ctx.beginPath(); ctx.arc(x, y, CELL * .46, 0, 7);
+        ctx.fillStyle = g; ctx.fill();
+        ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = color === BLACK ? "rgba(255,255,255,.14)" : "rgba(120,90,40,.5)";
+        ctx.stroke();
+        ctx.beginPath(); ctx.arc(x - 4, y - 4, 2.6, 0, 7);
+        ctx.fillStyle = color === BLACK ? "rgba(255,255,255,.28)" : "rgba(255,255,255,.95)";
+        ctx.fill();
+        ctx.restore();
+    }
+    function draw() {
+        ctx.clearRect(0, 0, M, M);
+        // 网格线
+        ctx.strokeStyle = "rgba(88,58,24,.55)"; ctx.lineWidth = 1;
+        for (var i = 0; i < N; i++) {
+            ctx.beginPath(); ctx.moveTo(MARGIN, MARGIN + i * CELL); ctx.lineTo(MARGIN + (N - 1) * CELL, MARGIN + i * CELL); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(MARGIN + i * CELL, MARGIN); ctx.lineTo(MARGIN + i * CELL, MARGIN + (N - 1) * CELL); ctx.stroke();
+        }
+        // 星位
+        ctx.fillStyle = "rgba(88,58,24,.85)";
+        starPoints().forEach(function (p) {
+            ctx.beginPath(); ctx.arc(MARGIN + p[1] * CELL, MARGIN + p[0] * CELL, 3.4, 0, 7); ctx.fill();
+        });
+        // 棋子
+        for (var r = 0; r < N; r++) for (var c = 0; c < N; c++) {
+            if (board[r][c] === EMPTY) continue;
+            drawPiece(MARGIN + c * CELL, MARGIN + r * CELL, board[r][c]);
+        }
+        // 最后一手标记
+        if (lastMove) {
+            var lx = MARGIN + lastMove.c * CELL, ly = MARGIN + lastMove.r * CELL;
+            ctx.save();
+            ctx.shadowColor = "rgba(255,60,60,.8)"; ctx.shadowBlur = 8;
+            ctx.fillStyle = "#ff5b5b";
+            ctx.beginPath(); ctx.arc(lx, ly, 4.2, 0, 7); ctx.fill();
+            ctx.restore();
+        }
+        // 悬停虚影
+        if (hover && playing && !thinking && canAct(turn)) {
+            var hx = MARGIN + hover.c * CELL, hy = MARGIN + hover.r * CELL;
+            ctx.save();
+            ctx.shadowColor = "rgba(34,197,94,.8)"; ctx.shadowBlur = 18;
+            ctx.beginPath(); ctx.arc(hx, hy, CELL * .46, 0, 7);
+            ctx.fillStyle = "rgba(34,197,94,.22)"; ctx.fill();
+            ctx.restore();
+            ctx.save(); ctx.globalAlpha = .5;
+            var g2 = ctx.createRadialGradient(hx - 4, hy - 4, 2, hx, hy, CELL * .46);
+            g2.addColorStop(0, "#4b5568"); g2.addColorStop(1, "#0b1020");
+            ctx.beginPath(); ctx.arc(hx, hy, CELL * .46, 0, 7);
+            ctx.fillStyle = g2; ctx.fill();
+            ctx.restore();
+        }
+    }
+    // 当前玩家是否应该（被允许）落子：AI 模式只能执黑操作
+    function canAct(color) {
+        return mode === "pvp" ? true : color === BLACK;
+    }
+
+    // ================= 交互 =================
+    function cellFromEvent(e) {   // 鼠标/触摸坐标 → 最近交叉点
+        var rect = cv.getBoundingClientRect();
+        var x = (e.clientX - rect.left) * (M / rect.width);
+        var y = (e.clientY - rect.top) * (M / rect.height);
+        var c = Math.round((x - MARGIN) / CELL), r = Math.round((y - MARGIN) / CELL);
+        if (!inB(r, c)) return null;
+        return { r: r, c: c };
+    }
+    cv.addEventListener("pointermove", function (e) {
+        if (!playing || thinking || overlay.hidden !== true) return;
+        var cell = cellFromEvent(e);
+        var next = (cell && board[cell.r][cell.c] === EMPTY && canAct(turn)) ? cell : null;
+        if (next !== hover && (next || hover)) { hover = next; draw(); }
+    }, { passive: true });
+    cv.addEventListener("pointerleave", function () {
+        if (hover) { hover = null; draw(); }
+    }, { passive: true });
+    cv.addEventListener("pointerdown", function (e) {
+        if (!playing || thinking || overlay.hidden !== true) return;
+        if (mode === "ai" && turn !== BLACK) return;   // 人机：玩家固定执黑
+        var cell = cellFromEvent(e);
+        if (!cell || board[cell.r][cell.c] !== EMPTY) return;
+        hover = null;
+        if (doPlace(cell.r, cell.c, turn)) afterMove();
+    }, { passive: true });
+
+    // ================= 信息刷新 =================
+    function updateInfo() {
+        turnEl.textContent = (turn === BLACK ? "⚫ 黑" : "⚪ 白");
+        capBEl.textContent = capBlack;
+        capWEl.textContent = capWhite;
+        var s = loadStats();
+        statsLine.textContent = "执黑先行 · 白方贴目 " + KOMI + " 目 · 战绩 " + s.wins + "胜 " + s.losses + "负（共 " + s.games + "局）";
+    }
+
+    // ================= 开局 / 重开 =================
+    function startGame() {
+        N = parseInt(sizeKey, 10);
+        M = MARGIN * 2 + (N - 1) * CELL;
+        cv.width = M * DPR; cv.height = M * DPR;   // 物理分辨率按 DPR 放大
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);    // 之后绘制用逻辑坐标
+        newBoard();
+        capBlack = 0; capWhite = 0; passed = 0; moves = 0; lastMove = null;
+        history = []; movesLog = []; hover = null;
+        turn = BLACK; playing = true; thinking = false;
+        overlay.hidden = true;
+        draw(); updateInfo();
+    }
+    function reset() { startGame(); }
+
+    // ================= 设置面板 =================
+    // 记住上次选择
+    sizeKey = localStorage.getItem("go_size") || "9";
+    mode = localStorage.getItem("go_mode") || "ai";
+    function initOpts() {
+        document.querySelectorAll("#modeRow .obtn").forEach(function (b) {
+            if (b.dataset.m === mode) b.classList.add("on");
+            b.addEventListener("click", function () {
+                mode = b.dataset.m; localStorage.setItem("go_mode", mode);
+                document.querySelectorAll("#modeRow .obtn").forEach(function (x) { x.classList.remove("on"); });
+                b.classList.add("on");
+            });
+        });
+        document.querySelectorAll("#sizeRow .obtn").forEach(function (b) {
+            if (b.dataset.s === sizeKey) b.classList.add("on");
+            b.addEventListener("click", function () {
+                sizeKey = b.dataset.s; localStorage.setItem("go_size", sizeKey);
+                document.querySelectorAll("#sizeRow .obtn").forEach(function (x) { x.classList.remove("on"); });
+                b.classList.add("on");
+            });
+        });
+        startBtn.addEventListener("click", function () { startGame(); });
+        againBtn.addEventListener("click", function () { startGame(); });   // 用相同设置再来
+        menuBtn.addEventListener("click", function () {                     // 返回设置面板
+            ovResult.hidden = true; ovSetup.hidden = false; overlay.hidden = false;
+        });
+        undoBtn.addEventListener("click", undo);
+        passBtn.addEventListener("click", function () {
+            if (!playing || thinking || overlay.hidden !== true) return;
+            if (mode === "ai" && turn !== BLACK) return;
+            doPass(turn);
+        });
+        restartBtn.addEventListener("click", reset);
+    }
+
+    initOpts();
+    // 首次加载：先按上次设置准备好棋盘（画在遮罩后面），并展示设置面板
+    startGame();
+    ovSetup.hidden = false; ovResult.hidden = true; overlay.hidden = false;
+})();
+</script>
+</body>
+</html>

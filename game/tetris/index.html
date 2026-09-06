@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>俄罗斯方块</title>
+<style>
+    :root { --bg:#16161b; --card:#24242b; --line:#3a3a44; --text:#e2e8f0; --muted:#94a3b8; --accent:#22c55e; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:linear-gradient(135deg,#16161b,#24242b); color:var(--text); font-family:"Segoe UI","Microsoft YaHei",sans-serif; min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:20px; }
+    .topbar { width:100%; max-width:600px; display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+    .topbar h1 { font-size:22px; letter-spacing:1px; color:var(--accent); }
+    .topbar a { color:var(--muted); text-decoration:none; font-size:13px; border:1px solid var(--line); padding:6px 12px; border-radius:8px; transition:.2s; }
+    .topbar a:hover { color:var(--text); border-color:var(--muted); }
+    .panel { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.4); display:flex; gap:16px; align-items:flex-start; }
+    #board { display:block; background:#0b1220; border:1px solid var(--line); border-radius:8px; }
+    .side { width:120px; display:flex; flex-direction:column; gap:12px; }
+    .stat { background:#16161b; border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
+    .stat .label { font-size:11px; color:var(--muted); }
+    .stat .val { font-size:20px; color:var(--accent); font-weight:700; }
+    #next { display:block; background:#0b1220; border:1px solid var(--line); border-radius:8px; margin-top:6px; }
+    .ctrl { display:flex; gap:6px; flex-wrap:wrap; }
+    .cbtn { flex:1; min-width:52px; background:#3a3a44; color:var(--text); border:none; padding:10px 0; border-radius:8px; font-size:16px; cursor:pointer; touch-action:manipulation; }
+    .cbtn:hover { background:#475569; }
+    .hint { margin-top:12px; font-size:12px; color:var(--muted); text-align:center; line-height:1.7; }
+    .btn { background:var(--accent); color:#052e16; border:none; padding:8px 20px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; }
+    .btn:hover { filter:brightness(1.1); }
+    .overlay { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; background:rgba(2,6,23,.8); border-radius:8px; }
+    .overlay h2 { font-size:26px; }
+    .diff-row { display:flex; gap:8px; }
+    .dbtn { flex:1; background:#3a3a44; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px 0; font-size:13px; cursor:pointer; touch-action:manipulation; }
+    .dbtn.on { background:var(--accent); color:#052e16; border-color:var(--accent); font-weight:700; }
+    .wrap { position:relative; }
+    /* 手机端：竖排布局，画布自适应不溢出，控制按钮加大方便点按 */
+    @media (max-width:640px) {
+        .panel { flex-direction:column; align-items:stretch; }
+        .side { width:100%; flex-direction:row; flex-wrap:wrap; }
+        .stat { flex:1 1 42%; }
+        #board { width:100%; max-width:280px; height:auto; margin:0 auto; touch-action:none; }
+        #next { width:72px; height:72px; }
+        .ctrl { width:100%; }
+        .cbtn { min-width:68px; padding:16px 0; font-size:22px; }
+    }
+</style>
+</head>
+<body>
+    <div class="topbar">
+        <h1>🧩 俄罗斯方块</h1>
+        <a href="/game">← 返回游戏大厅</a>
+    </div>
+    <div class="panel">
+        <div class="wrap">
+            <canvas id="board" width="280" height="560"></canvas>
+            <div class="overlay" id="overlay">
+                <h2>🧩 俄罗斯方块</h2>
+                <div class="diff-row">
+                    <button class="dbtn" data-d="easy">简单</button>
+                    <button class="dbtn" data-d="normal">普通</button>
+                    <button class="dbtn" data-d="hard">困难</button>
+                </div>
+                <button class="btn" id="start">开始游戏</button>
+            </div>
+        </div>
+        <div class="side">
+            <div class="stat"><div class="label">得分</div><div class="val" id="score">0</div></div>
+            <div class="stat"><div class="label">等级</div><div class="val" id="level">1</div></div>
+            <div class="stat"><div class="label">消行</div><div class="val" id="lines">0</div></div>
+            <div class="stat"><div class="label">最高分</div><div class="val" id="best">0</div></div>
+            <div class="stat"><div class="label">下一个</div><canvas id="next" width="96" height="96"></canvas></div>
+            <div class="ctrl">
+                <button class="cbtn" id="bL">◀</button>
+                <button class="cbtn" id="bR">▶</button>
+                <button class="cbtn" id="bD">▼</button>
+                <button class="cbtn" id="bRo">↻</button>
+            </div>
+        </div>
+    </div>
+    <div class="hint">方向键 ←→ 移动 · ↑ 旋转 · ↓ 加速下落 · 空格 直接落底 · 触屏可用下方 ◀▶▼↻ 按钮操作 · 消满一行得分，10 行升一级更快</div>
+
+<script>
+(function () {
+    var cv = document.getElementById("board");
+    var ctx = cv.getContext("2d");
+    var ncv = document.getElementById("next");
+    var nctx = ncv.getContext("2d");
+    var COLS = 10, ROWS = 20, CELL = 28;
+    var scoreEl = document.getElementById("score"), levelEl = document.getElementById("level"),
+        linesEl = document.getElementById("lines"), bestEl = document.getElementById("best"),
+        overlay = document.getElementById("overlay");
+    var best = +(localStorage.getItem("tetris_best") || 0);
+    bestEl.textContent = best;
+
+    // 难度：影响初始下落速度
+    var DIFFS = { easy:{dropMs:620}, normal:{dropMs:500}, hard:{dropMs:380} };
+    var diffKey = localStorage.getItem("tetris_diff") || "normal";
+    function initDiff() {
+        var btns = document.querySelectorAll(".dbtn");
+        btns.forEach(function (b) {
+            if (b.dataset.d === diffKey) b.classList.add("on");
+            b.addEventListener("click", function () {
+                diffKey = b.dataset.d;
+                localStorage.setItem("tetris_diff", diffKey);
+                btns.forEach(function (x) { x.classList.remove("on"); });
+                b.classList.add("on");
+            });
+        });
+    }
+
+    var COLORS = { I:"#22d3ee", O:"#facc15", T:"#a78bfa", S:"#34d399", Z:"#fb7185", J:"#60a5fa", L:"#fb923c" };
+    var SHAPES = {
+        I: [[1,1,1,1]],
+        O: [[1,1],[1,1]],
+        T: [[0,1,0],[1,1,1]],
+        S: [[0,1,1],[1,1,0]],
+        Z: [[1,1,0],[0,1,1]],
+        J: [[1,0,0],[1,1,1]],
+        L: [[0,0,1],[1,1,1]]
+    };
+
+    var grid, cur, curType, curX, curY, nextType, score, level, lines, dropMs, loop, running;
+
+    function newGrid() {
+        var g = [];
+        for (var r = 0; r < ROWS; r++) g.push(new Array(COLS).fill(0));
+        return g;
+    }
+
+    function reset() {
+        grid = newGrid(); score = 0; level = 1; lines = 0; dropMs = DIFFS[diffKey].dropMs;
+        scoreEl.textContent = 0; levelEl.textContent = 1; linesEl.textContent = 0;
+        nextType = pickType();
+        spawn();
+    }
+
+    function pickType() {
+        var keys = Object.keys(SHAPES);
+        return keys[Math.floor(Math.random() * keys.length)];
+    }
+
+    function spawn() {
+        curType = nextType; nextType = pickType();
+        cur = SHAPES[curType].map(function (row) { return row.slice(); });
+        curX = Math.floor((COLS - cur[0].length) / 2); curY = 0;
+        if (collide(curX, curY)) return gameOver();
+        drawNext();
+        draw();
+    }
+
+    function collide(x, y) {
+        for (var r = 0; r < cur.length; r++)
+            for (var c = 0; c < cur[r].length; c++) {
+                if (!cur[r][c]) continue;
+                var nx = x + c, ny = y + r;
+                if (nx < 0 || nx >= COLS || ny >= ROWS) return true;
+                if (ny >= 0 && grid[ny][nx]) return true;
+            }
+        return false;
+    }
+
+    function rotate() {
+        var m = cur.length, n = cur[0].length, rot = [];
+        for (var c = 0; c < n; c++) {
+            var row = [];
+            for (var r = m - 1; r >= 0; r--) row.push(cur[r][c]);
+            rot.push(row);
+        }
+        var old = cur; cur = rot;
+        if (collide(curX, curY)) { cur = old; return; }
+        draw();
+    }
+
+    function move(dx) {
+        if (!collide(curX + dx, curY)) { curX += dx; draw(); }
+    }
+
+    function hardDrop() {
+        while (!collide(curX, curY + 1)) curY++;
+        lock();
+    }
+
+    function softDrop() {
+        if (collide(curX, curY + 1)) { lock(); return; }
+        curY++; draw();
+    }
+
+    function lock() {
+        for (var r = 0; r < cur.length; r++)
+            for (var c = 0; c < cur[r].length; c++)
+                if (cur[r][c]) {
+                    var ny = curY + r;
+                    if (ny < 0) return gameOver();
+                    grid[ny][curX + c] = curType;
+                }
+        clearLines();
+        spawn();
+    }
+
+    function clearLines() {
+        var cleared = 0;
+        for (var r = ROWS - 1; r >= 0; r--) {
+            if (grid[r].every(function (v) { return v; })) {
+                grid.splice(r, 1); grid.unshift(new Array(COLS).fill(0));
+                cleared++; r++;
+            }
+        }
+        if (cleared) {
+            var pts = [0, 100, 300, 500, 800][cleared];
+            score += pts * level;
+            lines += cleared;
+            level = Math.floor(lines / 10) + 1;
+            dropMs = Math.max(80, 500 - (level - 1) * 40);
+            scoreEl.textContent = score; linesEl.textContent = lines; levelEl.textContent = level;
+            if (score > best) { best = score; bestEl.textContent = best; localStorage.setItem("tetris_best", best); }
+            clearInterval(loop); loop = setInterval(tick, dropMs);
+        }
+    }
+
+    function tick() { if (running) softDrop(); }
+
+    function gameOver() {
+        running = false; clearInterval(loop);
+        overlay.style.display = "flex";
+        overlay.querySelector("h2").textContent = "游戏结束，得分 " + score;
+        overlay.querySelector(".btn").textContent = "再来一局";
+    }
+
+    function draw() {
+        ctx.fillStyle = "#0b1220"; ctx.fillRect(0, 0, cv.width, cv.height);
+        ctx.strokeStyle = "rgba(148,163,184,.08)";
+        for (var x = 1; x < COLS; x++) { ctx.beginPath(); ctx.moveTo(x * CELL, 0); ctx.lineTo(x * CELL, cv.height); ctx.stroke(); }
+        for (var y = 1; y < ROWS; y++) { ctx.beginPath(); ctx.moveTo(0, y * CELL); ctx.lineTo(cv.width, y * CELL); ctx.stroke(); }
+        for (var r = 0; r < ROWS; r++)
+            for (var c = 0; c < COLS; c++)
+                if (grid[r][c]) block(c * CELL, r * CELL, COLORS[grid[r][c]]);
+        for (var i = 0; i < cur.length; i++)
+            for (var j = 0; j < cur[i].length; j++)
+                if (cur[i][j]) block((curX + j) * CELL, (curY + i) * CELL, COLORS[curType]);
+    }
+
+    function block(x, y, color) {
+        ctx.fillStyle = color;
+        ctx.fillRect(x + 1, y + 1, CELL - 2, CELL - 2);
+        ctx.fillStyle = "rgba(255,255,255,.18)";
+        ctx.fillRect(x + 3, y + 3, CELL - 6, 4);
+    }
+
+    function drawNext() {
+        nctx.fillStyle = "#0b1220"; nctx.fillRect(0, 0, ncv.width, ncv.height);
+        var shape = SHAPES[nextType];
+        var tw = shape[0].length * 20, th = shape.length * 20;
+        var ox = (ncv.width - tw) / 2, oy = (ncv.height - th) / 2;
+        for (var i = 0; i < shape.length; i++)
+            for (var j = 0; j < shape[i].length; j++)
+                if (shape[i][j]) {
+                    nctx.fillStyle = COLORS[nextType];
+                    nctx.fillRect(ox + j * 20 + 1, oy + i * 20 + 1, 18, 18);
+                }
+    }
+
+    document.addEventListener("keydown", function (e) {
+        if (!running) return;
+        if (e.key === "ArrowLeft") { move(-1); e.preventDefault(); }
+        else if (e.key === "ArrowRight") { move(1); e.preventDefault(); }
+        else if (e.key === "ArrowDown") { softDrop(); e.preventDefault(); }
+        else if (e.key === "ArrowUp") { rotate(); e.preventDefault(); }
+        else if (e.key === " ") { hardDrop(); e.preventDefault(); }
+    });
+
+    document.getElementById("bL").onclick = function () { move(-1); };
+    document.getElementById("bR").onclick = function () { move(1); };
+    document.getElementById("bD").onclick = function () { softDrop(); };
+    document.getElementById("bRo").onclick = function () { rotate(); };
+
+    initDiff();
+    overlay.querySelector(".btn").addEventListener("click", function () {
+        overlay.style.display = "none";
+        reset();
+        running = true;
+        loop = setInterval(tick, dropMs);
+    });
+
+    reset();
+})();
+</script>
+</body>
+</html>

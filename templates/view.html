@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ filename }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/player.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/view.css') }}">
+</head>
+<body{% if media_type == "image" %} class="no-sidebar"{% elif media_type == "video" %} class="no-sidebar video-page"{% endif %}>
+    {% include 'nav.html' %}
+    <div class="view-wrap">
+        <div class="toolbar">
+        <a class="back" href="{{ url_for('browser.browse', subpath=parent) if parent else url_for('browser.main') }}">← 返回目录</a>
+        <div class="toolbar-right">
+            <!-- 编辑按钮：仅文本/代码文件显示，进入在线编辑器（manage 蓝图 edit 路由） -->
+            {% if is_text %}
+                <button class="tool-btn" type="button" onclick="location.href='{{ url_for('manage.edit', subpath=path) }}'">✏️ 编辑</button>
+            {% endif %}
+            <!-- 目录按钮：只有文档含标题时才会由 JS 显示 -->
+            <button class="tool-btn" id="toc-toggle" type="button" hidden title="显示/隐藏文档目录">📑 目录</button>
+            <!-- 标签按钮：给当前文件打标签 / 管理标签 -->
+            <button class="tool-btn" type="button" onclick="tagItem()" title="打标签 / 管理标签">🏷 标签</button>
+        </div>
+    </div>
+    <!-- 阅读进度条：跟随滚动显示阅读位置（仅文档/图片浏览有实际意义，其他类型长度短基本无感） -->
+    <div class="reading-bar" id="reading-bar" aria-hidden="true"></div>
+    <!-- 当前文件标签行：显示已打的标签 -->
+    <div class="tags-row" id="tags-row">
+        <span class="tags-label">🏷</span>
+        {% for t in tags %}
+            <span class="tag-pill" data-tag="{{ t }}">{{ t }} <button type="button" onclick="removeTag('{{ t }}')" title="移除该标签">✕</button></span>
+        {% endfor %}
+        <button class="tags-edit" type="button" onclick="tagItem()" title="编辑标签">＋ 编辑</button>
+    </div>
+    <!-- 文档目录（TOC）侧边面板：JS 解析 .md-body 里的标题生成 -->
+    <div class="toc-panel" id="toc-panel" hidden>
+        <div class="toc-title">📑 目录</div>
+        <div id="toc-list"></div>
+    </div>
+    <div class="doc">
+        {% if is_text %}
+            <div class="meta"><span class="badge">{{ ext }}</span><span>编码：{{ encoding }}</span></div>
+            <div class="md-body">{{ content_html | safe }}</div>
+        {% elif media_type == "image" %}
+            <div class="meta">
+                <span class="badge">图片</span><span>共 {{ images|length }} 张</span>
+                <a class="nav-btn" href="{{ url_for('download.download_dir', subpath=parent) }}">⬇ 下载整本</a>
+            </div>
+            <!-- 图片阅读器工具栏：模式切换 / 翻页 / 缩放 / 全屏 -->
+            <div class="reader-bar">
+                <!-- 阅读模式分段控制器：单页 / 长条 -->
+                <div class="seg" role="group" aria-label="阅读模式">
+                    <button id="mode-single" class="seg-btn" type="button" onclick="setMode('single')">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="16" rx="2"/></svg>
+                        单页
+                    </button>
+                    <button id="mode-strip" class="seg-btn" type="button" onclick="setMode('strip')">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="5" rx="1"/><rect x="4" y="10.5" width="16" height="5" rx="1"/><rect x="4" y="17" width="16" height="4" rx="1"/></svg>
+                        长条
+                    </button>
+                </div>
+                <!-- 翻页：上一张 / 位置 / 下一张 -->
+                <div class="nav-group" id="reader-nav">
+                    <button class="pg-btn" type="button" onclick="go(-1)" title="上一张（←）">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+                        上一张
+                    </button>
+                    <span class="reader-pos" id="reader-pos">- / -</span>
+                    <button class="pg-btn" type="button" onclick="go(1)" title="下一张（→）">
+                        下一张
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+                    </button>
+                </div>
+                <!-- 缩放 / 全屏 -->
+                <div class="nav-group">
+                    <button class="icon-btn" type="button" onclick="zoom(-0.2)" title="缩小（-）" aria-label="缩小">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"/></svg>
+                    </button>
+                    <button class="icon-btn" type="button" onclick="zoom(0.2)" title="放大（+）" aria-label="放大">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                    </button>
+                    <button class="icon-btn" type="button" onclick="zoomReset()" title="重置缩放（0）" aria-label="重置缩放">1:1</button>
+                    <button class="icon-btn" type="button" onclick="toggleFullscreen()" title="全屏（F）" aria-label="全屏">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                    </button>
+                </div>
+            </div>
+            <!-- 单页模式容器：一次显示一张，支持翻页/缩放/全屏 -->
+            <div class="reader-single" id="reader-single" hidden>
+                <img id="reader-img" src="" alt="">
+                <!-- 全屏浮动翻页按钮：仅单页全屏时显示，方便全屏下切图 -->
+                <button class="fs-nav fs-prev" type="button" onclick="go(-1)" title="上一张（←）" aria-label="上一张">◀</button>
+                <button class="fs-nav fs-next" type="button" onclick="go(1)" title="下一张（→）" aria-label="下一张">▶</button>
+            </div>
+            <!-- 长条模式：保留原有实现，全部图片纵向排成一列滚动浏览 -->
+            <div class="img-strip" id="img-strip" hidden>
+                {% for img in images %}
+                    <div class="img-item">
+                        <img src="{{ url_for('media.media', subpath=img.path) }}" alt="{{ img.name }}" loading="lazy">
+                    </div>
+                {% endfor %}
+            </div>
+        {% elif media_type == "pdf" %}
+            <div class="meta"><span class="badge">PDF</span><span>{{ filename }}</span></div>
+            <div class="note">
+                <a class="nav-btn" href="{{ media_url }}" target="_blank" rel="noopener">在新标签页打开 PDF</a>
+            </div>
+        {% elif media_type == "office" %}
+            <div class="meta"><span class="badge">Office</span><span>{{ filename }}</span></div>
+            <!-- Office 文档：服务端解析出的 HTML（段落/标题/表格），直接内嵌展示 -->
+            {% if office_html %}
+                <div class="office-body">{{ office_html | safe }}</div>
+            {% else %}
+                <div class="note">无法解析该 Office 文档（可能已损坏或受保护）。</div>
+            {% endif %}
+        {% elif media_type == "audio" %}
+            <div class="meta"><span class="badge">音频</span><span>{{ filename }}</span></div>
+            <!-- 浏览器自带播放器：原生 <audio> 加载 /media 二进制流（服务端支持 Range，可拖动进度条） -->
+            <audio class="native-audio" id="media-player" controls playsinline preload="metadata" src="{{ media_url }}"></audio>
+            <!-- 连播工具条：上一首/下一首 + 播放列表开关（同目录全部音频自动连播） -->
+            <div class="pl-toolbar">
+                <button class="pl-nav" type="button" onclick="plGo(-1)" title="上一首">⏮ 上一首</button>
+                <button class="pl-nav" type="button" onclick="plGo(1)" title="下一首">下一首 ⏭</button>
+                <button class="pl-nav" type="button" onclick="togglePlaylist()" title="展开/收起播放列表">🎵 播放列表</button>
+                <span class="pl-count" id="pl-count"></span>
+            </div>
+            <div class="pl-panel" id="pl-panel" hidden>
+                <div class="pl-head" id="pl-head" onclick="togglePlaylist()">
+                    <span>🎶 目录连播列表</span><span class="pl-caret">▶</span>
+                </div>
+                <div class="pl-list" id="pl-list"></div>
+            </div>
+        {% elif media_type == "video" %}
+            <!-- B 站式播放页：无左侧导航栏；播放器在中左位置，右侧"接下来播放"列表。
+                 <video> 只负责解码播放（媒体流来自 /media 蓝图，服务端支持 Range 可拖进度条） -->
+            <div class="vp-page" id="vp-page">
+                <div class="vp-main">
+                    <div class="vp" id="vp-player" data-key="{{ path }}">
+                        <video id="media-player" class="vp-video" playsinline preload="metadata" src="{{ media_url }}"></video>
+                        <!-- B站式顶部悬浮栏：返回键 + 标题。
+                             仅移动端显示（CSS 控制），随控制栏一起自动隐藏/显示（player.js 同步 .hidden）。 -->
+                        <div class="vp-top" id="vp-top">
+                            <a class="vp-top-back" href="{{ url_for('browser.browse', subpath=parent) if parent else url_for('browser.main') }}" title="返回目录" aria-label="返回目录">
+                                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                            </a>
+                            <span class="vp-top-title">{{ filename }}</span>
+                        </div>
+                    </div>
+                    <div class="vp-info">
+                        <h1 class="vp-title" id="vp-title">{{ filename }}</h1>
+                        <span class="vp-badge">视频</span>
+                    </div>
+                </div>
+                <!-- 右侧"接下来播放"：整目录视频列表（播放结束自动切下一集） -->
+                <aside class="vp-side">
+                    <div class="vp-side-title">
+                        <span>接下来播放</span>
+                        <span class="vp-side-count" id="pl-count"></span>
+                    </div>
+                    <div class="pl-list" id="pl-list"></div>
+                </aside>
+            </div>
+        {% else %}
+            <div class="note">该文件（{{ ext }}）不是可预览的文本文件。</div>
+        {% endif %}
+    </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/player.js') }}"></script>
+    <script>
+        // ===== 页面配置：后端注入（图片列表/播放列表/路径/标签接口），供 view.js 使用 =====
+        window.VIEW_CONFIG = {
+            imageUrls: {{ image_urls | tojson }},
+            currentUrl: {{ url_for('media.media', subpath=path) | tojson }},
+            parent: {{ parent | tojson }},
+            playlist: {{ playlist | tojson }},
+            playlistIndex: {{ playlist_index }},
+            path: {{ path | tojson }},
+            urls: {
+                tagGet: "{{ url_for('tags.tag_get') }}",
+                tagSet: "{{ url_for('tags.tag_set') }}",
+                tagRemove: "{{ url_for('tags.tag_remove') }}"
+            }
+        };
+    </script>
+    <script src="{{ url_for('static', filename='js/view.js') }}"></script>
+</body>
+</html>

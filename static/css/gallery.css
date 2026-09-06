@@ -1,0 +1,281 @@
+/* ===== 图集/漫画阅读器（static/css/gallery.css）=====
+   全屏沉浸式阅读器样式（深色无侧栏独立页面，类似视频播放页）。
+   页面刻意不引入 common.css / nav.html：侧栏布局与主题变量会干扰
+   全屏阅读体验；本文件自包含，但延续全局一致的品牌色（靛蓝）与
+   简洁扁平控件风格。
+
+   对应模板 templates/gallery.html，全部逻辑在 static/js/gallery.js。
+   分文件组织：模板只管结构，样式与脚本各自独立，便于维护（require.md）。 */
+
+/* ===== 基础重置 ===== */
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+    margin: 0; overflow: hidden;  /* 各模式在各自容器内滚动，body 不滚 */
+    background: #070a14; color: #e8ecf4;
+    font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;    /* 防手机下拉刷新/回弹干扰阅读 */
+    user-select: none;            /* 阅读器内禁止选中文字 */
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* ===== 顶部控制条：返回 + 标题 + 模式切换 + 右侧页码/跳页/设置/全屏 ===== */
+.gl-bar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 40;
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px;
+    background: rgba(8, 12, 22, .72);                 /* 扁平半透明深色底（无渐变/无毛玻璃） */
+    border-bottom: 1px solid rgba(255, 255, 255, .07); /* 细边框分隔，控制条与画面分界清晰 */
+    transition: transform .25s ease, opacity .25s ease;
+}
+body.gl-ui-hidden .gl-bar { transform: translateY(-110%); opacity: 0; pointer-events: none; }
+.gl-title {
+    color: #dbe2f0; font-size: 14px; font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 26vw; flex: 0 1 auto;
+}
+
+/* 通用按钮：扁平半透明胶囊（无毛玻璃/无重阴影，弱化存在感） */
+.gl-btn {
+    border: none; cursor: pointer; font-family: inherit; color: #e8ecf4;
+    background: rgba(255, 255, 255, .07);
+    border: 1px solid rgba(255, 255, 255, .12);
+    padding: 8px 14px; border-radius: 8px; font-size: 13px;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: all .18s; text-decoration: none;
+}
+.gl-btn:hover { background: rgba(255, 255, 255, .14); border-color: rgba(255, 255, 255, .22); color: #fff; }
+.gl-btn svg { width: 15px; height: 15px; }
+.gl-btn.gl-icon { padding: 8px; }  /* 纯图标按钮：等宽正方形 */
+
+/* 分段控制器：居中模式切换，选中项品牌色底 */
+.gl-seg {
+    display: flex; gap: 3px; padding: 3px;
+    background: rgba(255, 255, 255, .06);
+    border: 1px solid rgba(255, 255, 255, .1); border-radius: 9px;
+}
+.gl-seg-btn {
+    border: none; background: transparent; color: #c6cddd;
+    padding: 7px 14px; border-radius: 7px; cursor: pointer;
+    font-size: 13px; font-family: inherit; transition: all .18s;
+}
+.gl-seg-btn:hover { color: #fff; background: rgba(255, 255, 255, .12); }
+.gl-seg-btn.active {
+    background: #6366f1; color: #fff;
+}
+
+/* 右侧工具区 + 页码胶囊 */
+.gl-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.gl-pos {
+    font-size: 13.5px; color: #e8ecf4; font-variant-numeric: tabular-nums;
+    background: rgba(255, 255, 255, .08); padding: 6px 12px; border-radius: 8px;
+    letter-spacing: .5px;
+}
+
+/* ===== 顶部阅读进度条：3px 细条贴在控制条下方，品牌渐变填充，点击可跳页 ===== */
+.gl-progress {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 41;
+    height: 3px; cursor: pointer; background: transparent;
+}
+.gl-progress-fill {
+    display: block; height: 100%; width: 0;
+    background: linear-gradient(90deg, #6366f1, #8b5cf6);
+    box-shadow: 0 0 8px rgba(99, 102, 241, .8);
+    transition: width .15s ease;
+}
+/* 控制条隐藏时进度条保留：位置感不中断（阅读中仍可点按跳页） */
+body.gl-ui-hidden .gl-progress { cursor: default; }
+
+/* ===== 单页舞台 =====
+   图片以"自然尺寸"放进 .gl-zoom（绝对定位），
+   缩放/平移全部走 zoom 的 transform，统一且不抖。 */
+.gl-stage {
+    position: fixed; inset: 0; z-index: 10;
+    overflow: hidden;             /* 缩放/平移在 transform 内完成，超出裁掉 */
+    background: #070a14;
+    touch-action: pan-y;          /* 只允许纵向原生滚动；横向手势交给 JS（滑动翻页），
+                                     否则浏览器会接管横滑并触发 pointercancel，滑动失效 */
+}
+/* 历史经验：.gl-stage 若不显式声明，[hidden] 可能被覆盖失效 */
+.gl-stage[hidden] { display: none; }
+.gl-zoom {
+    position: absolute; left: 0; top: 0;
+    transform-origin: 0 0;        /* 缩放中心由 JS 用 translate 精确控制 */
+    will-change: transform;
+    display: flex; align-items: flex-start;
+}
+.gl-page { display: block; width: auto; height: auto; background: #0d1220; }
+/* 翻页过渡：src 更换时由 JS 短暂加 .gl-flip 重触发淡入，翻页更柔和 */
+.gl-page.gl-flip { animation: glFlip .2s ease; }
+@keyframes glFlip { from { opacity: .3; } to { opacity: 1; } }
+
+/* ===== 左右翻页箭头 ===== */
+.gl-nav {
+    position: fixed; top: 50%; transform: translateY(-50%); z-index: 20;
+    width: 48px; height: 76px; border: none; border-radius: 14px; cursor: pointer;
+    background: rgba(255, 255, 255, .08); color: #fff; font-size: 26px; line-height: 1;
+    font-family: inherit; backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 255, 255, .12);
+    transition: all .18s; display: flex; align-items: center; justify-content: center;
+}
+.gl-nav:hover { background: rgba(99, 102, 241, .65); }
+.gl-prev { left: 12px; }
+.gl-next { right: 12px; }
+body.gl-ui-hidden .gl-nav { opacity: 0; pointer-events: none; }
+.gl-nav:disabled { opacity: .22; pointer-events: none; }
+/* RTL 方向：箭头视觉交换（左侧变成"下一页"） */
+body.gl-rtl .gl-prev { left: auto; right: 12px; }
+body.gl-rtl .gl-next { right: auto; left: 12px; }
+
+/* ===== 长条模式：全部图片纵向排列，容器内滚动 ===== */
+.gl-strip {
+    position: fixed; inset: 0; z-index: 10; overflow-y: auto;
+    background: #0a0e1a; -webkit-overflow-scrolling: touch;
+}
+.gl-strip[hidden] { display: none; }  /* 同上：hidden 必须真正生效 */
+.gl-strip-img {
+    display: block; width: 100%; max-width: 1100px; height: auto;
+    margin: 0 auto; padding-bottom: 8px;
+}
+
+/* ===== 底部缩略图导航栏 =====
+   横向滚动的小图列表，点击任意页直接跳转；当前页高亮并自动滚到可见。 */
+.gl-thumbs {
+    position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+    z-index: 30; max-width: min(92vw, 860px);
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    transition: opacity .25s ease, transform .25s ease;
+}
+body.gl-ui-hidden .gl-thumbs { opacity: 0; pointer-events: none; }
+.gl-thumbs-toggle {
+    border: none; cursor: pointer; font-family: inherit; color: #e8ecf4;
+    background: rgba(255, 255, 255, .10); backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, .16);
+    padding: 5px 12px; border-radius: 999px; font-size: 12px;
+    display: inline-flex; align-items: center; gap: 5px; transition: all .18s;
+}
+.gl-thumbs-toggle:hover { background: #6366f1; border-color: #6366f1; color: #fff; }
+.gl-thumbs-toggle svg { width: 13px; height: 13px; }
+.gl-thumbs-track {
+    display: flex; gap: 8px; overflow-x: auto;
+    padding: 10px; max-width: 100%;
+    background: rgba(12, 17, 32, .9);
+    border: 1px solid rgba(255, 255, 255, .14); border-radius: 14px;
+    backdrop-filter: blur(10px);
+    scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.25) transparent;
+}
+.gl-thumbs-track::-webkit-scrollbar { height: 6px; }
+.gl-thumbs-track::-webkit-scrollbar-thumb { background: rgba(255,255,255,.25); border-radius: 3px; }
+.gl-thumb {
+    flex: none; width: 52px; height: 72px; padding: 0;
+    border: none; border-radius: 8px; overflow: hidden; cursor: pointer;
+    background: #12182a; border: 2px solid transparent;
+    position: relative; transition: all .15s;
+}
+.gl-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gl-thumb-n {
+    position: absolute; right: 2px; bottom: 2px;
+    font-size: 9px; color: #fff; background: rgba(0, 0, 0, .62);
+    padding: 0 3px; border-radius: 4px; line-height: 1.4;
+}
+.gl-thumb:hover { border-color: rgba(255, 255, 255, .4); }
+.gl-thumb.active { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99, 102, 241, .35); }
+
+/* ===== 设置 / 跳页 弹层 ===== */
+.gl-modal-mask {
+    position: fixed; inset: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(3, 5, 12, .62); backdrop-filter: blur(4px);
+}
+.gl-modal-mask[hidden] { display: none; }
+.gl-modal {
+    width: min(92vw, 360px);
+    background: rgba(15, 20, 38, .96);
+    border: 1px solid rgba(255, 255, 255, .14); border-radius: 16px;
+    padding: 18px; box-shadow: 0 18px 50px rgba(0, 0, 0, .5);
+}
+.gl-modal-title { font-size: 15px; font-weight: 700; margin: 0 0 14px; }
+.gl-set-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; margin-bottom: 12px;
+}
+.gl-set-label { font-size: 13px; color: #c6cddd; flex: none; }
+.gl-set-row .gl-seg { flex: none; }
+.gl-set-row .gl-seg-btn { padding: 6px 10px; font-size: 12.5px; }
+/* 开关按钮（点击翻页 / 缩略图栏） */
+.gl-toggle {
+    border: 1px solid rgba(255, 255, 255, .2);
+    background: rgba(255, 255, 255, .08); color: #e8ecf4;
+    padding: 6px 14px; border-radius: 9px; cursor: pointer;
+    font-size: 12.5px; font-family: inherit; transition: all .18s;
+}
+.gl-toggle.on { background: #6366f1; border-color: #6366f1; color: #fff; }
+/* 自动翻页设置行：开关 + 间隔步进（− / ＋） */
+.gl-auto { display: flex; align-items: center; gap: 10px; flex: none; }
+.gl-auto-step {
+    display: flex; align-items: center; gap: 3px;
+    background: rgba(255, 255, 255, .06);
+    border: 1px solid rgba(255, 255, 255, .12); border-radius: 9px; padding: 2px;
+}
+.gl-auto-btn {
+    width: 26px; height: 24px; border: none; border-radius: 7px; cursor: pointer;
+    background: transparent; color: #c6cddd; font-size: 14px; font-family: inherit;
+    display: flex; align-items: center; justify-content: center; transition: all .18s;
+}
+.gl-auto-btn:hover { background: #6366f1; color: #fff; }
+.gl-auto-val {
+    min-width: 32px; text-align: center; font-size: 12px; color: #e8ecf4;
+    font-variant-numeric: tabular-nums;
+}
+.gl-modal-ops { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+
+/* 跳页弹层 */
+.gl-jump-row { display: flex; align-items: center; gap: 8px; }
+.gl-jump-input {
+    width: 110px; padding: 8px 10px; border-radius: 9px;
+    border: 1px solid rgba(255, 255, 255, .2);
+    background: rgba(255, 255, 255, .08); color: #e8ecf4;
+    font-size: 14px; font-family: inherit;
+}
+.gl-jump-input:focus { outline: none; border-color: #6366f1; }
+.gl-jump-total { color: #9aa6c0; font-size: 13px; }
+
+/* ===== 加载提示 ===== */
+.gl-loading {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 30; color: #9aa6c0; font-size: 14px;
+    background: rgba(10, 14, 26, .82); padding: 10px 20px; border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, .12);
+}
+.gl-loading[hidden] { display: none; }
+
+/* ===== 移动端 / 平板适配（≤1024px，可点击区域足够大）===== */
+/* 触屏设备一律不显示上一页/下一页悬浮箭头：改为"滑动屏幕翻页 + 音量键翻页"。
+   单独用 pointer:coarse 判断，兼容横屏手机视口宽度超 1024px 的情况
+   （与 JS 中音量键翻页的 isCoarse 判断保持一致）。 */
+@media (pointer: coarse) {
+    .gl-nav { display: none; }
+}
+
+@media (max-width: 1024px) {
+    .gl-bar { padding: calc(8px + env(safe-area-inset-top)) 10px 8px; gap: 8px; }
+    /* 顶栏瘦身：模式切换收进"阅读设置"弹窗，返回只留箭头 */
+    .gl-bar .gl-seg { display: none; }
+    .gl-back { padding: 8px; font-size: 0; }       /* font-size:0 隐藏"返回"文字，只留箭头 */
+    .gl-back svg { width: 18px; height: 18px; }
+    .gl-title { max-width: 32vw; font-size: 13px; }
+    .gl-btn { padding: 8px 10px; }
+    .gl-btn.gl-icon { padding: 8px; }
+    .gl-seg-btn { padding: 6px 8px; font-size: 12px; }
+    .gl-pos { font-size: 12px; padding: 5px 9px; }
+    .gl-right { gap: 6px; }
+    /* 手机端不显示上一页/下一页悬浮箭头：改为"滑动屏幕翻页 + 音量键翻页" */
+    .gl-nav { display: none; }
+    /* 缩略图栏整体收起贴底，小图更紧凑，避开 iPhone 底部安全区 */
+    .gl-thumbs { bottom: calc(8px + env(safe-area-inset-bottom)); }
+    .gl-thumbs-track { gap: 6px; padding: 8px; }
+    .gl-thumb { width: 44px; height: 60px; }
+    .gl-modal { padding: 16px; }
+    .gl-set-row .gl-seg-btn { padding: 6px 8px; font-size: 12px; }
+}

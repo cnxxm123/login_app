@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ gallery_name }} - 图集阅读</title>
+    <!-- 图集阅读页：全屏沉浸式漫画阅读器（参照主流漫画阅读器的交互设计）。
+         设计上刻意不引入 common.css / nav.html：它是"全屏播放器"式的独立页面
+         （类似视频播放页），始终深色背景、无侧边栏、无主题切换。
+         结构/样式/逻辑三分离：模板只留骨架，样式在 static/css/gallery.css，
+         逻辑在 static/js/gallery.js（require.md：代码按文件组织，方便维护）。 -->
+    <!-- ?v=3：静态文件版本号，改动样式/脚本后递增即可强制浏览器拉新，避免吃到旧缓存
+         （服务端 debug=False，Flask 默认对静态资源缓存 12 小时） -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/gallery.css') }}?v=4">
+</head>
+<body>
+    <!-- 顶部控制条：返回 + 图集名 + 阅读模式切换 + 右侧页码/跳页/设置/全屏 -->
+    <header class="gl-bar" id="gl-bar">
+        <a class="gl-btn gl-back" href="{{ url_for('browser.browse', subpath=parent) if parent else url_for('browser.main') }}"
+           title="返回目录">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+            返回
+        </a>
+        <span class="gl-title" title="{{ gallery_name }}">{{ gallery_name }}</span>
+
+        <!-- 阅读模式切换：单页 / 长条（事件委托，见 gallery.js） -->
+        <div class="gl-seg" role="group" aria-label="阅读模式">
+            <button type="button" class="gl-seg-btn" data-set="mode" data-val="single" title="单页模式：一页一图，箭头/点击翻页">单页</button>
+            <button type="button" class="gl-seg-btn" data-set="mode" data-val="strip" title="长条模式：全部图片纵向排开，滚动阅读">长条</button>
+        </div>
+
+        <div class="gl-right">
+            <!-- 右上角页码：当前第几页 / 共多少页 -->
+            <span class="gl-pos" id="gl-pos">1 / 1</span>
+            <button class="gl-btn gl-icon" type="button" data-act="jump" title="跳转页码" aria-label="跳转页码">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/><circle cx="18.5" cy="17.5" r="3"/></svg>
+            </button>
+            <button class="gl-btn gl-icon" type="button" data-act="settings" title="阅读设置" aria-label="阅读设置">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
+            <button class="gl-btn gl-icon" type="button" data-act="fullscreen" title="全屏（F）" aria-label="全屏">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- 顶部阅读进度条：细条贴在控制条下方，显示当前阅读位置，点击可跳页 -->
+    <div class="gl-progress" id="gl-progress" title="阅读进度（点击跳转）" aria-hidden="true">
+        <i class="gl-progress-fill" id="gl-progress-fill"></i>
+    </div>
+
+    <!-- 单页舞台：图片以"自然尺寸"放进 .gl-zoom，缩放/平移走 transform -->
+    <main class="gl-stage" id="gl-stage">
+        <div class="gl-zoom" id="gl-zoom">
+            <img class="gl-page" id="gl-img-cur" alt="">
+        </div>
+        <button class="gl-nav gl-prev" id="nav-prev" type="button" data-act="prev" title="上一页（←）" aria-label="上一页">‹</button>
+        <button class="gl-nav gl-next" id="nav-next" type="button" data-act="next" title="下一页（→）" aria-label="下一页">›</button>
+    </main>
+
+    <!-- 长条模式：全部图片纵向排开（默认隐藏，切换后显示并滚动到当前位置） -->
+    <div class="gl-strip" id="gl-strip" hidden>
+        {% for img in images %}
+            <img class="gl-strip-img" src="{{ image_urls[loop.index0] }}" data-i="{{ loop.index0 }}" alt="{{ img.name }}" loading="lazy" decoding="async">
+        {% endfor %}
+    </div>
+
+    <!-- 底部缩略图导航栏：横向小图列表，点击任意页跳转（缩略图走压缩图，不加载原图） -->
+    <nav class="gl-thumbs" id="gl-thumbs">
+        <button class="gl-thumbs-toggle" type="button" data-act="toggle-thumbs" title="显示/隐藏缩略图栏（T）">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            缩略图
+        </button>
+        <div class="gl-thumbs-track" id="gl-thumbs-track">
+            {% for img in images %}
+            <button class="gl-thumb" type="button" data-i="{{ loop.index0 }}" title="第 {{ loop.index }} 页">
+                <img src="{{ thumb_urls[loop.index0] }}" alt="" loading="lazy" decoding="async">
+                <span class="gl-thumb-n">{{ loop.index }}</span>
+            </button>
+            {% endfor %}
+        </div>
+    </nav>
+
+    <!-- 阅读设置弹层：模式 / 适配 / 方向 / 点击翻页 / 缩略图栏 -->
+    <div class="gl-modal-mask" id="gl-settings" hidden>
+        <div class="gl-modal" role="dialog" aria-label="阅读设置">
+            <h3 class="gl-modal-title">阅读设置</h3>
+            <div class="gl-set-row">
+                <span class="gl-set-label">阅读模式</span>
+                <div class="gl-seg" role="group">
+                    <button type="button" class="gl-seg-btn" data-set="mode" data-val="single">单页</button>
+                    <button type="button" class="gl-seg-btn" data-set="mode" data-val="strip">长条</button>
+                </div>
+            </div>
+            <div class="gl-set-row">
+                <span class="gl-set-label">适配方式</span>
+                <div class="gl-seg" role="group">
+                    <button type="button" class="gl-seg-btn" data-set="fit" data-val="screen">屏幕</button>
+                    <button type="button" class="gl-seg-btn" data-set="fit" data-val="width">宽度</button>
+                    <button type="button" class="gl-seg-btn" data-set="fit" data-val="height">高度</button>
+                    <button type="button" class="gl-seg-btn" data-set="fit" data-val="original">原图</button>
+                </div>
+            </div>
+            <div class="gl-set-row">
+                <span class="gl-set-label">阅读方向</span>
+                <div class="gl-seg" role="group">
+                    <button type="button" class="gl-seg-btn" data-set="dir" data-val="ltr">左→右</button>
+                    <button type="button" class="gl-seg-btn" data-set="dir" data-val="rtl">右→左</button>
+                </div>
+            </div>
+            <div class="gl-set-row">
+                <span class="gl-set-label">点击翻页</span>
+                <button type="button" class="gl-toggle" id="set-click" data-act="toggle-click">开</button>
+            </div>
+            <div class="gl-set-row">
+                <span class="gl-set-label">自动翻页</span>
+                <div class="gl-auto">
+                    <button type="button" class="gl-toggle" id="set-auto" data-act="toggle-auto">关</button>
+                    <!-- 间隔步进：− / + 调整秒数，仅自动翻页开启时可用 -->
+                    <div class="gl-auto-step">
+                        <button type="button" class="gl-auto-btn" data-act="auto-slower" title="减慢（+1 秒）" aria-label="减慢">−</button>
+                        <span class="gl-auto-val" id="auto-interval">4s</span>
+                        <button type="button" class="gl-auto-btn" data-act="auto-faster" title="加快（-1 秒）" aria-label="加快">＋</button>
+                    </div>
+                </div>
+            </div>
+            <div class="gl-set-row">
+                <span class="gl-set-label">缩略图栏</span>
+                <button type="button" class="gl-toggle" id="set-thumbs" data-act="toggle-thumbs">开</button>
+            </div>
+            <div class="gl-modal-ops">
+                <button type="button" class="gl-btn" data-act="close-settings">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 跳转页码弹层 -->
+    <div class="gl-modal-mask" id="gl-jump" hidden>
+        <div class="gl-modal" role="dialog" aria-label="跳转页码">
+            <h3 class="gl-modal-title">跳转页码</h3>
+            <div class="gl-jump-row">
+                <input class="gl-jump-input" id="gl-jump-input" type="number" min="1" max="{{ images|length }}" inputmode="numeric" autocomplete="off">
+                <span class="gl-jump-total">/ {{ images|length }} 页</span>
+            </div>
+            <div class="gl-modal-ops">
+                <button type="button" class="gl-btn" data-act="close-jump">取消</button>
+                <button type="button" class="gl-btn gl-modal-ok" data-act="go-jump">跳转</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载提示 -->
+    <div class="gl-loading" id="gl-loading" hidden>加载中…</div>
+
+    <!-- 阅读器逻辑全部在 gallery.js（外部文件，便于复用与维护）。
+         必须先注入数据再加载逻辑：gallery.js 是 IIFE，解析即执行，
+         若放在数据脚本之后会读到空的 GALLERY_DATA 导致页面空白。 -->
+    <script>
+        window.GALLERY_DATA = {
+            imageUrls: {{ image_urls | tojson }},  // 全部原图访问地址（带签名令牌）
+            thumbUrls: {{ thumb_urls | tojson }},  // 全部压缩缩略图地址（缩略图栏用）
+            parent: {{ parent | tojson }}          // 父目录（记忆阅读进度用）
+        };
+    </script>
+    <script src="{{ url_for('static', filename='js/gallery.js') }}?v=6"></script>
+</body>
+</html>

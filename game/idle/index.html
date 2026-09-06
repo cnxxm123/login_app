@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>能量工厂</title>
+<style>
+    :root { --bg:#16161b; --card:#24242b; --line:#3a3a44; --text:#e2e8f0; --muted:#94a3b8; --accent:#22c55e; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:linear-gradient(135deg,#16161b,#24242b); color:var(--text); font-family:"Segoe UI","Microsoft YaHei",sans-serif; min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:20px; }
+    .topbar { width:100%; max-width:760px; display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+    .topbar h1 { font-size:22px; letter-spacing:1px; color:var(--accent); }
+    .topbar a { color:var(--muted); text-decoration:none; font-size:13px; border:1px solid var(--line); padding:6px 12px; border-radius:8px; transition:.2s; }
+    .topbar a:hover { color:var(--text); border-color:var(--muted); }
+    .panel { width:100%; max-width:760px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.4); }
+    .stat-row { display:flex; gap:10px; margin-bottom:14px; }
+    .stat { flex:1; background:#16161b; border:1px solid var(--line); border-radius:12px; padding:10px 12px; text-align:center; }
+    .stat .label { font-size:11px; color:var(--muted); }
+    .stat .val { font-size:22px; font-weight:700; color:var(--accent); }
+    .main { display:grid; grid-template-columns: 260px 1fr; gap:16px; }
+    @media (max-width:700px) { .main { grid-template-columns:1fr; } }
+    .click-zone { background:#16161b; border:1px solid var(--line); border-radius:14px; padding:20px; display:flex; flex-direction:column; align-items:center; gap:14px; }
+    .click-btn {
+        width:150px; height:150px; border-radius:50%; border:none; cursor:pointer;
+        background:radial-gradient(circle at 32% 28%, #fbbf24, #d97706 60%, #92400e);
+        font-size:58px; display:flex; align-items:center; justify-content:center;
+        box-shadow:0 12px 34px rgba(217,119,6,.45); transition:transform .08s; user-select:none; touch-action:manipulation;
+    }
+    .click-btn:active { transform:scale(.92); }
+    .click-info { text-align:center; }
+    .click-info .v { font-size:24px; font-weight:700; color:#fbbf24; }
+    .click-info .l { font-size:12px; color:var(--muted); margin-top:2px; }
+    .upgrades { display:flex; flex-direction:column; gap:8px; width:100%; }
+    .up-btn { width:100%; background:linear-gradient(135deg,#3a3a44,#24242b); border:1px solid var(--line); color:var(--text); padding:10px 12px; border-radius:10px; cursor:pointer; text-align:left; transition:.15s; touch-action:manipulation; }
+    .up-btn:hover { border-color:var(--accent); }
+    .up-btn .u-name { font-size:13px; font-weight:600; }
+    .up-btn .u-sub { font-size:11px; color:var(--muted); margin-top:2px; }
+    .up-btn .u-price { float:right; color:#fbbf24; font-weight:700; }
+    .buildings { display:flex; flex-direction:column; gap:8px; }
+    .b-title { font-size:12px; color:var(--muted); letter-spacing:1px; margin:2px 0 4px; }
+    .b-row { display:flex; align-items:center; gap:12px; background:#16161b; border:1px solid var(--line); border-radius:12px; padding:10px 12px; }
+    .b-row .ic { font-size:26px; width:38px; text-align:center; }
+    .b-row .info { flex:1; min-width:0; }
+    .b-row .info .n { font-size:14px; font-weight:600; }
+    .b-row .info .n small { color:var(--accent); margin-left:6px; font-size:12px; }
+    .b-row .info .d { font-size:11px; color:var(--muted); margin-top:2px; }
+    .buy-btn { background:var(--accent); color:#052e16; border:none; padding:8px 14px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; touch-action:manipulation; }
+    .buy-btn:disabled { background:#3a3a44; color:var(--muted); cursor:not-allowed; }
+    .buy-btn:hover:not(:disabled) { filter:brightness(1.1); }
+    .box-bar { display:flex; align-items:center; justify-content:space-between; gap:10px; background:#16161b; border:1px solid var(--line); border-radius:12px; padding:10px 14px; margin-top:14px; }
+    .box-bar span { font-size:13px; color:var(--muted); }
+    .box-bar .box-cd { color:#fbbf24; font-weight:600; }
+    .ach-wrap { margin-top:14px; }
+    .ach-head { display:flex; justify-content:space-between; align-items:center; font-size:13px; color:var(--muted); margin-bottom:8px; }
+    .ach-head .ach-count { color:#fbbf24; font-weight:700; }
+    .ach-list { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; }
+    .ach { background:#16161b; border:1px solid var(--line); border-radius:10px; padding:8px 10px; }
+    .ach .t { font-size:12px; font-weight:600; }
+    .ach .s { font-size:11px; color:var(--muted); margin-top:2px; }
+    .ach .r { font-size:11px; color:#fbbf24; margin-top:3px; }
+    .ach.done { border-color:var(--accent); background:#052e16; }
+    .click-btn.crit { animation:crit .35s; }
+    @keyframes crit { 0%{ box-shadow:0 0 0 0 rgba(251,191,36,.9);} 100%{ box-shadow:0 0 44px 14px rgba(251,191,36,0);} }
+    .hint { margin-top:12px; font-size:12px; color:var(--muted); text-align:center; line-height:1.7; }
+    .btn { background:var(--accent); color:#052e16; border:none; padding:8px 20px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; }
+    .btn:hover { filter:brightness(1.1); }
+    .toast { position:fixed; top:16px; left:50%; transform:translateX(-50%); background:#064e3b; border:1px solid #22c55e; color:var(--text); padding:10px 18px; border-radius:10px; font-size:13px; box-shadow:0 8px 24px rgba(0,0,0,.4); z-index:10; }
+    .confirm-mask { position:fixed; inset:0; background:rgba(2,6,23,.65); display:flex; align-items:center; justify-content:center; z-index:20; }
+    .confirm-mask[hidden] { display:none; }
+    .confirm-box { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px; width:min(320px, 86vw); text-align:center; box-shadow:0 12px 40px rgba(0,0,0,.5); }
+    .confirm-box p { font-size:14px; margin-bottom:16px; line-height:1.6; }
+    .confirm-box .row { display:flex; gap:10px; justify-content:center; }
+    .confirm-box .btn { flex:1; }
+    .confirm-box .btn.no { background:#475569; color:#e2e8f0; }
+</style>
+</head>
+<body>
+    <div class="topbar">
+        <h1>⚡ 能量工厂</h1>
+        <a href="/game">← 返回游戏大厅</a>
+    </div>
+    <div class="panel">
+        <div class="stat-row">
+            <div class="stat"><div class="label">能量</div><div class="val" id="energy">0</div></div>
+            <div class="stat"><div class="label">每秒产出</div><div class="val" id="eps">0</div></div>
+            <div class="stat"><div class="label">点击产出</div><div class="val" id="clickP">1</div></div>
+        </div>
+        <div class="main">
+            <div class="click-zone">
+                <button class="click-btn" id="clickBtn" title="点击收集能量">⚡</button>
+                <div class="click-info">
+                    <div class="v" id="clickGain">+1</div>
+                    <div class="l">点击收集能量</div>
+                </div>
+                <div class="upgrades">
+                    <button class="up-btn" id="upClick">
+                        <span class="u-price" id="upClickPrice"></span>
+                        <span class="u-name">✊ 强化点击</span>
+                        <div class="u-sub" id="upClickSub">每次点击 +1 能量</div>
+                    </button>
+                    <button class="up-btn" id="upMult">
+                        <span class="u-price" id="upMultPrice"></span>
+                        <span class="u-name">🚀 产量翻倍</span>
+                        <div class="u-sub" id="upMultSub">所有建筑产出 ×2</div>
+                    </button>
+                </div>
+            </div>
+            <div class="buildings">
+                <div class="b-title">🏗 建筑（解锁后自动产出能量）</div>
+                <div id="bList"></div>
+            </div>
+        </div>
+        <div class="box-bar">
+            <span>🎁 免费礼包（每 90 秒可领一次）</span>
+            <span class="box-cd" id="boxCd">可领取！</span>
+            <button class="btn" id="boxBtn">领取</button>
+        </div>
+        <div class="ach-wrap">
+            <div class="ach-head"><span>🏆 成就</span><span class="ach-count" id="achCount">0/16</span></div>
+            <div class="ach-list" id="achList"></div>
+        </div>
+        <div class="hint">点击 ⚡ 收集能量（15% 概率暴击 ×10）· 购买建筑自动产出（每秒）· 强化点击 / 产量翻倍提速 · <b>关闭页面也照常挂机</b>，回来时按离线时长结算收益 · 每 90 秒领一次免费礼包 · 达成成就领一次性奖励 · 进度自动保存</div>
+        <div style="text-align:center; margin-top:10px">
+            <button class="btn" id="reset" style="background:#475569; color:#e2e8f0">重置存档</button>
+        </div>
+    </div>
+
+    <div class="confirm-mask" id="confirmMask" hidden>
+        <div class="confirm-box">
+            <p>确定重置存档吗？所有建筑和能量将清空。</p>
+            <div class="row">
+                <button class="btn no" id="confirmNo">取消</button>
+                <button class="btn" id="confirmYes">确定</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+(function () {
+    var BUILDINGS = [
+        { id: "miner",     icon: "⛏️", name: "矿工",      base: 15,     eps: 0.5  },
+        { id: "generator", icon: "⚙️", name: "发电机",    base: 100,    eps: 4    },
+        { id: "solar",     icon: "☀️", name: "太阳能板",  base: 1100,   eps: 20   },
+        { id: "robot",     icon: "🤖", name: "机器人",    base: 12000,  eps: 110  },
+        { id: "factory",   icon: "🏭", name: "工厂",      base: 130000, eps: 700  },
+        { id: "station",   icon: "🛰️", name: "空间站",    base: 1400000, eps: 4500 },
+        { id: "quantum",   icon: "💻", name: "量子计算机", base: 15000000, eps: 30000 },
+        { id: "dyson",     icon: "🌌", name: "戴森球",     base: 200000000, eps: 220000 },
+        { id: "timecore",  icon: "⏳", name: "时空引擎",   base: 3000000000, eps: 1600000 },
+        { id: "genesis",   icon: "💎", name: "创世核心",   base: 50000000000, eps: 12000000 },
+    ];
+    var KEY = "idle_factory_save";
+    var offCoef = 0.5;   // 离线收益系数：离线产出按 50% 发放
+    var maxOff = 8 * 3600; // 离线结算上限 8 小时
+    var boxInterval = 90 * 1000; // 免费礼包冷却：90 秒
+    var critChance = 0.15;       // 点击暴击概率 15%
+    var critMult = 10;           // 暴击倍率 ×10
+
+    var el = {
+        energy: document.getElementById("energy"),
+        eps: document.getElementById("eps"),
+        clickP: document.getElementById("clickP"),
+        clickGain: document.getElementById("clickGain"),
+        clickBtn: document.getElementById("clickBtn"),
+        upClick: document.getElementById("upClick"),
+        upClickPrice: document.getElementById("upClickPrice"),
+        upClickSub: document.getElementById("upClickSub"),
+        upMult: document.getElementById("upMult"),
+        upMultPrice: document.getElementById("upMultPrice"),
+        upMultSub: document.getElementById("upMultSub"),
+        bList: document.getElementById("bList"),
+        boxBtn: document.getElementById("boxBtn"),
+        boxCd: document.getElementById("boxCd"),
+        achCount: document.getElementById("achCount"),
+        achList: document.getElementById("achList"),
+    };
+
+    var S = { energy: 0, total: 0, owned: {}, clickUp: 0, multLv: 0, last: Date.now(),
+              clickCount: 0, critCount: 0, achievements: {}, boxAt: 0 };
+    BUILDINGS.forEach(function (b) { S.owned[b.id] = 0; });
+
+    // 成就定义：达成后一次性奖励能量
+    var ACHIEVEMENTS = [
+        { id: "first",     name: "初次采集",    desc: "累计获得 100 能量",     check: function (S) { return S.total >= 100; },                 reward: 50 },
+        { id: "saver",     name: "小有积蓄",    desc: "累计获得 10K 能量",     check: function (S) { return S.total >= 10000; },                reward: 5000 },
+        { id: "million",   name: "百万富翁",    desc: "累计获得 1M 能量",      check: function (S) { return S.total >= 1000000; },              reward: 500000 },
+        { id: "billion",   name: "亿万富豪",    desc: "累计获得 1B 能量",      check: function (S) { return S.total >= 1000000000; },            reward: 200000000 },
+        { id: "miner10",   name: "矿工队长",    desc: "拥有 10 个矿工",        check: function (S) { return S.owned.miner >= 10; },              reward: 500 },
+        { id: "miner50",   name: "矿工之王",    desc: "拥有 50 个矿工",        check: function (S) { return S.owned.miner >= 50; },              reward: 50000 },
+        { id: "factory10", name: "工业革命",    desc: "拥有 10 个工厂",        check: function (S) { return S.owned.factory >= 10; },            reward: 2000000 },
+        { id: "space",     name: "太空时代",    desc: "拥有空间站",            check: function (S) { return S.owned.station >= 1; },             reward: 3000000 },
+        { id: "quantum",   name: "量子飞跃",    desc: "拥有量子计算机",        check: function (S) { return S.owned.quantum >= 1; },             reward: 20000000 },
+        { id: "dyson",     name: "恒星之力",    desc: "拥有戴森球",            check: function (S) { return S.owned.dyson >= 1; },               reward: 100000000 },
+        { id: "click100",  name: "点击小达人",  desc: "累计点击 100 次",       check: function (S) { return S.clickCount >= 100; },              reward: 2000 },
+        { id: "click1000", name: "点击达人",    desc: "累计点击 1000 次",      check: function (S) { return S.clickCount >= 1000; },             reward: 20000 },
+        { id: "crit1",     name: "暴击初体验",  desc: "触发 1 次点击暴击",     check: function (S) { return S.critCount >= 1; },                 reward: 100 },
+        { id: "crit100",   name: "暴击之星",    desc: "累计触发 100 次暴击",   check: function (S) { return S.critCount >= 100; },               reward: 100000 },
+        { id: "clickUp10", name: "强化大师",    desc: "强化点击达到 10 级",    check: function (S) { return S.clickUp >= 10; },                  reward: 100000 },
+        { id: "mult3",     name: "产量爆发",    desc: "产量翻倍达到 3 级",     check: function (S) { return S.multLv >= 3; },                    reward: 100000 },
+    ];
+
+    function load() {
+        try {
+            var raw = localStorage.getItem(KEY);
+            if (!raw) return;
+            var d = JSON.parse(raw);
+            if (d && typeof d.energy === "number") {
+                S.energy = d.energy || 0; S.total = d.total || 0;
+                S.clickUp = d.clickUp || 0; S.multLv = d.multLv || 0;
+                S.last = d.last || Date.now();
+                S.clickCount = d.clickCount || 0; S.critCount = d.critCount || 0;
+                S.achievements = d.achievements || {}; S.boxAt = d.boxAt || 0;
+                BUILDINGS.forEach(function (b) { S.owned[b.id] = d.owned && d.owned[b.id] || 0; });
+            }
+        } catch (e) { /* 存档损坏则忽略 */ }
+    }
+
+    function save() {
+        S.last = Date.now();
+        try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* 存储不可用时忽略 */ }
+    }
+
+    function fmt(n) {
+        if (n < 1000) {
+            if (n >= 100) return String(Math.floor(n));
+            if (n >= 10) return String(Math.round(n * 10) / 10);
+            return String(Math.round(n * 100) / 100); // 小数值（如 0.5/s）保留小数，不截成 0
+        }
+        var units = ["K", "M", "B", "T", "Qa", "Qi"];
+        var i = -1;
+        do { n /= 1000; i++; } while (n >= 1000 && i < units.length - 1);
+        return (n >= 100 ? Math.floor(n) : Math.round(n * 10) / 10) + units[i];
+    }
+
+    function clickPower() { return 1 + S.clickUp; }
+    function eps() {
+        var e = 0;
+        BUILDINGS.forEach(function (b) { e += b.eps * S.owned[b.id]; });
+        return e * Math.pow(2, S.multLv);
+    }
+    function price(b) { return Math.floor(b.base * Math.pow(1.15, S.owned[b.id])); }
+    function upPrice(kind) { return kind === "click" ? Math.floor(100 * Math.pow(1.6, S.clickUp)) : Math.floor(1000 * Math.pow(5, S.multLv)); }
+
+    // 离线收益：挂机期间按 每秒产出 × 时长 × 系数 结算
+    function offline() {
+        var sec = Math.min((Date.now() - S.last) / 1000, maxOff);
+        if (sec < 30) return;
+        var gain = Math.floor(eps() * sec * offCoef);
+        if (gain > 0) {
+            S.energy += gain; S.total += gain;
+            toast("挂机收获 " + fmt(gain) + " 能量（" + Math.round(sec) + " 秒 × " + fmt(eps()) + "/s）");
+        }
+    }
+
+    function toast(msg) {
+        var t = document.createElement("div");
+        t.className = "toast"; t.textContent = msg;
+        document.body.appendChild(t);
+        setTimeout(function () { t.remove(); }, 3200);
+    }
+
+    function buyBuilding(b) {
+        var p = price(b);
+        if (S.energy < p) return;
+        S.energy -= p; S.owned[b.id]++;
+        save();
+        renderStats();
+        renderBuildings();
+    }
+
+    function buyUp(kind) {
+        var p = upPrice(kind);
+        if (S.energy < p) return;
+        S.energy -= p;
+        if (kind === "click") S.clickUp++; else S.multLv++;
+        save();
+        renderStats();
+        renderBuildings();
+    }
+
+    // 轻量刷新：只更新数字与升级按钮禁用态，不重建 DOM（供主循环高频调用）
+    var buyBtns = {}; // 各建筑当前按钮引用，供实时切换可购态
+    var critUntil = 0, critGain = 0; // 暴击展示的临时文本
+
+    function renderStats() {
+        if (Date.now() < critUntil) el.clickGain.textContent = "暴击 +" + fmt(critGain);
+        else el.clickGain.textContent = "+" + fmt(clickPower());
+        el.energy.textContent = fmt(S.energy);
+        el.eps.textContent = fmt(eps());
+        el.clickP.textContent = fmt(clickPower());
+        el.upClickPrice.textContent = fmt(upPrice("click"));
+        el.upClickSub.textContent = "每次点击 +1 能量（当前 +" + fmt(S.clickUp) + "）";
+        el.upMultPrice.textContent = fmt(upPrice("mult"));
+        el.upMultSub.textContent = "所有建筑产出 ×2（当前 ×" + Math.pow(2, S.multLv) + "）";
+        el.upClick.disabled = S.energy < upPrice("click");
+        el.upMult.disabled = S.energy < upPrice("mult");
+        // 建筑按钮：随能量实时切换可购状态（价格仅随数量变，故只更新禁用态）
+        BUILDINGS.forEach(function (b) {
+            var btn = buyBtns[b.id];
+            if (btn) btn.disabled = S.energy < price(b);
+        });
+        // 免费礼包倒计时
+        var cd = boxCooldown();
+        if (cd > 0) { el.boxCd.textContent = Math.ceil(cd / 1000) + "s 后可领"; el.boxBtn.disabled = true; }
+        else { el.boxCd.textContent = "可领取！"; el.boxBtn.disabled = false; }
+    }
+
+    // 重建建筑列表：只在购买时调用，避免按钮被高频重建替换导致点击丢失
+    function renderBuildings() {
+        el.bList.innerHTML = "";
+        BUILDINGS.forEach(function (b) {
+            var owned = S.owned[b.id], p = price(b);
+            var row = document.createElement("div");
+            row.className = "b-row";
+            var can = S.energy >= p;
+            row.innerHTML =
+                '<span class="ic">' + b.icon + "</span>" +
+                '<div class="info"><div class="n">' + b.name + " <small>×" + owned + "</small></div>" +
+                '<div class="d">产出 <span style="color:var(--accent)">' + fmt(b.eps * Math.pow(2, S.multLv)) +
+                '/s</span> · 下一座 ' + fmt(p) + '</div></div>' +
+                '<button class="buy-btn">' + fmt(p) + "</button>";
+            var btn = row.querySelector(".buy-btn");
+            btn.disabled = !can;
+            btn.addEventListener("click", function () { buyBuilding(b); });
+            buyBtns[b.id] = btn; // 保存引用，供 renderStats 实时刷新禁用态
+            el.bList.appendChild(row);
+        });
+    }
+
+    function collect() {
+        var g = clickPower();
+        if (Math.random() < critChance) { // 15% 概率暴击 ×10
+            g *= critMult;
+            S.critCount++;
+            critUntil = Date.now() + 350;
+            critGain = g;
+            el.clickBtn.classList.add("crit");
+            setTimeout(function () { el.clickBtn.classList.remove("crit"); }, 350);
+        }
+        S.energy += g; S.total += g; S.clickCount++;
+        renderStats();
+    }
+
+    // 免费礼包：每 90 秒可领一次，奖励 ≈ 当前每秒产出 × 30（保底 20）
+    function boxCooldown() {
+        return Math.max(0, boxInterval - (Date.now() - S.boxAt));
+    }
+    function claimBox() {
+        if (boxCooldown() > 0) { toast("礼包还在冷却中…"); return; }
+        var g = Math.max(20, Math.floor(eps() * 30));
+        S.energy += g; S.total += g;
+        S.boxAt = Date.now();
+        save();
+        renderStats();
+        toast("🎁 领取礼包 +" + fmt(g) + " 能量！");
+    }
+
+    // 成就：检查达成并一次性发奖励
+    function checkAchievements() {
+        var changed = false;
+        ACHIEVEMENTS.forEach(function (a) {
+            if (!S.achievements[a.id] && a.check(S)) {
+                S.achievements[a.id] = 1;
+                S.energy += a.reward; S.total += a.reward;
+                toast("🏆 成就达成：「" + a.name + "」+ " + fmt(a.reward) + " 能量");
+                save();
+                changed = true;
+            }
+        });
+        if (changed) renderAch();
+    }
+
+    // 渲染成就卡片（只在达成时重建）
+    function renderAch() {
+        var done = 0;
+        ACHIEVEMENTS.forEach(function (a) { if (S.achievements[a.id]) done++; });
+        el.achCount.textContent = done + "/" + ACHIEVEMENTS.length;
+        el.achList.innerHTML = "";
+        ACHIEVEMENTS.forEach(function (a) {
+            var card = document.createElement("div");
+            card.className = "ach" + (S.achievements[a.id] ? " done" : "");
+            card.innerHTML = '<div class="t">' + (S.achievements[a.id] ? "✅" : "🔒") + " " + a.name +
+                '</div><div class="s">' + a.desc + '</div><div class="r">奖励 +' + fmt(a.reward) + "</div>";
+            el.achList.appendChild(card);
+        });
+    }
+
+    // 主按钮用 pointerdown 立即响应，避免 click 的移动端延迟 / 双击缩放导致连点失效
+    el.clickBtn.addEventListener("pointerdown", function (e) { e.preventDefault(); collect(); });
+    el.clickBtn.addEventListener("dblclick", function (e) { e.preventDefault(); });
+
+    el.upClick.addEventListener("click", function () { buyUp("click"); });
+    el.upMult.addEventListener("click", function () { buyUp("mult"); });
+    el.boxBtn.addEventListener("click", claimBox);
+
+    document.getElementById("reset").addEventListener("click", function () {
+        document.getElementById("confirmMask").hidden = false;
+    });
+    document.getElementById("confirmYes").addEventListener("click", function () {
+        document.getElementById("confirmMask").hidden = true;
+        try { localStorage.removeItem(KEY); } catch (e) { /* 忽略存储异常 */ }
+        location.reload();
+    });
+    document.getElementById("confirmNo").addEventListener("click", function () {
+        document.getElementById("confirmMask").hidden = true;
+    });
+
+    // 启动
+    load();
+    offline();
+    renderStats();
+    renderBuildings();
+
+    // 主循环：按真实时间差累加产出，只轻量刷新数字；保存降频到每秒一次
+    var lastTick = Date.now(), tickCount = 0;
+    setInterval(function () {
+        var now = Date.now();
+        var dt = Math.min((now - lastTick) / 1000, 0.5); // 节流，防止切后台后能量跳变
+        lastTick = now;
+        S.energy += eps() * dt;
+        S.total += eps() * dt;
+        renderStats();
+        tickCount++;
+        if (tickCount % 10 === 0) { save(); checkAchievements(); }
+    }, 100);
+})();
+</script>
+</body>
+</html>

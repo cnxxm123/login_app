@@ -1,0 +1,55 @@
+
+        .result-title { font-size: 17px; color: var(--text); margin: 0 0 16px; }
+        .result-title .q {
+            color: var(--primary); font-weight: 700;
+        }
+        .file-list { list-style: none; padding: 0; margin: 0; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+        .file-list li { border-bottom: 1px solid var(--border); display: flex; align-items: center; }
+        .file-list li:last-child { border-bottom: none; }
+        .file-list a {
+            display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+            color: var(--text); text-decoration: none; font-size: 14px; transition: var(--t);
+        }
+        .file-list a:hover { background: var(--surface-2); color: var(--primary-2); padding-left: 20px; }
+        .file-list .icon { font-size: 16px; }
+        .file-list .file-main { flex: 1; min-width: 0; word-break: break-all; }
+        .file-list .file-dl {
+            width: 30px; height: 30px; margin-right: 12px; border-radius: 8px; flex-shrink: 0;
+            background: var(--accent-soft); color: var(--primary); text-decoration: none;
+            display: flex; align-items: center; justify-content: center; font-size: 14px;
+            padding: 0; transition: var(--t);
+        }
+        .file-list .file-dl:hover { background: var(--primary); color: #fff; padding-left: 0; }
+        /* 搜索模式切换栏 */
+        .mode-bar {
+            display: flex; align-items: center; gap: 10px; margin: 0 0 16px;
+            padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px;
+        }
+        .mode-btn {
+            text-decoration: none; font-size: 13px; color: var(--text-2);
+            background: var(--surface); border: 1px solid var(--border-strong); padding: 6px 14px; border-radius: 8px; transition: var(--t);
+        }
+        .mode-btn:hover { border-color: var(--primary); color: var(--primary-2); }
+        .mode-btn.active { background: var(--primary); color: #fff; border-color: transparent; }
+        .mode-tip { font-size: 12px; color: var(--text-3); }
+        /* 结果列表：路径 + 摘要两行 */
+        .file-list .file-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+        .file-list .file-path { word-break: break-all; }
+        .file-list .file-snippet {
+            font-size: 12px; color: var(--text-3); word-break: break-all;
+            background: var(--surface-2); border-radius: 6px; padding: 4px 8px;
+        }
+        /* 暗色模式：颜色已由 common.css 变量自动适配 */
+
+        /* ===== 移动端 / 平板适配（≤1024px，公共导航栏见 common.css）===== */
+        @media (max-width: 1024px) {
+            /* 模式切换栏：允许换行，说明文字独占一行 */
+            .mode-bar { flex-wrap: wrap; gap: 8px; }
+            .mode-tip { flex-basis: 100%; }
+            /* 结果条目：收紧内边距，下载按钮加大触控面积 */
+            .file-list a { padding: 10px 12px; }
+            .file-list a:hover { padding-left: 12px; }   /* 触屏无 hover 缩进 */
+            .file-list .file-dl { width: 34px; height: 34px; margin-right: 10px; font-size: 15px; }
+            .mode-btn { padding: 8px 16px; }             /* 加大触控面积 */
+        }
+    

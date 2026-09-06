@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>打砖块</title>
+<style>
+    :root { --bg:#16161b; --card:#24242b; --line:#3a3a44; --text:#e2e8f0; --muted:#94a3b8; --accent:#38bdf8; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:linear-gradient(135deg,#16161b,#24242b); color:var(--text); font-family:"Segoe UI","Microsoft YaHei",sans-serif; min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:20px; }
+    .topbar { width:100%; max-width:720px; display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+    .topbar h1 { font-size:22px; letter-spacing:1px; color:var(--accent); }
+    .topbar a { color:var(--muted); text-decoration:none; font-size:13px; border:1px solid var(--line); padding:6px 12px; border-radius:8px; transition:.2s; }
+    .topbar a:hover { color:var(--text); border-color:var(--muted); }
+    .panel { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.4); }
+    .score-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; font-size:15px; color:var(--muted); }
+    .score-row b { color:var(--accent); font-size:20px; margin-left:6px; }
+    #board { display:block; background:#0b1220; border:1px solid var(--line); border-radius:8px; width:100%; max-width:720px; touch-action:none; }
+    .hint { margin-top:12px; font-size:12px; color:var(--muted); text-align:center; line-height:1.7; }
+    .btn { background:var(--accent); color:#082f49; border:none; padding:8px 20px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; }
+    .btn:hover { filter:brightness(1.1); }
+    .overlay { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; background:rgba(2,6,23,.78); border-radius:8px; text-align:center; padding:10px; }
+    .overlay h2 { font-size:26px; }
+    .overlay p { color:var(--muted); font-size:13px; }
+    .diff-row { display:flex; gap:8px; }
+    .dbtn { flex:1; background:#3a3a44; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px 0; font-size:13px; cursor:pointer; touch-action:manipulation; }
+    .dbtn.on { background:var(--accent); color:#082f49; border-color:var(--accent); font-weight:700; }
+    .wrap { position:relative; }
+</style>
+</head>
+<body>
+    <div class="topbar">
+        <h1>🧱 打砖块</h1>
+        <a href="/game">← 返回游戏大厅</a>
+    </div>
+    <div class="panel">
+        <div class="score-row">
+            <div class="score-box">得分 <b id="score">0</b></div>
+            <div class="score-box">生命 <b id="lives">3</b></div>
+        </div>
+        <div class="wrap">
+            <canvas id="board" width="720" height="520"></canvas>
+            <div class="overlay" id="overlay">
+                <h2>🧱 打砖块</h2>
+                <p>鼠标 / 手指左右移动挡板，别让球落下</p>
+                <div class="diff-row">
+                    <button class="dbtn" data-d="easy">简单</button>
+                    <button class="dbtn" data-d="normal">普通</button>
+                    <button class="dbtn" data-d="hard">困难</button>
+                </div>
+                <button class="btn" id="start">开始游戏</button>
+            </div>
+        </div>
+        <div class="hint">鼠标或手指移动挡板反弹小球 · 打光所有砖块获胜 · 小球落地扣生命，生命归零则结束</div>
+    </div>
+
+<script>
+(function () {
+    var cv = document.getElementById("board");
+    var ctx = cv.getContext("2d");
+    var W = cv.width, H = cv.height;
+    var scoreEl = document.getElementById("score");
+    var livesEl = document.getElementById("lives");
+    var overlay = document.getElementById("overlay");
+
+    var paddle = { w: 110, h: 14, x: W / 2 - 55 };
+    var PADDLE_Y = H - 36;
+    var ball, bricks, score, lives, running, raf;
+    var mouseX = null;
+
+    // 难度：简单球慢、挡板宽、砖少 / 普通 / 困难球快、挡板窄、砖多
+    var DIFFS = { easy:{speed:0.85,pw:130,cols:8,rows:4}, normal:{speed:1,pw:110,cols:10,rows:5}, hard:{speed:1.2,pw:90,cols:12,rows:6} };
+    var diffKey = localStorage.getItem("breakout_diff") || "normal";
+    function initDiff() {
+        var btns = document.querySelectorAll(".dbtn");
+        btns.forEach(function (b) {
+            if (b.dataset.d === diffKey) b.classList.add("on");
+            b.addEventListener("click", function () {
+                diffKey = b.dataset.d;
+                localStorage.setItem("breakout_diff", diffKey);
+                btns.forEach(function (x) { x.classList.remove("on"); });
+                b.classList.add("on");
+            });
+        });
+    }
+
+    var COLORS = ["#f87171", "#fb923c", "#facc15", "#4ade80", "#38bdf8", "#a78bfa"];
+
+    function buildBricks() {
+        bricks = [];
+        var cols = DIFFS[diffKey].cols, rows = DIFFS[diffKey].rows;
+        var bw = (W - (cols + 1) * 6) / cols, bh = 20, gap = 6, top = 46, left = (W - cols * (bw + gap) + gap) / 2;
+        for (var r = 0; r < rows; r++) {
+            for (var c = 0; c < cols; c++) {
+                bricks.push({ x: left + c * (bw + gap), y: top + r * (bh + gap), w: bw, h: bh, color: COLORS[r], alive: true });
+            }
+        }
+    }
+
+    function reset() {
+        buildBricks();
+        score = 0; lives = 3;
+        scoreEl.textContent = score;
+        livesEl.textContent = lives;
+        launch();
+    }
+
+    function launch() {
+        paddle.w = DIFFS[diffKey].pw;
+        paddle.x = W / 2 - paddle.w / 2;
+        var sp = DIFFS[diffKey].speed;
+        ball = { x: W / 2, y: PADDLE_Y - 10, vx: 3.4 * sp, vy: -4.6 * sp, r: 7 };
+    }
+
+    function step() {
+        // 挡板跟随鼠标
+        if (mouseX !== null) {
+            var target = mouseX - paddle.w / 2;
+            paddle.x += (target - paddle.x) * 0.35;
+            paddle.x = Math.max(0, Math.min(W - paddle.w, paddle.x));
+        }
+        // 球
+        ball.x += ball.vx; ball.y += ball.vy;
+        if (ball.x - ball.r < 0) { ball.x = ball.r; ball.vx = -ball.vx; }
+        if (ball.x + ball.r > W) { ball.x = W - ball.r; ball.vx = -ball.vx; }
+        if (ball.y - ball.r < 0) { ball.y = ball.r; ball.vy = -ball.vy; }
+        // 挡板碰撞
+        if (ball.vy > 0 && ball.y + ball.r >= PADDLE_Y && ball.y - ball.r <= PADDLE_Y + paddle.h &&
+            ball.x >= paddle.x - ball.r && ball.x <= paddle.x + paddle.w + ball.r) {
+            var hit = (ball.x - (paddle.x + paddle.w / 2)) / (paddle.w / 2);
+            ball.vy = -Math.abs(ball.vy);
+            ball.vx = hit * 5.5;
+            var sp = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+            if (sp > 9) { ball.vx *= 9 / sp; ball.vy *= 9 / sp; }
+            ball.y = PADDLE_Y - ball.r;
+        }
+        // 砖块
+        for (var i = 0; i < bricks.length; i++) {
+            var b = bricks[i];
+            if (!b.alive) continue;
+            if (ball.x + ball.r > b.x && ball.x - ball.r < b.x + b.w &&
+                ball.y + ball.r > b.y && ball.y - ball.r < b.y + b.h) {
+                b.alive = false;
+                score += 10;
+                scoreEl.textContent = score;
+                // 反弹方向
+                var overlapLeft = ball.x + ball.r - b.x;
+                var overlapRight = b.x + b.w - (ball.x - ball.r);
+                var overlapTop = ball.y + ball.r - b.y;
+                var overlapBottom = b.y + b.h - (ball.y - ball.r);
+                var min = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
+                if (min === overlapLeft || min === overlapRight) ball.vx = -ball.vx;
+                else ball.vy = -ball.vy;
+                break;
+            }
+        }
+        // 胜利检测
+        if (bricks.every(function (b) { return !b.alive; })) return win();
+        // 落地
+        if (ball.y - ball.r > H) {
+            lives--;
+            livesEl.textContent = lives;
+            if (lives <= 0) return gameOver();
+            launch();
+        }
+        draw();
+        raf = requestAnimationFrame(step);
+    }
+
+    function draw() {
+        ctx.fillStyle = "#0b1220";
+        ctx.fillRect(0, 0, W, H);
+        // 砖块
+        for (var i = 0; i < bricks.length; i++) {
+            var b = bricks[i];
+            if (!b.alive) continue;
+            ctx.fillStyle = b.color;
+            roundRect(b.x, b.y, b.w, b.h, 4); ctx.fill();
+        }
+        // 挡板
+        ctx.fillStyle = "#38bdf8";
+        roundRect(paddle.x, PADDLE_Y, paddle.w, paddle.h, 6); ctx.fill();
+        // 球
+        ctx.fillStyle = "#f8fafc";
+        ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2); ctx.fill();
+    }
+
+    function roundRect(x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
+    }
+
+    function stopGame(msg) {
+        cancelAnimationFrame(raf);
+        running = false;
+        overlay.style.display = "flex";
+        overlay.querySelector("h2").textContent = msg;
+        overlay.querySelector(".btn").textContent = "再来一局";
+    }
+    function win() { stopGame("🎉 通关！得分 " + score); }
+    function gameOver() { stopGame("游戏结束，得分 " + score); }
+
+    // 鼠标
+    cv.addEventListener("mousemove", function (e) {
+        var rect = cv.getBoundingClientRect();
+        mouseX = (e.clientX - rect.left) * (W / rect.width);
+        if (!running) { paddle.x = mouseX - paddle.w / 2; paddle.x = Math.max(0, Math.min(W - paddle.w, paddle.x)); draw(); }
+    });
+    // 触屏：按下即定位挡板，滑动时跟随
+    function touchToMouse(touchX) {
+        var rect = cv.getBoundingClientRect();
+        return (touchX - rect.left) * (W / rect.width);
+    }
+    cv.addEventListener("touchstart", function (e) {
+        e.preventDefault();
+        mouseX = touchToMouse(e.touches[0].clientX);
+        if (!running) { paddle.x = mouseX - paddle.w / 2; paddle.x = Math.max(0, Math.min(W - paddle.w, paddle.x)); draw(); }
+    }, { passive: false });
+    cv.addEventListener("touchmove", function (e) {
+        e.preventDefault();
+        mouseX = touchToMouse(e.touches[0].clientX);
+    }, { passive: false });
+
+    initDiff();
+    overlay.querySelector(".btn").addEventListener("click", function () {
+        overlay.style.display = "none";
+        reset();
+        running = true;
+        draw();
+        raf = requestAnimationFrame(step);
+    });
+
+    reset();
+    draw();
+})();
+</script>
+</body>
+</html>

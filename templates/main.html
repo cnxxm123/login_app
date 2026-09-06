@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>主页</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body>
+    {% include 'nav.html' %}
+    <div class="content">
+        <!-- 页面头部：标题 + 搜索框在左（搜索框紧贴欢迎标题），视图工具条在右 -->
+        <div class="page-head">
+            <div class="head-left">
+                <h2 class="welcome">欢迎使用云书库</h2>
+                <form class="search-form" method="get" action="{{ url_for('browser.search') }}" role="search" autocomplete="off">
+                    <input type="hidden" name="path" value="{{ path }}">
+                    <input type="search" name="q" placeholder="搜索文件…" title="按文件名搜索" autocomplete="off">
+                    <button class="search-btn" type="submit" title="搜索" aria-label="搜索"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></button>
+                </form>
+                <div class="crumb">
+                    <a href="{{ url_for('browser.main') }}">主页</a>
+                    {% for name, p in breadcrumbs %}
+                        <span class="sep">/</span>
+                        <a href="{{ url_for('browser.browse', subpath=p) }}">{{ name }}</a>
+                    {% endfor %}
+                </div>
+            </div>
+            <!-- 页头工具栏：上传按钮 -->
+            <div class="view-bar">
+                <!-- 上传菜单：上传文件 / 上传文件夹 / 新建文件夹 收敛为单个按钮。
+                     桌面端显示在页面头部；移动端隐藏（改由顶部应用栏的同款菜单承担）。 -->
+                <div class="up-menu" id="up-menu-head">
+                    <button class="up-btn" type="button" onclick="toggleUpMenu(this, event)">上传</button>
+                    <div class="up-pop" id="up-pop-head" hidden>
+                        <button type="button" onclick="pickFiles(this)">上传文件</button>
+                        <button type="button" class="up-dir-item" onclick="pickFolder(this)">上传文件夹</button>
+                        <button type="button" onclick="closeUpMenu(this); mkdirItem()">新建文件夹</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if path %}
+            <a class="back" href="{{ url_for('browser.browse', subpath=parent) if parent else url_for('browser.main') }}">← 返回上一级</a>
+        {% endif %}
+
+        <!-- 隐藏的文件/文件夹选择框：由页面头部的"上传"按钮菜单触发 -->
+        <input type="file" id="file-input" multiple hidden>
+        <input type="file" id="dir-input" webkitdirectory multiple hidden>
+
+        <!-- 批量操作栏：勾选任意条目后出现；可对选中项批量 移动/复制/删除 -->
+        <div class="batch-bar" id="batch-bar">
+            <span class="cnt" id="batch-cnt">已选 0 项</span>
+            <span class="spacer"></span>
+            <button class="batch-btn" type="button" onclick="batchMove()">↦ 移动</button>
+            <button class="batch-btn" type="button" onclick="batchCopy()">⧉ 复制</button>
+            <button class="batch-btn danger" type="button" onclick="batchDelete()">🗑 删除</button>
+            <button class="batch-btn ghost" type="button" onclick="clearSelection()">取消选择</button>
+        </div>
+
+        {% if dirs_cover or dirs_plain %}
+            <div class="section-title"></div>
+            <div class="file-grids">
+                {% if dirs_cover %}
+                    <div class="file-grid">
+                        {% for d in dirs_cover %}
+                            <div class="file-card folder-card" data-path="{{ d.path }}">
+                                <a class="fc-thumb" href="{{ d.url }}" {% if d.new_tab %}target="_blank" rel="noopener"{% endif %} title="{{ d.name }}">
+                                    <img src="{{ d.cover.url }}" alt="" loading="lazy" decoding="async">
+                                    {% if d.cover.count %}<span class="fc-folder-badge">📁 {{ d.cover.count }} 张</span>{% endif %}
+                                </a>
+                                <input class="fc-check" type="checkbox" title="选择" onclick="updateBatch()">
+                                <div class="fc-overlay">
+                                    <div class="fc-tags">{% for t in d.tags %}<span class="fc-tag">{{ t }}</span>{% endfor %}</div>
+                                    <a class="fc-name" href="{{ d.url }}" {% if d.new_tab %}target="_blank" rel="noopener"{% endif %}>{{ d.name }}</a>
+                                    <div class="fc-ops">
+                                        <div class="op-more">
+                                            <button class="op-btn more-btn" type="button" onclick="toggleMore(event, this)" title="更多操作">⋯</button>
+                                            <div class="op-dropdown">
+                                                <a class="op-btn" href="{{ url_for('download.download_dir', subpath=d.path) }}" title="打包下载整本">打包下载整本</a>
+                                                <button class="op-btn" type="button" onclick="tagItem('{{ d.path }}')">打标签</button>
+                                                <button class="op-btn" type="button" onclick="renameItem('{{ d.path }}')">重命名</button>
+                                                <button class="op-btn" type="button" onclick="moveCopyItem('{{ d.path }}', true)">移动到</button>
+                                                <button class="op-btn" type="button" onclick="moveCopyItem('{{ d.path }}', false)">复制到</button>
+                                                <button class="op-btn danger" type="button" onclick="deleteItem('{{ d.path }}')">删除</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                {% if dirs_plain %}
+                    <div class="file-grid">
+                        {% for d in dirs_plain %}
+                            <div class="file-card folder-card folder-plain" data-path="{{ d.path }}">
+                                <a class="fc-thumb" href="{{ d.url }}" title="{{ d.name }}"></a>
+                                <input class="fc-check" type="checkbox" title="选择" onclick="updateBatch()">
+                                <div class="fc-overlay">
+                                    <div class="fc-tags">{% for t in d.tags %}<span class="fc-tag">{{ t }}</span>{% endfor %}</div>
+                                    <a class="fc-name" href="{{ d.url }}">{{ d.name }}</a>
+                                    <div class="fc-ops">
+                                        <div class="op-more">
+                                            <button class="op-btn more-btn" type="button" onclick="toggleMore(event, this)" title="更多操作">⋯</button>
+                                            <div class="op-dropdown">
+                                                <a class="op-btn" href="{{ url_for('download.download_dir', subpath=d.path) }}" title="打包下载整本">打包下载整本</a>
+                                                <button class="op-btn" type="button" onclick="tagItem('{{ d.path }}')">打标签</button>
+                                                <button class="op-btn" type="button" onclick="renameItem('{{ d.path }}')">重命名</button>
+                                                <button class="op-btn" type="button" onclick="moveCopyItem('{{ d.path }}', true)">移动到</button>
+                                                <button class="op-btn" type="button" onclick="moveCopyItem('{{ d.path }}', false)">复制到</button>
+                                                <button class="op-btn danger" type="button" onclick="deleteItem('{{ d.path }}')">删除</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        {% endif %}
+
+        {% if files %}
+            <div class="section-title"></div>
+            <div class="file-grid">
+                {% for f in files %}
+                    <div class="file-card" data-path="{{ f.path }}">
+                        <a class="fc-thumb" href="{{ f.url }}" {% if f.external %}target="_blank" rel="noopener"{% endif %} title="{{ f.name }}">
+                            {% if f.thumb %}
+                                <img src="{{ f.thumb }}" alt="" loading="lazy" decoding="async">
+                            {% elif f.kind == "video" %}
+                                <span class="fc-icon ic-video">🎬</span>
+                            {% elif f.kind == "audio" %}
+                                <span class="fc-icon ic-audio">🎵</span>
+                            {% else %}
+                                <span class="fc-icon ic-doc">📄</span>
+                            {% endif %}
+                            {% if f.kind == "video" %}<span class="fc-dur" data-path="{{ f.path }}"></span>{% endif %}
+                        </a>
+                        <input class="fc-check" type="checkbox" title="选择" onclick="updateBatch()">
+                        <a class="fc-name" href="{{ f.url }}" {% if f.external %}target="_blank" rel="noopener"{% endif %}>{{ f.name }}</a>
+                        <div class="fc-tags">{% for t in f.tags %}<span class="fc-tag">{{ t }}</span>{% endfor %}</div>
+                        <div class="fc-ops">
+                            <div class="op-more">
+                                <button class="op-btn more-btn" type="button" onclick="toggleMore(event, this)" title="更多操作">⋯</button>
+                                <div class="op-dropdown">
+                                    <a class="op-btn" href="{{ url_for('download.download_dir', subpath=f.path) }}" title="下载">下载</a>
+                                    {% if f.editable %}
+                                        <a class="op-btn" href="{{ url_for('manage.edit', subpath=f.path) }}">✏️ 在线编辑</a>
+                                    {% endif %}
+                                    <button class="op-btn" type="button" onclick="tagItem('{{ f.path }}')">打标签</button>
+                                    <button class="op-btn" type="button" onclick="renameItem('{{ f.path }}')">重命名</button>
+                                    <button class="op-btn" type="button" onclick="moveCopyItem('{{ f.path }}', true)">移动到</button>
+                                    <button class="op-btn" type="button" onclick="moveCopyItem('{{ f.path }}', false)">复制到</button>
+                                    <button class="op-btn danger" type="button" onclick="deleteItem('{{ f.path }}')">删除</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% if not dirs_cover and not dirs_plain and not files %}
+            <div class="empty">此目录为空</div>
+        {% endif %}
+    </div>
+    <!-- 通用弹窗：替代 prompt/confirm/alert（沙箱预览 iframe 禁用原生弹窗） -->
+    <div class="modal-mask" id="modal-mask" hidden>
+        <div class="modal-box" role="dialog" aria-modal="true">
+            <div class="modal-title" id="modal-title"></div>
+            <div class="modal-msg" id="modal-msg"></div>
+            <input class="modal-input" id="modal-input" type="text" hidden>
+            <div class="modal-ops">
+                <button class="modal-cancel" id="modal-cancel" type="button">取消</button>
+                <button class="modal-ok" id="modal-ok" type="button">确定</button>
+            </div>
+        </div>
+    </div>
+    <!-- 上传进度弹窗：XHR 提交期间显示进度条 + 文件数 + 已传/总量，可取消 -->
+    <div class="modal-mask" id="progress-mask" hidden>
+        <div class="modal-box progress-box" role="dialog" aria-modal="true">
+            <div class="modal-title">正在上传…</div>
+            <div class="modal-msg" id="progress-file"></div>
+            <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+            <div class="progress-info" id="progress-info"></div>
+            <div class="modal-ops">
+                <button class="modal-cancel" id="progress-cancel" type="button">取消上传</button>
+            </div>
+        </div>
+    </div>
+    <!-- 移动/复制弹窗：输入目标目录相对路径（留空 = 根目录），提供当前子目录下拉建议 -->
+    <div class="modal-mask" id="move-mask" hidden>
+        <div class="modal-box" role="dialog" aria-modal="true">
+            <div class="modal-title" id="move-title">移动到…</div>
+            <input class="dir-input" id="move-dir" list="subdir-list" placeholder="目标目录（相对路径，留空为根目录）">
+            <datalist id="subdir-list"></datalist>
+            <div class="dir-hint-line">相对当前内容根目录的路径，如：漫画 / 游戏知识 / 视频/教程。同名时会自动加序号（如 " (2)"）。</div>
+            <div class="modal-ops">
+                <button class="modal-cancel" id="move-cancel" type="button">取消</button>
+                <button class="modal-ok" id="move-ok" type="button">确定</button>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+    <script>
+        // ===== 页面配置：后端注入（url_for / 上传上限 / 子目录列表），供 main.js 使用 =====
+        window.MAIN_CONFIG = {
+            urls: {
+                tagGet: "{{ url_for('tags.tag_get') }}",
+                tagSet: "{{ url_for('tags.tag_set') }}",
+                upload: "{{ url_for('manage.upload', subpath=path) }}",
+                rename: "{{ url_for('manage.rename', subpath='') }}",
+                delete: "{{ url_for('manage.delete', subpath='') }}",
+                mkdir: "{{ url_for('manage.mkdir', subpath=path) }}",
+                move: "{{ url_for('manage.move', subpath='') }}",
+                copy: "{{ url_for('manage.copy', subpath='') }}",
+                batchMove: "{{ url_for('manage.batch_move') }}",
+                batchCopy: "{{ url_for('manage.batch_copy') }}",
+                batchDelete: "{{ url_for('manage.batch_delete') }}",
+                duration: "{{ url_for('browser.duration', subpath='') }}"
+            },
+            maxParts: {{ max_form_parts }},
+            maxBytes: {{ max_upload_bytes }},
+            subdirs: {{ (dirs_cover + dirs_plain) | map(attribute='path') | list | tojson }}
+        };
+    </script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

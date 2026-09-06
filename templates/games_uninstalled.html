@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>已卸载游戏</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/games_uninstalled.css') }}">
+</head>
+<body>
+    {% include 'nav.html' %}
+    <div class="content">
+        <div class="page-head">
+            <div>
+                <h2 class="page-title">已卸载游戏</h2>
+                <div class="tip">卸载的游戏会移到这里；点击 ↩ 可还原回大厅，✕ 则彻底删除（不可恢复）。</div>
+            </div>
+        </div>
+        {% if items %}
+            <div class="game-list">
+                {% for it in items %}
+                    <div class="game-item">
+                        <span class="gi-icon">🎮</span>
+                        <div class="gi-info">
+                            <div class="gi-name">{{ it.display_name }}</div>
+                            <div class="gi-meta">游戏目录：{{ it.name }} · 卸载时间：{{ it.uninstalled_at or "未知" }}</div>
+                        </div>
+                        <div class="gi-ops">
+                            <button class="op-btn restore" type="button" title="还原" onclick="restoreGame('{{ it.name }}', '{{ it.display_name }}')">↩</button>
+                            <button class="op-btn danger" type="button" title="彻底删除" onclick="purgeGame('{{ it.name }}', '{{ it.display_name }}')">✕</button>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty">没有已卸载的游戏，大厅右上角 🗑 按钮可卸载游戏</div>
+        {% endif %}
+    </div>
+    <!-- 通用弹窗：替代原生 confirm（沙箱 iframe 禁用） -->
+    <div class="modal-mask" id="modal-mask" hidden>
+        <div class="modal-box" role="dialog" aria-modal="true">
+            <div class="modal-title" id="modal-title"></div>
+            <div class="modal-msg" id="modal-msg"></div>
+            <div class="modal-ops">
+                <button class="modal-cancel" id="modal-cancel" type="button">取消</button>
+                <button class="modal-ok" id="modal-ok" type="button">确定</button>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+    <script>
+        // ===== 页面配置：后端注入，供 games_uninstalled.js 使用 =====
+        window.GU_CONFIG = {
+    urls: {
+        restore: "{{ url_for('games.restore', name='') }}",
+        purge: "{{ url_for('games.purge', name='') }}"
+    }
+};
+    </script>
+    <script src="{{ url_for('static', filename='js/games_uninstalled.js') }}"></script>
+</body>
+</html>

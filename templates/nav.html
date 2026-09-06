@@ -1,0 +1,81 @@
+<!-- 左侧边栏导航（共享 partial）：所有页面在 <body> 开头 include 使用。
+     当前项高亮根据 request.endpoint 自动判断，页面无需传参。
+     移动端 / 平板（≤1024px）自动折叠为顶部图标栏，样式见 common.css。 -->
+<aside class="sidebar">
+    <!-- 品牌区：站名（左上角图标已按用户要求移除） -->
+    <div class="sb-brand">
+        <div>
+            <div class="sb-title">云书库</div>
+            <div class="sb-sub">你的私有网络书库</div>
+        </div>
+    </div>
+
+    <!-- 主导航：当前页面自动高亮（品牌渐变底 + 发光描边） -->
+    <nav class="sb-nav">
+        <a class="sb-link{% if request.endpoint in ('browser.main', 'browser.browse', 'browser.search', 'view.view_file', 'manage.edit') %} active{% endif %}"
+           href="{{ url_for('browser.main') }}" title="浏览文件">
+            <span class="sb-ico">📂</span><span class="sb-txt">文件浏览</span>
+        </a>
+        <a class="sb-link{% if request.endpoint in ('tags.index', 'tags.filter_page') %} active{% endif %}"
+           href="{{ url_for('tags.index') }}" title="给文件打标签 / 按标签筛选">
+            <span class="sb-ico">🏷</span><span class="sb-txt">标签管理</span>
+        </a>
+        <a class="sb-link{% if request.endpoint == 'logs.index' %} active{% endif %}"
+           href="{{ url_for('logs.index') }}" title="记录每天的工作 / 备忘">
+            <span class="sb-ico">📝</span><span class="sb-txt">工作日志</span>
+        </a>
+        <a class="sb-link{% if request.endpoint == 'stats.index' %} active{% endif %}"
+           href="{{ url_for('stats.index') }}" title="按类型与目录统计磁盘占用">
+            <span class="sb-ico">📊</span><span class="sb-txt">磁盘统计</span>
+        </a>
+        <a class="sb-link{% if request.endpoint in ('games.hall', 'games.uninstalled') %} active{% endif %}"
+           href="{{ url_for('games.hall') }}" title="网页小游戏合集，即点即玩">
+            <span class="sb-ico">🎮</span><span class="sb-txt">游戏大厅</span>
+        </a>
+        <a class="sb-link{% if request.endpoint == 'trash.index' %} active{% endif %}"
+           href="{{ url_for('trash.index') }}" title="回收站（已删除内容，可还原）">
+            <span class="sb-ico">🗑</span><span class="sb-txt">回收站</span>
+        </a>
+    </nav>
+
+    <!-- 底部操作区：主题切换（桌面端显示） -->
+    <div class="sb-foot">
+        <button class="theme-toggle" type="button" onclick="toggleTheme()" title="切换深色/浅色">
+            <span class="sb-txt">切换主题</span>
+        </button>
+    </div>
+</aside>
+
+<!-- 移动端 / 平板顶部应用栏：仅手机和平板显示（桌面隐藏，样式见 common.css）。
+     左侧品牌 Logo + 标题，右侧主题切换；
+     底部导航只保留页面入口，系统操作统一收在这里。
+     注意：必须放在 .sidebar 外面 —— 移动端 .sidebar 带 backdrop-filter，
+     会让内部 position:fixed 后代（本栏）以 .sidebar 为包含块而错位。 -->
+<div class="sb-mbar">
+    <a class="sb-mbar-brand" href="{{ url_for('browser.main') }}" aria-label="回到文件浏览">
+        <span class="sb-mbar-title">云书库</span>
+    </a>
+    <div class="sb-mbar-actions">
+        <button class="theme-toggle" type="button" onclick="toggleTheme()" title="切换深色/浅色" aria-label="切换主题">
+            <span class="theme-txt">切换主题</span>
+        </button>
+        {% if request.endpoint in ('browser.main', 'browser.browse') %}
+            <!-- 移动端搜索框：置于切换主题按钮与上传按钮之间（桌面端仍用页面头部的搜索框） -->
+            <form class="search-form mbar-search" method="get" action="{{ url_for('browser.search') }}" role="search" autocomplete="off">
+                <input type="hidden" name="path" value="{{ path }}">
+                <input type="search" name="q" placeholder="搜索文件…" title="按文件名搜索" autocomplete="off">
+                <button class="search-btn" type="submit" title="搜索" aria-label="搜索"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></button>
+            </form>
+            <!-- 上传菜单（仅文件浏览页注入）：上传文件/上传文件夹/新建文件夹收敛为一个按钮，
+                 点击展开。功能脚本与隐藏选择框在 main.html 中定义。 -->
+            <div class="up-menu" id="up-menu-mbar">
+                <button class="up-btn" type="button" onclick="toggleUpMenu(this, event)">上传</button>
+                <div class="up-pop" id="up-pop-mbar" hidden>
+                    <button type="button" onclick="pickFiles(this)">上传文件</button>
+                    <button type="button" class="up-dir-item" onclick="pickFolder(this)">上传文件夹</button>
+                    <button type="button" onclick="closeUpMenu(this); mkdirItem()">新建文件夹</button>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>

@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>中国象棋</title>
+<style>
+    :root { --bg:#16161b; --card:#24242b; --line:#3a3a44; --text:#e2e8f0; --muted:#94a3b8; --accent:#f59e0b; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:linear-gradient(135deg,#16161b,#24242b); color:var(--text); font-family:"Segoe UI","Microsoft YaHei",sans-serif; min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:20px; }
+    .topbar { width:100%; max-width:460px; display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+    .topbar h1 { font-size:22px; letter-spacing:1px; color:var(--accent); }
+    .topbar a { color:var(--muted); text-decoration:none; font-size:13px; border:1px solid var(--line); padding:6px 12px; border-radius:8px; transition:.2s; }
+    .topbar a:hover { color:var(--text); border-color:var(--muted); }
+    .panel { width:100%; max-width:460px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.4); }
+    .stat-row { display:flex; gap:10px; margin-bottom:14px; }
+    .stat { flex:1; background:#16161b; border:1px solid var(--line); border-radius:12px; padding:10px; text-align:center; }
+    .stat .label { font-size:11px; color:var(--muted); }
+    .stat .val { font-size:20px; font-weight:700; color:var(--accent); }
+    .wrap { position:relative; }
+    #board { display:block; width:100%; max-width:460px; height:auto; touch-action:none; border-radius:12px;
+        background:
+            radial-gradient(900px 380px at 50% -10%, rgba(255,235,190,.55), rgba(255,235,190,0) 62%),
+            linear-gradient(165deg, #e7c890 0%, #d6ae6e 46%, #c69a58 100%);
+        box-shadow:
+            inset 0 3px 10px rgba(120,80,30,.38),
+            inset 0 -3px 8px rgba(255,235,190,.28),
+            inset 3px 0 8px rgba(120,80,30,.22),
+            inset -3px 0 8px rgba(120,80,30,.22),
+            0 12px 32px rgba(0,0,0,.45);
+    }
+    .ctrl { display:flex; gap:10px; margin-top:12px; }
+    .btn { flex:1; background:var(--accent); color:#3b2300; border:none; padding:10px 0; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; touch-action:manipulation; }
+    .btn.alt { background:#475569; color:#e2e8f0; }
+    .hint { margin-top:12px; font-size:12px; color:var(--muted); text-align:center; line-height:1.7; }
+    .overlay { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; background:rgba(2,6,23,.84); border-radius:12px; text-align:center; padding:14px; }
+    .overlay h2 { font-size:26px; }
+    .overlay .btn { width:auto; padding:10px 28px; }
+    .diff-row { display:flex; gap:8px; width:100%; }
+    .dbtn { flex:1; background:#3a3a44; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px 0; font-size:13px; cursor:pointer; touch-action:manipulation; }
+    .dbtn.on { background:var(--accent); color:#3b2300; border-color:var(--accent); font-weight:700; }
+</style>
+</head>
+<body>
+    <div class="topbar">
+        <h1>♟ 中国象棋</h1>
+        <a href="/game">← 返回游戏大厅</a>
+    </div>
+    <div class="panel">
+        <div class="stat-row">
+            <div class="stat"><div class="label">当前</div><div class="val" id="turn">🔴 你</div></div>
+            <div class="stat"><div class="label">对局</div><div class="val" id="round">0</div></div>
+        </div>
+        <div class="wrap">
+            <canvas id="board"></canvas>
+            <div class="overlay" id="overlay">
+                <h2>♟ 中国象棋</h2>
+                <div style="font-size:13px; color:var(--muted); line-height:1.7">你执红 🔴 先手，AI 执黑 ⚫<br>点击己方棋子选中，再点目标位走子<br>将死对方「将/帅」即获胜</div>
+                <div class="diff-row">
+                    <button class="dbtn" data-d="easy">简单</button>
+                    <button class="dbtn" data-d="normal">普通</button>
+                    <button class="dbtn" data-d="hard">困难</button>
+                </div>
+                <button class="btn" id="start">开始对局</button>
+            </div>
+        </div>
+        <div class="ctrl">
+            <button class="btn alt" id="undo">悔棋</button>
+            <button class="btn alt" id="restart">重新开始</button>
+        </div>
+        <div class="hint">你执红先手 · 点击己方棋子选中（金色高亮），再点目标位置走子 · 小圆点为可走点，红圈为可吃子 · 手机点按 / 电脑点击均可</div>
+    </div>
+
+<script>
+(function () {
+    // ============ 棋盘几何 ============
+    // 中国象棋：9 列 × 10 行交叉点，红方在下（row 9..5），黑方在上（row 0..4）
+    var COL = 9, ROW = 10, CELL = 40, PAD = 24;
+    var W = COL * CELL + PAD * 2, H = ROW * CELL + PAD * 2;
+    var R = 17;  // 棋子半径（逻辑像素）
+    var cv = document.getElementById("board"), ctx = cv.getContext("2d");
+    // 高清适配（同五子棋）
+    var DPR = Math.min(window.devicePixelRatio || 1, 3);
+    cv.width = W * DPR; cv.height = H * DPR;
+    ctx.scale(DPR, DPR);
+    var turnEl = document.getElementById("turn"), roundEl = document.getElementById("round"),
+        overlay = document.getElementById("overlay"), startBtn = document.getElementById("start"),
+        undoBtn = document.getElementById("undo"), restartBtn = document.getElementById("restart");
+
+    // ============ 棋子定义 ============
+    // type: rk 帅/将  ad 仕/士  bi 相/象  hn 马  ro 车  ca 炮  pa 兵/卒
+    var NAME_RED = { rk:"帅", ad:"仕", bi:"相", hn:"马", ro:"车", ca:"炮", pa:"兵" };
+    var NAME_BLK = { rk:"将", ad:"士", bi:"象", hn:"马", ro:"车", ca:"炮", pa:"卒" };
+    var VALUE   = { rk:100000, ro:900, ca:450, hn:400, bi:200, ad:200, pa:100 };
+
+    // 标准开局布局：[ [type, col, row], ... ]
+    function setup() {
+        var b = [], c, r;
+        for (c = 0; c < COL; c++) { b[c] = []; for (r = 0; r < ROW; r++) b[c][r] = null; }
+        function put(side, type, c, r) { b[c][r] = { side: side, type: type }; }
+        // 黑方（上）
+        put("b","ro",0,0); put("b","hn",1,0); put("b","bi",2,0); put("b","ad",3,0); put("b","rk",4,0);
+        put("b","ad",5,0); put("b","bi",6,0); put("b","hn",7,0); put("b","ro",8,0);
+        put("b","ca",1,2); put("b","ca",7,2);
+        put("b","pa",0,3); put("b","pa",2,3); put("b","pa",4,3); put("b","pa",6,3); put("b","pa",8,3);
+        // 红方（下）
+        put("r","ro",0,9); put("r","hn",1,9); put("r","bi",2,9); put("r","ad",3,9); put("r","rk",4,9);
+        put("r","ad",5,9); put("r","bi",6,9); put("r","hn",7,9); put("r","ro",8,9);
+        put("r","ca",1,7); put("r","ca",7,7);
+        put("r","pa",0,6); put("r","pa",2,6); put("r","pa",4,6); put("r","pa",6,6); put("r","pa",8,6);
+        return b;
+    }
+
+    // 坐标转换：canvas 像素 → 交叉点（col,row）；越界返回 null
+    function cellFromEvent(e) {
+        var rect = cv.getBoundingClientRect();
+        var x = (e.clientX - rect.left) * (W / rect.width);
+        var y = (e.clientY - rect.top) * (H / rect.height);
+        var c = Math.round((x - PAD) / CELL), r = Math.round((y - PAD) / CELL);
+        if (c < 0 || c >= COL || r < 0 || r >= ROW) return null;
+        return { c: c, r: r };
+    }
+    function px(c, r) { return { x: PAD + c * CELL, y: PAD + r * CELL }; }
+
+    // ============ 走法规则引擎 ============
+    function inBoard(c, r) { return c >= 0 && c < COL && r >= 0 && r < ROW; }
+    // 九宫：红 row 7..9，黑 row 0..2，col 3..5
+    function inPalace(side, c, r) { return c >= 3 && c <= 5 && (side === "r" ? (r >= 7 && r <= 9) : (r >= 0 && r <= 2)); }
+    // 己方半场（未过河）判断：红 row>=5，黑 row<=4
+    function onOwnSide(side, r) { return side === "r" ? r >= 5 : r <= 4; }
+
+    // 某个 (c,r) 是否被 side 的对方棋子攻击（不含递归将军）
+    function isAttacked(b, side, c, r) {
+        var opp = side === "r" ? "b" : "r", i, d, k;
+        // 车 / 炮：四方向扫描
+        var dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+        for (i = 0; i < 4; i++) {
+            var dc = dirs[i][0], dr = dirs[i][1], cc = c + dc, rr = r + dr, first = true;
+            while (inBoard(cc, rr)) {
+                var p = b[cc][rr];
+                if (p) {
+                    if (p.side === opp && p.type === "ro" && first) return true;   // 车直线攻击
+                    if (p.side === opp && p.type === "ca" && !first) return true;  // 炮隔子攻击
+                    break;
+                }
+                first = false;
+                cc += dc; rr += dr;
+            }
+        }
+        // 马（8 个日位，蹩马腿）
+        var hd = [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]];
+        var ld = [[1,0],[1,0],[-1,0],[-1,0],[0,1],[0,-1],[0,1],[0,-1]];
+        for (i = 0; i < 8; i++) {
+            var mc = c + hd[i][0], mr = r + hd[i][1];
+            if (!inBoard(mc, mr)) continue;
+            var p2 = b[mc][mr];
+            if (p2 && p2.side === opp && p2.type === "hn") {
+                var lc = c + ld[i][0], lr = r + ld[i][1];
+                if (!b[lc][lr]) return true;
+            }
+        }
+        // 相/象（4 个田位，塞象眼，且只能攻击己方半场内的将——但目标已在九宫，若相在对岸到不了）
+        if (onOwnSide(opp, r)) {  // 对方相还在己方半场才可能攻击到这里（将/帅必在九宫，双方九宫都在各自半场）
+            var bd = [[2,2],[2,-2],[-2,2],[-2,-2]];
+            var ed = [[1,1],[1,-1],[-1,1],[-1,-1]];
+            for (i = 0; i < 4; i++) {
+                var bc2 = c + bd[i][0], br2 = r + bd[i][1];
+                if (!inBoard(bc2, br2)) continue;
+                var p3 = b[bc2][br2];
+                if (p3 && p3.side === opp && p3.type === "bi" && onOwnSide(opp, br2)) {
+                    var ec2 = c + ed[i][0], er2 = r + ed[i][1];
+                    if (!b[ec2][er2]) return true;
+                }
+            }
+        }
+        // 士（九宫斜一步）
+        var adc = [[1,1],[1,-1],[-1,1],[-1,-1]];
+        for (i = 0; i < 4; i++) {
+            var ac2 = c + adc[i][0], ar2 = r + adc[i][1];
+            if (inBoard(ac2, ar2) && inPalace(opp, ac2, ar2)) {
+                var p4 = b[ac2][ar2];
+                if (p4 && p4.side === opp && p4.type === "ad") return true;
+            }
+        }
+        // 兵/卒：对方兵向前一步（红兵在目标正下方一格 / 黑卒在正上方一格）+（过河后）左右一步
+        var fR = opp === "r" ? r + 1 : r - 1;
+        if (inBoard(c, fR)) {
+            var pp = b[c][fR];
+            if (pp && pp.side === opp && pp.type === "pa") return true;
+        }
+        for (var dx = -1; dx <= 1; dx += 2) {
+            var pc3 = c + dx, pr3 = r;
+            if (!inBoard(pc3, pr3)) continue;
+            var pp2 = b[pc3][pr3];
+            if (pp2 && pp2.side === opp && pp2.type === "pa") {
+                var crossed = opp === "r" ? pr3 <= 4 : pr3 >= 5;  // 过河后兵才能横走
+                if (crossed) return true;
+            }
+        }
+        // 帅/将照面：同列、之间无子
+        var k = findKing(b, opp);
+        if (k && k.c === c) {
+            var blocked = false;
+            for (var rr2 = Math.min(r, k.r) + 1; rr2 < Math.max(r, k.r); rr2++) {
+                if (b[c][rr2]) { blocked = true; break; }
+            }
+            if (!blocked) return true;
+        }
+        return false;
+    }
+    function findKing(b, side) {
+        for (var c = 0; c < COL; c++) for (var r = 0; r < ROW; r++) {
+            var p = b[c][r];
+            if (p && p.side === side && p.type === "rk") return { c: c, r: r };
+        }
+        return null;
+    }
+    function isCheck(b, side) {
+        var k = findKing(b, side);
+        return k ? isAttacked(b, side, k.c, k.r) : false;
+    }
+
+    // 生成某方全部合法走法 [{fc,fr,tc,tr}]
+    function genMoves(b, side) {
+        var moves = [], c, r, i;
+        for (c = 0; c < COL; c++) for (r = 0; r < ROW; r++) {
+            var p = b[c][r];
+            if (!p || p.side !== side) continue;
+            var cands = [];
+            if (p.type === "ro") cands = rookMoves(b, c, r);
+            else if (p.type === "ca") cands = cannonMoves(b, c, r);
+            else if (p.type === "hn") cands = horseMoves(b, c, r);
+            else if (p.type === "bi") cands = bishopMoves(b, c, r, side);
+            else if (p.type === "ad") cands = advisorMoves(b, c, r, side);
+            else if (p.type === "rk") cands = kingMoves(b, c, r, side);
+            else if (p.type === "pa") cands = pawnMoves(b, c, r, side);
+            for (i = 0; i < cands.length; i++) {
+                var t = cands[i], tc = t.c, tr = t.r;
+                var saved = b[tc][tr];
+                b[tc][tr] = p; b[c][r] = null;
+                if (!isCheck(b, side)) moves.push({ fc: c, fr: r, tc: tc, tr: tr });
+                b[c][r] = p; b[tc][tr] = saved;
+            }
+        }
+        return moves;
+    }
+    function rookMoves(b, c, r) {
+        var out = [], dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+        for (var i = 0; i < 4; i++) {
+            var cc = c + dirs[i][0], rr = r + dirs[i][1];
+            while (inBoard(cc, rr)) {
+                var p = b[cc][rr];
+                if (!p) { out.push({ c: cc, r: rr }); }
+                else { if (p.side !== b[c][r].side) out.push({ c: cc, r: rr }); break; }
+                cc += dirs[i][0]; rr += dirs[i][1];
+            }
+        }
+        return out;
+    }
+    function cannonMoves(b, c, r) {
+        var out = [], dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+        for (var i = 0; i < 4; i++) {
+            var cc = c + dirs[i][0], rr = r + dirs[i][1], jumped = false;
+            while (inBoard(cc, rr)) {
+                var p = b[cc][rr];
+                if (!p) { if (!jumped) out.push({ c: cc, r: rr }); }
+                else {
+                    if (!jumped) jumped = true;
+                    else { if (p.side !== b[c][r].side) out.push({ c: cc, r: rr }); break; }
+                }
+                cc += dirs[i][0]; rr += dirs[i][1];
+            }
+        }
+        return out;
+    }
+    function horseMoves(b, c, r) {
+        var out = [], hd = [[1,2],[1,-2],[-1,2],[-1,-2],[2,1],[2,-1],[-2,1],[-2,-1]];
+        // 马腿位置与 hd 一一对应：右1下2→正下、右1上2→正上、左1下2→正下、左1上2→正上、右2下/上1→正右、左2下/上1→正左
+        var ld = [[0,1],[0,-1],[0,1],[0,-1],[1,0],[1,0],[-1,0],[-1,0]];
+        for (var i = 0; i < 8; i++) {
+            var mc = c + hd[i][0], mr = r + hd[i][1];
+            if (!inBoard(mc, mr)) continue;
+            var lc = c + ld[i][0], lr = r + ld[i][1];
+            if (b[lc][lr]) continue;  // 蹩马腿
+            var p = b[mc][mr];
+            if (!p || p.side !== b[c][r].side) out.push({ c: mc, r: mr });
+        }
+        return out;
+    }
+    function bishopMoves(b, c, r, side) {
+        var out = [], bd = [[2,2],[2,-2],[-2,2],[-2,-2]], ed = [[1,1],[1,-1],[-1,1],[-1,-1]];
+        for (var i = 0; i < 4; i++) {
+            var mc = c + bd[i][0], mr = r + bd[i][1];
+            if (!inBoard(mc, mr) || !onOwnSide(side, mr)) continue;  // 相不过河
+            var ec = c + ed[i][0], er = r + ed[i][1];
+            if (b[ec][er]) continue;  // 塞象眼
+            var p = b[mc][mr];
+            if (!p || p.side !== side) out.push({ c: mc, r: mr });
+        }
+        return out;
+    }
+    function advisorMoves(b, c, r, side) {
+        var out = [], adc = [[1,1],[1,-1],[-1,1],[-1,-1]];
+        for (var i = 0; i < 4; i++) {
+            var mc = c + adc[i][0], mr = r + adc[i][1];
+            if (!inPalace(side, mc, mr)) continue;
+            var p = b[mc][mr];
+            if (!p || p.side !== side) out.push({ c: mc, r: mr });
+        }
+        return out;
+    }
+    function kingMoves(b, c, r, side) {
+        var out = [], dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+        for (var i = 0; i < 4; i++) {
+            var mc = c + dirs[i][0], mr = r + dirs[i][1];
+            if (!inPalace(side, mc, mr)) continue;
+            var p = b[mc][mr];
+            if (!p || p.side !== side) out.push({ c: mc, r: mr });
+        }
+        return out;
+    }
+    function pawnMoves(b, c, r, side) {
+        var out = [], mc, mr, p;
+        if (side === "r") {
+            mc = c; mr = r - 1;                       // 向前
+            if (inBoard(mc, mr)) { p = b[mc][mr]; if (!p || p.side !== side) out.push({ c: mc, r: mr }); }
+            if (r <= 4) {                              // 过河后可横走
+                for (var dc = -1; dc <= 1; dc += 2) {
+                    mc = c + dc; mr = r;
+                    if (inBoard(mc, mr)) { p = b[mc][mr]; if (!p || p.side !== side) out.push({ c: mc, r: mr }); }
+                }
+            }
+        } else {
+            mc = c; mr = r + 1;
+            if (inBoard(mc, mr)) { p = b[mc][mr]; if (!p || p.side !== side) out.push({ c: mc, r: mr }); }
+            if (r >= 5) {
+                for (var dc2 = -1; dc2 <= 1; dc2 += 2) {
+                    mc = c + dc2; mr = r;
+                    if (inBoard(mc, mr)) { p = b[mc][mr]; if (!p || p.side !== side) out.push({ c: mc, r: mr }); }
+                }
+            }
+        }
+        return out;
+    }
+
+    // ============ 评估（黑方视角为正） ============
+    function evalBoard(b) {
+        var score = 0;
+        for (var c = 0; c < COL; c++) for (var r = 0; r < ROW; r++) {
+            var p = b[c][r];
+            if (!p) continue;
+            var v = VALUE[p.type];
+            if (p.type === "pa") {
+                var crossed = p.side === "r" ? r <= 4 : r >= 5;  // 过河兵价值更高
+                if (crossed) v += 120;
+            }
+            score += (p.side === "b" ? v : -v);
+        }
+        return score;
+    }
+    function moveOrder(m) {
+        var b = board;
+        return (b[m.tc][m.tr] ? VALUE[b[m.tc][m.tr].type] : 0);
+    }
+
+    // ============ 游戏状态 ============
+    var DIFFS = { easy:1, normal:2, hard:3 };
+    var diffKey = localStorage.getItem("chess_diff") || "normal";
+    function initDiff() {
+        var btns = document.querySelectorAll(".dbtn");
+        btns.forEach(function (b2) {
+            b2.classList.toggle("on", b2.dataset.d === diffKey);
+            b2.onclick = function () { diffKey = b2.dataset.d; localStorage.setItem("chess_diff", diffKey); initDiff(); };
+        });
+    }
+    initDiff();
+
+    var board = null, turn = "r", playing = false, aiThinking = false, rounds = 0;
+    var selected = null, targets = [], history = [], checkFlash = null, flashT = null;
+
+    // ============ 音效（Web Audio 合成，无需音频文件） ============
+    var actx = null, soundOn = true;
+    function audio() {
+        if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+        if (actx.state === "suspended") actx.resume();
+        return actx;
+    }
+    // 播放一个音：tone(频率, 时长s, 波形, 音量, 延迟s)
+    function tone(freq, dur, type, vol, when) {
+        if (!soundOn) return;
+        var a = audio(), t0 = a.currentTime + (when || 0);
+        var o = a.createOscillator(), g = a.createGain();
+        o.type = type || "sine"; o.frequency.value = freq;
+        g.gain.setValueAtTime(vol || 0.2, t0);
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+        o.connect(g); g.connect(a.destination);
+        o.start(t0); o.stop(t0 + dur + 0.02);
+    }
+    // 噪音"咚"（走子落木质感）
+    function thump(vol, when) {
+        if (!soundOn) return;
+        var a = audio(), t0 = a.currentTime + (when || 0), dur = 0.12;
+        var len = Math.floor(a.sampleRate * dur);
+        var buf = a.createBuffer(1, len, a.sampleRate), d = buf.getChannelData(0);
+        for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2);
+        var src = a.createBufferSource(); src.buffer = buf;
+        var g = a.createGain(); g.gain.setValueAtTime(vol || 0.5, t0);
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+        src.connect(g); g.connect(a.destination);
+        src.start(t0);
+    }
+    function sfxSelect()   { tone(720, .06, "sine", .16); tone(1080, .05, "sine", .1, .03); }
+    function sfxDeselect() { tone(420, .05, "sine", .1); }
+    function sfxMove()     { thump(.55); tone(240, .1, "triangle", .18); }
+    function sfxCapture()  { thump(.8); tone(160, .18, "square", .2); tone(90, .25, "triangle", .3, .02); }
+    function sfxCheck()    { tone(880, .09, "square", .14); tone(660, .09, "square", .14, .09); tone(880, .16, "square", .14, .18); }
+    function sfxWin()      { [523,659,784,1047].forEach(function (f, i) { tone(f, .2, "triangle", .2, i * .11); }); thump(.5, .44); }
+    function sfxLose()     { [392,330,262,196].forEach(function (f, i) { tone(f, .22, "triangle", .18, i * .13); }); }
+
+    // ============ 动画引擎（requestAnimationFrame 驱动） ============
+    var fx = { move: null, ripple: null, shakeT: 0, pulseT: 0, running: false };
+    function easeInOut(t) { return t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+    function tick() {
+        var now = performance.now(), need = false;
+        // 选中棋子脉动（600ms）
+        if (selected && now - fx.pulseT < 600) need = true;
+        // 走子移动动画
+        if (fx.move && fx.move.active) {
+            if (now - fx.move.start >= fx.move.dur) { fx.move.active = false; need = true; }
+            else need = true;
+        }
+        // 落点涟漪（450ms），结束后也需重绘一次以清除
+        if (fx.ripple) {
+            if (now - fx.ripple.t >= 450) { fx.ripple = null; need = true; }
+            else need = true;
+        }
+        // 棋盘震动（260ms）
+        if (fx.shakeT && now - fx.shakeT < 260) need = true;
+        if (need) { draw(); requestAnimationFrame(tick); }
+        else fx.running = false;
+    }
+    function startFx() { if (!fx.running) { fx.running = true; requestAnimationFrame(tick); } }
+
+    function gameOverText() {
+        // 若轮到谁无合法走法即输（将死或困毙）
+        if (!genMoves(board, turn).length) return turn === "r" ? "🔴 你赢了！" : "⚫ AI 获胜";
+        return null;
+    }
+    // 结束游戏：winner 为获胜方 "r"（玩家）或 "b"（AI）
+    function finishGame(winner) {
+        rounds++;
+        roundEl.textContent = rounds;
+        var won = winner === "r";
+        won ? sfxWin() : sfxLose();
+        overlay.style.display = "flex";
+        overlay.innerHTML = '<h2>' + (won ? "🔴 你赢了！" : "⚫ AI 获胜") + '</h2>' +
+            '<div style="font-size:13px; color:var(--muted)">' + (won ? "恭喜！将死了 AI" : "再来一局，赢回来！") + '</div>' +
+            '<div class="diff-row">' +
+            '<button class="dbtn" data-d="easy">简单</button>' +
+            '<button class="dbtn" data-d="normal">普通</button>' +
+            '<button class="dbtn" data-d="hard">困难</button></div>' +
+            '<button class="btn" id="start">再来一局</button>';
+        initDiff(); initStart();
+    }
+    // 将死/困毙判定：当前 turn 方无合法走法则输，赢家为其对手
+    function gameOverSilent() {
+        if (!genMoves(board, turn).length) {
+            finishGame(turn === "r" ? "b" : "r");
+            return true;
+        }
+        return false;
+    }
+    function initStart() {
+        var s = document.getElementById("start");
+        if (s) s.onclick = startGame;
+    }
+
+    // 走子：执行一步，返回 true 表示已分出胜负（吃将或将死/困毙）
+    function doMove(m) {
+        var mover = turn;
+        var from = board[m.fc][m.fr], captured = board[m.tc][m.tr];
+        var opp = turn === "r" ? "b" : "r";
+        // 记录移动动画数据：棋子从起点飞到终点（250ms 平滑缓动）
+        var fp = px(m.fc, m.fr), tp = px(m.tc, m.tr);
+        fx.move = {
+            piece: from, captured: captured,
+            fc: m.fc, fr: m.fr, tc: m.tc, tr: m.tr,
+            fx: fp.x, fy: fp.y, tx: tp.x, ty: tp.y,
+            start: performance.now(), dur: 250, active: true
+        };
+        // 落点涟漪
+        fx.ripple = { x: tp.x, y: tp.y, capture: !!captured, t: performance.now() };
+        board[m.tc][m.tr] = from; board[m.fc][m.fr] = null;
+        history.push({ fc: m.fc, fr: m.fr, tc: m.tc, tr: m.tr, from: from, captured: captured });
+        selected = null; targets = [];
+        // 音效：吃子更重、带低沉撞击；普通走子用落木"咚"
+        if (captured) { fx.shakeT = performance.now(); sfxCapture(); }
+        else sfxMove();
+        // 吃将/帅：直接获胜，游戏结束
+        if (captured && captured.type === "rk") {
+            startFx();
+            finishGame(mover);
+            return true;
+        }
+        // 将军提示
+        if (isCheck(board, opp)) {
+            checkFlash = findKing(board, opp);
+            fx.shakeT = performance.now();  // 将军时棋盘轻震
+            sfxCheck();
+            if (flashT) clearTimeout(flashT);
+            flashT = setTimeout(function () { checkFlash = null; draw(); }, 1600);
+        }
+        turn = opp;
+        turnEl.textContent = turn === "r" ? "🔴 你" : "⚫ AI…";
+        startFx();
+        return false;
+    }
+
+    // ============ 绘制 ============
+    function draw() {
+        ctx.clearRect(0, 0, W, H);
+        // 棋盘震动：吃子/将军时随机抖动衰减
+        var shx = 0, shy = 0, now = performance.now();
+        if (fx.shakeT && now - fx.shakeT < 220) {
+            var k = (220 - (now - fx.shakeT)) / 220;
+            shx = (Math.random() - .5) * 3 * k;
+            shy = (Math.random() - .5) * 3 * k;
+        }
+        ctx.save();
+        ctx.translate(shx, shy);
+        drawBoardGrid();
+        drawMarks();
+        drawPieces(now);
+        drawHints();
+        drawRipple(now);
+        ctx.restore();
+    }
+    function line(x1, y1, x2, y2) { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
+    function drawBoardGrid() {
+        ctx.strokeStyle = "rgba(88,58,24,.55)"; ctx.lineWidth = 1;
+        // 横线：10 条贯穿
+        for (var r = 0; r < ROW; r++) {
+            line(PAD, PAD + r * CELL, PAD + (COL - 1) * CELL, PAD + r * CELL);
+        }
+        // 纵线：河界处断开（黑 0..4 / 红 5..9）
+        for (var c = 0; c < COL; c++) {
+            if (c !== 0 && c !== COL - 1) {
+                line(PAD + c * CELL, PAD, PAD + c * CELL, PAD + 4 * CELL);
+                line(PAD + c * CELL, PAD + 5 * CELL, PAD + c * CELL, PAD + 9 * CELL);
+            } else {
+                line(PAD + c * CELL, PAD, PAD + c * CELL, PAD + 9 * CELL);
+            }
+        }
+        // 九宫斜线（黑/红）
+        ctx.strokeStyle = "rgba(88,58,24,.45)";
+        line(PAD + 3 * CELL, PAD, PAD + 5 * CELL, PAD + 2 * CELL);
+        line(PAD + 5 * CELL, PAD, PAD + 3 * CELL, PAD + 2 * CELL);
+        line(PAD + 3 * CELL, PAD + 7 * CELL, PAD + 5 * CELL, PAD + 9 * CELL);
+        line(PAD + 5 * CELL, PAD + 7 * CELL, PAD + 3 * CELL, PAD + 9 * CELL);
+        // 楚河 汉界
+        ctx.fillStyle = "rgba(120,60,20,.55)";
+        ctx.font = "bold 22px 'KaiTi','STKaiti','Microsoft YaHei',serif";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        var hy = PAD + 4.5 * CELL;
+        ctx.fillText("楚　河", PAD + 2.2 * CELL, hy);
+        ctx.fillText("汉　界", PAD + 6.8 * CELL, hy);
+        ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+    }
+    function crossMark(x, y) {
+        ctx.strokeStyle = "rgba(88,58,24,.6)"; ctx.lineWidth = 1;
+        line(x - 3, y - 3, x + 3, y + 3);
+        line(x - 3, y + 3, x + 3, y - 3);
+    }
+    function drawMarks() {
+        // 炮位
+        crossMark(px(1, 2).x, px(1, 2).y); crossMark(px(7, 2).x, px(7, 2).y);
+        crossMark(px(1, 7).x, px(1, 7).y); crossMark(px(7, 7).x, px(7, 7).y);
+        // 兵/卒位
+        var rows = [3, 6];
+        rows.forEach(function (r) {
+            [0, 2, 4, 6, 8].forEach(function (c) { crossMark(px(c, r).x, px(c, r).y); });
+        });
+    }
+    function drawPiece(c, r, p, opts) {
+        opts = opts || {};
+        var pt = px(c, r), x = pt.x, y = pt.y;
+        ctx.save();
+        // 投影
+        ctx.shadowColor = "rgba(30,20,5,.5)"; ctx.shadowBlur = 6; ctx.shadowOffsetY = 2;
+        var g = ctx.createRadialGradient(x - 5, y - 5, 2, x, y, R);
+        g.addColorStop(0, "#fdf3dc"); g.addColorStop(1, "#d9bd84");
+        ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.fillStyle = g; ctx.fill();
+        ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+        // 描边
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = opts.selected ? "#f59e0b" : "rgba(110,70,25,.65)";
+        ctx.stroke();
+        if (opts.selected) {
+            // 选中态：金色光晕脉动呼吸
+            var pulse = 1 + 0.12 * Math.sin((performance.now() - fx.pulseT) / 90);
+            ctx.save();
+            ctx.shadowColor = "rgba(245,158,11,.95)"; ctx.shadowBlur = 14 + 6 * (pulse - 1) * 8;
+            ctx.lineWidth = 3.2 * pulse; ctx.stroke();
+            ctx.restore();
+            // 选中小角标
+            ctx.fillStyle = "#f59e0b";
+            [[1, -1], [1, 1], [-1, -1], [-1, 1]].forEach(function (d) {
+                ctx.beginPath();
+                ctx.arc(x + d[0] * (R + 4), y + d[1] * (R + 4), 2.2 * pulse, 0, 7);
+                ctx.fill();
+            });
+        }
+        // 文字
+        var name = p.side === "r" ? NAME_RED[p.type] : NAME_BLK[p.type];
+        ctx.font = "bold " + (p.type === "rk" ? 26 : 22) + "px 'KaiTi','STKaiti','Microsoft YaHei',sans-serif";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillStyle = p.side === "r" ? "#b03020" : "#1a1a1a";
+        ctx.fillText(name, x, y + 1);
+        ctx.restore();
+    }
+    // 绘制一颗正在移动/淡出的棋子（按逻辑坐标插值）
+    function drawFloatingPiece(x, y, p, alpha, scale) {
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.shadowColor = "rgba(30,20,5,.5)"; ctx.shadowBlur = 6; ctx.shadowOffsetY = 2;
+        var r = R * scale;
+        var g = ctx.createRadialGradient(x - 5 * scale, y - 5 * scale, 2 * scale, x, y, r);
+        g.addColorStop(0, "#fdf3dc"); g.addColorStop(1, "#d9bd84");
+        ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fillStyle = g; ctx.fill();
+        ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+        ctx.lineWidth = 1.5; ctx.strokeStyle = "rgba(110,70,25,.65)"; ctx.stroke();
+        var name = p.side === "r" ? NAME_RED[p.type] : NAME_BLK[p.type];
+        ctx.font = "bold " + (p.type === "rk" ? 26 : 22) * scale + "px 'KaiTi','STKaiti','Microsoft YaHei',sans-serif";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillStyle = p.side === "r" ? "#b03020" : "#1a1a1a";
+        ctx.fillText(name, x, y + 1);
+        ctx.restore();
+    }
+    function drawPieces(now) {
+        var mv = fx.move;
+        for (var c = 0; c < COL; c++) for (var r = 0; r < ROW; r++) {
+            var p = board[c][r];
+            if (!p) continue;
+            // 移动动画中的棋子已在下方单独绘制，跳过终点位置避免重叠
+            if (mv && mv.active && c === mv.tc && r === mv.tr) continue;
+            var sel = selected && selected.c === c && selected.r === r;
+            drawPiece(c, r, p, { selected: sel });
+        }
+        // 走子移动动画：棋子从起点平滑滑到终点，带轻微"腾起-落下"
+        if (mv && mv.active) {
+            var t = Math.min(1, (now - mv.start) / mv.dur);
+            var e = easeInOut(t);
+            var x = mv.fx + (mv.tx - mv.fx) * e;
+            var y = mv.fy + (mv.ty - mv.fy) * e;
+            var lift = 1 + 0.15 * Math.sin(t * Math.PI);  // 中途微放大，像被拿起
+            drawFloatingPiece(x, y, mv.piece, 1, lift);
+        }
+        // 将军警示
+        if (checkFlash) {
+            var kpt = px(checkFlash.c, checkFlash.r);
+            ctx.save();
+            ctx.strokeStyle = "rgba(239,68,68,.95)"; ctx.lineWidth = 3;
+            ctx.shadowColor = "rgba(239,68,68,.9)"; ctx.shadowBlur = 12;
+            ctx.beginPath(); ctx.arc(kpt.x, kpt.y, R + 5, 0, 7); ctx.stroke();
+            ctx.restore();
+        }
+    }
+    // 落子/吃子涟漪：扩散圆圈 + 交叉星芒
+    function drawRipple(now) {
+        if (!fx.ripple) return;
+        var age = now - fx.ripple.t, prog = Math.min(1, age / 450);
+        if (prog >= 1) return;
+        var col = fx.ripple.capture ? "rgba(239,68,68," : "rgba(34,197,94,";
+        ctx.save();
+        // 扩散圈
+        ctx.strokeStyle = col + (0.7 * (1 - prog)) + ")";
+        ctx.lineWidth = 2.5 * (1 - prog) + 0.5;
+        ctx.beginPath(); ctx.arc(fx.ripple.x, fx.ripple.y, R + prog * 26, 0, 7); ctx.stroke();
+        // 内圈
+        ctx.strokeStyle = col + (0.45 * (1 - prog)) + ")";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(fx.ripple.x, fx.ripple.y, R * (1 - 0.3 * prog), 0, 7); ctx.stroke();
+        // 吃子时加星芒
+        if (fx.ripple.capture) {
+            ctx.strokeStyle = "rgba(255,180,60," + (0.85 * (1 - prog)) + ")";
+            ctx.lineWidth = 2;
+            var s = R + prog * 30;
+            ctx.beginPath();
+            ctx.moveTo(fx.ripple.x - s, fx.ripple.y); ctx.lineTo(fx.ripple.x + s, fx.ripple.y);
+            ctx.moveTo(fx.ripple.x, fx.ripple.y - s); ctx.lineTo(fx.ripple.x, fx.ripple.y + s);
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+    function drawHints() {
+        var i;
+        // 可走位置提示
+        for (i = 0; i < targets.length; i++) {
+            var pt = px(targets[i].c, targets[i].r);
+            var hasPiece = !!board[targets[i].c][targets[i].r];
+            if (hasPiece) {
+                ctx.save();
+                ctx.strokeStyle = "rgba(239,68,68,.95)"; ctx.lineWidth = 2.5;
+                ctx.beginPath(); ctx.arc(pt.x, pt.y, R + 2, 0, 7); ctx.stroke();
+                ctx.restore();
+            } else {
+                ctx.save();
+                ctx.fillStyle = "rgba(34,197,94,.8)"; ctx.shadowColor = "rgba(34,197,94,.8)"; ctx.shadowBlur = 8;
+                ctx.beginPath(); ctx.arc(pt.x, pt.y, 5, 0, 7); ctx.fill();
+                ctx.restore();
+            }
+        }
+        // 悬停走子预览：鼠标按住己方棋子拖到某格时，用虚影提示落点
+        if (hoverTarget) {
+            var hp = px(hoverTarget.c, hoverTarget.r);
+            var captured = board[hoverTarget.c][hoverTarget.r];
+            if (!captured) {
+                ctx.save();
+                ctx.globalAlpha = .5;
+                var g2 = ctx.createRadialGradient(hp.x - 4, hp.y - 4, 2, hp.x, hp.y, R);
+                g2.addColorStop(0, "#fdf3dc"); g2.addColorStop(1, "#c9a75f");
+                ctx.beginPath(); ctx.arc(hp.x, hp.y, R, 0, 7); ctx.fillStyle = g2; ctx.fill();
+                ctx.restore();
+            }
+        }
+    }
+    var hoverTarget = null;
+
+    // ============ 交互 ============
+    function trySelect(p, c, r) {
+        // 选中己方棋子：计算可走目标
+        selected = { c: c, r: r };
+        targets = genMovesForOne(board, p, c, r);
+        fx.pulseT = performance.now();  // 触发脉动呼吸动画
+        sfxSelect();
+        startFx();
+        draw();
+    }
+    function genMovesForOne(b, p, c, r) {
+        var out = [];
+        var all = genMoves(b, p.side);
+        for (var i = 0; i < all.length; i++) if (all[i].fc === c && all[i].fr === r) out.push({ c: all[i].tc, r: all[i].tr });
+        return out;
+    }
+    function onDown(e) {
+        if (!playing || aiThinking || overlay.style.display !== "none") return;
+        var cell = cellFromEvent(e);
+        if (!cell) return;
+        var p = board[cell.c][cell.r];
+        if (p && p.side === turn) { trySelect(p, cell.c, cell.r); return; }
+        // 点击目标位走子
+        if (selected) {
+            var mv = null;
+            for (var i = 0; i < targets.length; i++) {
+                if (targets[i].c === cell.c && targets[i].r === cell.r) { mv = { fc: selected.c, fr: selected.r, tc: cell.c, tr: cell.r }; break; }
+            }
+            if (mv) {
+                var ended = doMove(mv);
+                hoverTarget = null;
+                draw();
+                if (ended || gameOverSilent()) return;
+                aiMove();
+                return;
+            }
+        }
+        // 否则取消选中
+        if (selected) sfxDeselect();
+        selected = null; targets = []; hoverTarget = null; draw();
+    }
+    cv.addEventListener("pointerdown", onDown, { passive: true });
+
+    // 悬停预览（仅选中后拖到可走位时显示虚影）
+    cv.addEventListener("pointermove", function (e) {
+        if (!playing || aiThinking || !selected || overlay.style.display !== "none") return;
+        var cell = cellFromEvent(e);
+        var t = null;
+        if (cell) {
+            for (var i = 0; i < targets.length; i++) {
+                if (targets[i].c === cell.c && targets[i].r === cell.r) { t = targets[i]; break; }
+            }
+        }
+        if ((t && !hoverTarget) || (!t && hoverTarget) || (t && hoverTarget && (t.c !== hoverTarget.c || t.r !== hoverTarget.r))) {
+            hoverTarget = t; draw();
+        }
+    }, { passive: true });
+    cv.addEventListener("pointerleave", function () {
+        if (hoverTarget) { hoverTarget = null; draw(); }
+    }, { passive: true });
+
+    // ============ AI ============
+    function aiMove() {
+        aiThinking = true;
+        turnEl.textContent = "⚫ AI…";
+        setTimeout(function () {
+            var diff = DIFFS[diffKey];
+            var moves = genMoves(board, "b");
+            var chosen = null;
+            if (!moves.length) { aiThinking = false; gameOverSilent(); return; }
+            if (diff === 1) {
+                chosen = moves[Math.floor(Math.random() * moves.length)];
+            } else if (diff === 2) {
+                var best = -1e9, cands = [];
+                moves.forEach(function (m) {
+                    var v = moveOrder(m) * 1000 + Math.random() * 40 + evalDelta(board, m);
+                    if (v > best) { best = v; cands = [m]; } else if (v === best) cands.push(m);
+                });
+                chosen = cands[Math.floor(Math.random() * cands.length)];
+            } else {
+                chosen = alphaBeta(board, 3, -1e9, 1e9, "b").best;
+            }
+            var ended = doMove(chosen);
+            draw();
+            aiThinking = false;
+            turnEl.textContent = "🔴 你";
+            if (!ended) gameOverSilent();
+        }, 350);
+    }
+    function evalDelta(b, m) {
+        // 走一步后的静态评估差（红视角变化），用于普通难度
+        var save = b[m.tc][m.tr], from = b[m.fc][m.fr];
+        b[m.tc][m.tr] = from; b[m.fc][m.fr] = null;
+        var v = evalBoard(b);
+        b[m.fc][m.fr] = from; b[m.tc][m.tr] = save;
+        return v;
+    }
+    function alphaBeta(b, depth, alpha, beta, side) {
+        var moves = genMoves(b, side);
+        if (!moves.length) {
+            // 无走法：被将死/困毙，当前方大劣
+            return { score: isCheck(b, side) ? -1e8 - depth : -1e7 - depth, best: null };
+        }
+        moves.sort(function (a, c) { return moveOrder(c) - moveOrder(a); });
+        var best = null;
+        if (side === "b") {  // 最大化
+            var mx = -1e9;
+            for (var i = 0; i < moves.length; i++) {
+                var m = moves[i];
+                var save = b[m.tc][m.tr], from = b[m.fc][m.fr];
+                b[m.tc][m.tr] = from; b[m.fc][m.fr] = null;
+                var sc = depth <= 1 ? evalBoard(b) : alphaBeta(b, depth - 1, alpha, beta, "r").score;
+                b[m.fc][m.fr] = from; b[m.tc][m.tr] = save;
+                if (sc > mx) { mx = sc; best = m; }
+                if (mx > alpha) alpha = mx;
+                if (beta <= alpha) break;
+            }
+            return { score: mx, best: best };
+        } else {  // 最小化（红方）
+            var mn = 1e9;
+            for (var i = 0; i < moves.length; i++) {
+                var m = moves[i];
+                var save = b[m.tc][m.tr], from = b[m.fc][m.fr];
+                b[m.tc][m.tr] = from; b[m.fc][m.fr] = null;
+                var sc = depth <= 1 ? evalBoard(b) : alphaBeta(b, depth - 1, alpha, beta, "b").score;
+                b[m.fc][m.fr] = from; b[m.tc][m.tr] = save;
+                if (sc < mn) { mn = sc; best = m; }
+                if (mn < beta) beta = mn;
+                if (beta <= alpha) break;
+            }
+            return { score: mn, best: best };
+        }
+    }
+
+    // ============ 控制 ============
+    function startGame() {
+        board = setup();
+        turn = "r"; selected = null; targets = []; history = []; hoverTarget = null; checkFlash = null;
+        fx = { move: null, ripple: null, shakeT: 0, pulseT: 0, running: false };
+        playing = true; aiThinking = false;
+        overlay.style.display = "none";
+        turnEl.textContent = "🔴 你";
+        draw();
+    }
+    restartBtn.onclick = function () { startGame(); };
+    undoBtn.onclick = function () {
+        if (!playing || overlay.style.display !== "none") return;
+        if (aiThinking) return;
+        // 轮到 AI 时（玩家刚走完）撤 1 步；轮到玩家时撤 2 步（AI + 玩家）
+        var n = turn === "b" ? 1 : 2;
+        for (var i = 0; i < n; i++) {
+            if (!history.length) break;
+            var h = history.pop();
+            board[h.fc][h.fr] = h.from; board[h.tc][h.tr] = h.captured;
+        }
+        turn = history.length % 2 === 0 ? "r" : "b";
+        selected = null; targets = []; hoverTarget = null; checkFlash = null;
+        turnEl.textContent = turn === "r" ? "🔴 你" : "⚫ AI…";
+        draw();
+        if (turn === "b") aiMove();
+    };
+    initStart();
+    startBtn.onclick = startGame;
+    draw();
+})();
+</script>
+</body>
+</html>

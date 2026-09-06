@@ -1,0 +1,424 @@
+/* ===== 云书库 · 公共设计系统（static/css/common.css）=====
+   靛紫品牌风（indigo→purple）+ 玻璃拟态（Glassmorphism）：
+   - 页面底色为暖灰（浅色 #f4f5fb）/ 紫调深蓝（暗色 #0b1026），
+     叠加多组靛紫/青的品牌光晕渐变（body 多层径向渐变，随滚动固定）。
+   - 侧栏与内容容器使用半透明毛玻璃（backdrop-filter 模糊 + 提亮），
+     圆角 18px（移动端 12px）、柔和投影 + 顶部高光描边。
+   - 品牌渐变（靛蓝 #6366f1 → 紫 #8b5cf6）用于 Logo、主按钮、
+     选中态、标题强调条；内容卡片保持不透明，保证信息可读。
+   - 左侧固定导航（浅色为白色毛玻璃，暗色为深蓝毛玻璃），
+     移动端 / 平板（≤1024px）自动折叠为顶部图标栏。
+   - 微交互：悬停描边加深 / 内容淡入上移 / 按钮按压反馈。
+
+   各页面特有的样式（文件网格 / 阅读器 / 游戏卡片等）仍保留在各自模板的
+   内联 <style> 中，并复用下方的 CSS 变量。使用方式：
+   <head> 引入本文件 → body 开头 include nav.html。
+*/
+
+/* ===== 1. 设计令牌 ===== */
+:root {
+    /* 色板（浅色）：纯白底 + 白卡片，靛蓝→紫品牌渐变 */
+    --bg: #ffffff;             /* 页面底色（纯白） */
+    --surface: #ffffff;        /* 卡片 / 内容容器（不透明，保证可读） */
+    --surface-2: #eef0f6;      /* 次级底（输入框、进度轨道） */
+    --border: #e6e8f0;         /* 常规描边 */
+    --border-strong: #d3d7e4;  /* 强调描边（hover / 次级按钮） */
+    --text: #23262f;           /* 主文字 */
+    --text-2: #5c616e;         /* 次级文字 */
+    --text-3: #9aa0ad;         /* 弱化文字（占位 / 提示） */
+    --primary: #5a62f0;        /* 品牌主色（靛蓝） */
+    --primary-2: #454ec9;      /* 品牌深色（hover） */
+    /* 品牌渐变：靛蓝 → 紫（Logo / 主按钮 / 强调条 / 选中态） */
+    --grad: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    --accent-soft: #eef0fd;    /* 品牌淡底（选中态 / 标签底） */
+    --danger: #e5484d;
+    --danger-soft: #fbe9ea;
+    --ok: #1f9d55;
+
+    /* 圆角 / 阴影 / 层级 */
+    --radius: 18px;            /* 玻璃容器圆角 */
+    --radius-sm: 10px;         /* 按钮 / 卡片小圆角 */
+    --shadow-sm: 0 1px 3px rgba(24, 29, 43, .06);
+    --shadow-md: 0 8px 24px rgba(24, 29, 43, .08);
+    --shadow-lg: 0 20px 50px rgba(24, 29, 43, .14);
+
+    /* 布局 */
+    --sidebar-w: 224px;
+    /* 移动端顶部应用栏 / 底部导航栏的毛玻璃底 */
+    --nav-glass: rgba(255, 255, 255, .82);
+
+    /* 统一过渡 */
+    --t: all .16s ease;
+}
+
+/* 暗色模式：纯黑背景（#000000），无彩色底，观感沉稳 */
+body.dark {
+    --bg: #000000;             /* 页面底色：纯黑 */
+    --surface: #1e1e24;        /* 卡片 / 内容容器 */
+    --surface-2: #26262d;      /* 次级底（输入框、进度轨道） */
+    --border: #30303a;         /* 常规描边 */
+    --border-strong: #3e3e4a;  /* 强调描边（hover / 次级按钮） */
+    --text: #e6ecf8;           /* 主文字：高对比 */
+    --text-2: #9aa6c2;         /* 次级文字 */
+    --text-3: #6b7594;         /* 弱化文字 */
+    --primary: #8b94ff;        /* 品牌主色（暗色下提亮，保持辨识度） */
+    --primary-2: #a7afff;      /* 品牌 hover */
+    --grad: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    --accent-soft: #262630;    /* 品牌淡底（选中态 / 标签底） */
+    --danger-soft: #3a2326;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, .4);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, .5);
+    --shadow-lg: 0 20px 50px rgba(0, 0, 0, .6);
+    --nav-glass: rgba(0, 0, 0, .85);
+}
+
+/* ===== 2. 基础 ===== */
+* { box-sizing: border-box; }
+html { scrollbar-gutter: stable; scroll-behavior: smooth; }
+
+body {
+    font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+    /* 白天/暗色均为纯色背景（白/黑），不叠加品牌光晕渐变 */
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    min-height: 100vh;
+    /* 中文字体渲染优化：消除 Windows 下字体发虚、锯齿感 */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    /* 左侧边栏固定占位：所有页面内容整体右移，无需各自加外边距 */
+    padding-left: var(--sidebar-w);
+    transition: background .25s ease, color .25s ease;
+}
+body.dark {
+    /* 暗色模式：纯黑背景，去掉品牌光晕渐变 */
+    background: var(--bg);
+}
+a { color: inherit; }
+/* 移动端：去除点击高亮（交给自定义 active 样式）；按钮/链接禁用双击缩放 */
+button, a { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+::selection { background: rgba(99, 102, 241, .25); }
+
+/* 细滚动条：与整体风格一致 */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; border: 2px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ===== 3. 左侧边栏（nav.html）=====
+   平铺侧栏：透明底直接印在页面背景上，不做毛玻璃卡片，仅保留右侧分隔线；
+   品牌区带靛紫光晕，Logo 用渐变底 + 发光 */
+.sidebar {
+    position: fixed; left: 0; top: 0; bottom: 0;
+    width: var(--sidebar-w); z-index: 200;
+    display: flex; flex-direction: column;
+    padding: 18px 12px 14px;
+    background: transparent;
+    border-right: 1px solid var(--border);
+}
+body.dark .sidebar {
+    background: transparent;
+    border-right-color: var(--border);
+}
+/* 品牌区 */
+.sb-brand {
+    position: relative;               /* 光晕伪元素定位参照 */
+    display: flex; align-items: center; gap: 10px;
+    padding: 2px 6px 14px; border-bottom: 1px solid var(--border);
+}
+/* 品牌区顶部光晕：原为靛紫柔光增强深度；背景改纯白/纯黑后不再显示，
+   保留伪元素占位（content 为空即不渲染） */
+.sb-brand::before {
+    content: ""; position: absolute; left: -12px; right: -12px; top: -18px; height: 96px;
+    background: transparent;
+    pointer-events: none;
+}
+.sb-title { color: var(--text); font-size: 15px; font-weight: 700; letter-spacing: 1px; line-height: 1.2; }
+.sb-sub { color: var(--text-3); font-size: 11px; margin-top: 3px; }
+/* 导航区 */
+.sb-nav { display: flex; flex-direction: column; gap: 3px; margin-top: 14px; flex: 1; }
+/* 导航链接：与"切换主题"按钮同款幽灵样式（透明底 + 1px 边框，
+   hover 边框加深、文字变亮），保证左侧栏所有元素美术风格统一 */
+.sb-link {
+    display: flex; align-items: center; gap: 10px;
+    color: var(--text-2); text-decoration: none; font-size: 13.5px;
+    padding: 8px 11px; border-radius: var(--radius-sm);
+    background: transparent; border: 1px solid var(--border);
+    transition: var(--t); white-space: nowrap;
+}
+.sb-link:hover { border-color: var(--border-strong); color: var(--text); background: var(--surface); }
+/* 当前页：保留品牌渐变底 + 主色文字 + 主色边框，仍可一眼区分 */
+.sb-link.active {
+    background: linear-gradient(90deg, rgba(99, 102, 241, .16), rgba(139, 92, 246, .08));
+    border-color: rgba(99, 102, 241, .4);
+    color: var(--primary); font-weight: 600;
+    position: relative;
+}
+/* 当前页指示：左侧品牌渐变竖条 + 发光，比纯底色更清晰 */
+.sb-link.active::before {
+    content: ""; position: absolute; left: -11px; top: 50%;
+    transform: translateY(-50%); width: 3px; height: 18px;
+    border-radius: 999px; background: var(--grad);
+    box-shadow: 0 0 8px rgba(99, 102, 241, .6);
+}
+/* 导航链接（桌面左侧栏 / 移动端底部栏）：一律纯文字、不显示图标（用户偏好）。
+   图标 HTML 仍保留在 nav.html 中，仅视觉隐藏，方便日后恢复。 */
+.sb-link .sb-ico { display: none; }
+/* 底部操作区 */
+.sb-foot { border-top: 1px solid var(--border); padding-top: 12px; display: flex; flex-direction: column; gap: 3px; }
+.sb-foot .theme-toggle {
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text-2); padding: 8px; border-radius: var(--radius-sm);
+    font-size: 13px; cursor: pointer; font-family: inherit; transition: var(--t);
+}
+.sb-foot .theme-toggle:hover { border-color: var(--border-strong); color: var(--text); }
+
+/* 移动端顶部应用栏（nav.html 内 .sb-mbar）：默认隐藏，≤1024px 时显示。
+   左侧品牌 Logo + 标题，右侧主题切换。
+   与底部导航分工：底部只管页面入口，主题等系统操作统一放顶部。
+   断点取 1024px：手机与平板（iPad 竖屏）统一使用"应用式布局"，
+   与各模板私有样式（≤1024px）保持同一断点，避免 641-768px 区间错位。 */
+.sb-mbar {
+    display: none;
+    align-items: center; gap: 8px;
+    background: var(--nav-glass);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border);
+    font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+}
+.sb-mbar-brand { display: flex; align-items: center; gap: 8px; text-decoration: none; min-width: 0; }
+.sb-mbar-title { font-size: 14px; font-weight: 700; color: var(--text); letter-spacing: .5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb-mbar-actions { margin-left: auto; display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.sb-mbar-actions .theme-toggle {
+    height: 34px; padding: 0 12px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--surface-2);
+    color: var(--text-2); display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-family: inherit; font-size: 12px; transition: var(--t);
+    text-decoration: none;
+}
+.sb-mbar-actions .theme-toggle:hover { border-color: var(--border-strong); color: var(--text); background: var(--surface); }
+.sb-mbar-actions .theme-toggle:active { transform: scale(.94); }
+
+/* ===== 4. 内容容器（平铺）=====
+   不做玻璃卡片：透明底直接铺在页面背景上，无圆角边框阴影 */
+.content {
+    max-width: 1280px; margin: 24px auto 48px;
+    background: transparent;
+    padding: 28px 32px;
+    animation: fadeUp .3s ease both;
+}
+body.dark .content {
+    background: transparent;
+}
+@keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+/* 弹窗内容弹入：轻微缩放 + 上移，比纯淡入更有层次 */
+@keyframes popIn { from { opacity: 0; transform: scale(.95) translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* ===== 5. 页面标题 / 说明 / 面包屑 ===== */
+.welcome, .page-title {
+    font-size: 22px; font-weight: 700; color: var(--text);
+    margin: 0 0 6px; letter-spacing: .4px; line-height: 1.35;
+}
+.welcome .name, .page-title .grad {
+    background: var(--grad);
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent; -webkit-text-fill-color: transparent;
+}
+/* 页面头部行：标题组在左，搜索等操作在右，窄屏换行 */
+.page-head {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 14px; flex-wrap: wrap; margin-bottom: 14px;
+}
+/* 左侧组：欢迎标题与搜索框同一行并排；面包屑强制占满整行换到下一行 */
+.head-left {
+    display: flex; align-items: center; flex-wrap: wrap;
+    gap: 6px 14px; min-width: 0;
+}
+.head-left .crumb { flex-basis: 100%; }
+.tip, .crumb, .page-sub { color: var(--text-2); font-size: 13px; margin: 6px 0 0; }
+.crumb { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.crumb a {
+    color: var(--primary); text-decoration: none; background: var(--accent-soft);
+    padding: 3px 10px; border-radius: 999px; transition: var(--t);
+}
+.crumb a:hover { background: var(--primary); color: #fff; }
+.crumb .sep { color: var(--text-3); }
+
+/* 返回上级链接 */
+.back {
+    display: inline-block; margin: 16px 0 4px; color: var(--primary);
+    text-decoration: none; font-size: 14px; transition: var(--t);
+}
+.back:hover { padding-left: 4px; }
+
+/* 分区标题：文字 + 右侧延伸细线 */
+.section-title {
+    color: var(--text-2); font-size: 13px; margin: 24px 0 12px;
+    letter-spacing: .8px; display: flex; align-items: center; gap: 8px; font-weight: 600;
+}
+.section-title::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+/* 空状态：居中图标 + 说明文字，卡片式呈现 */
+.empty {
+    color: var(--text-3); font-size: 14px; margin: 20px 0; text-align: center;
+    padding: 56px 24px; background: var(--surface);
+    border: 1.5px dashed var(--border-strong); border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px;
+    box-shadow: var(--shadow-sm);
+}
+.empty::before {
+    content: "🗂"; font-size: 30px; line-height: 1;
+    filter: grayscale(.35); opacity: .8;
+}
+body.dark .empty { background: var(--surface-2); }
+
+/* ===== 6. 搜索框（main / search 页共用）===== */
+.search-form {
+    display: flex; align-items: center;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 999px; padding: 4px 5px 4px 14px; transition: var(--t);
+}
+.search-form:focus-within {
+    border-color: var(--primary); background: var(--surface);
+    box-shadow: 0 0 0 3px rgba(79, 94, 232, .12);
+}
+.search-form input[type="search"] {
+    border: none; background: transparent; color: var(--text);
+    font-size: 13.5px; outline: none; width: 220px; font-family: inherit; padding: 5px 4px;
+}
+.search-form input[type="search"]::placeholder { color: var(--text-3); }
+.search-btn {
+    border: none; background: var(--grad); color: #fff; border-radius: 999px;
+    width: 28px; height: 28px; font-size: 12px; cursor: pointer; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; transition: var(--t);
+    box-shadow: 0 2px 8px rgba(99, 102, 241, .35);
+}
+.search-btn:hover { filter: brightness(1.1); }
+
+/* ===== 7. 通用按钮 ===== */
+.btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    border: none; border-radius: var(--radius-sm); padding: 8px 18px;
+    font-size: 13.5px; font-family: inherit; cursor: pointer; text-decoration: none;
+    transition: var(--t); line-height: 1.4;
+}
+.btn-primary { background: var(--grad); color: #fff; box-shadow: 0 3px 10px rgba(99, 102, 241, .3); }
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-primary:active { transform: translateY(1px); }
+.btn-ghost { background: var(--surface); color: var(--primary); border: 1px solid var(--border-strong); }
+.btn-ghost:hover { border-color: var(--primary); background: var(--accent-soft); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover { background: #cf3a3f; }
+.btn:disabled { opacity: .6; cursor: not-allowed; }
+
+/* ===== 8. 通用弹窗 / 提示 ===== */
+.modal-mask {
+    position: fixed; inset: 0; z-index: 1000; display: flex;
+    align-items: center; justify-content: center;
+    background: rgba(16, 18, 22, .45); padding: 16px;
+    animation: fadeUp .16s ease both;
+}
+/* 关键：close() 只设 hidden，但 .modal-mask 的 display:flex 会盖过浏览器默认的
+   [hidden]{display:none}，必须显式声明才能真正隐藏弹窗 */
+.modal-mask[hidden] { display: none; }
+.modal-box {
+    width: 100%; max-width: 360px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+    box-shadow: var(--shadow-lg);
+    animation: popIn .18s ease both;
+}
+.modal-title { font-size: 15px; font-weight: 700; color: var(--text); margin: 0 0 8px; }
+.modal-msg { font-size: 13px; color: var(--text-2); margin-bottom: 12px; line-height: 1.6; word-break: break-all; }
+.modal-input {
+    width: 100%; box-sizing: border-box; padding: 9px 12px; margin-bottom: 14px;
+    font-size: 14px; color: var(--text); background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    font-family: inherit; outline: none; transition: var(--t);
+}
+.modal-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 94, 232, .12); }
+.modal-ops { display: flex; justify-content: flex-end; gap: 10px; }
+.modal-ops button {
+    padding: 8px 18px; border-radius: var(--radius-sm); cursor: pointer;
+    font-size: 13px; transition: var(--t); font-family: inherit;
+}
+.modal-ok { border: none; background: var(--primary); color: #fff; }
+.modal-ok:hover { background: var(--primary-2); }
+.modal-ok.danger { background: var(--danger); }
+.modal-ok.danger:hover { background: #cf3a3f; }
+.modal-cancel { border: 1px solid var(--border); background: var(--surface); color: var(--text-2); }
+.modal-cancel:hover { background: var(--surface-2); }
+
+/* 轻提示（保存成功 / 失败等） */
+.toast {
+    position: fixed; left: 50%; bottom: 36px; transform: translateX(-50%);
+    background: var(--ok); color: #fff; font-size: 14px; padding: 9px 20px;
+    border-radius: 999px; box-shadow: var(--shadow-md);
+    z-index: 400; transition: opacity .5s; font-family: inherit;
+    animation: toastIn .25s ease both;
+}
+@keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(10px); } to { opacity: 1; transform: translateX(-50%); } }
+.toast.err { background: var(--danger); }
+.toast.hide { opacity: 0; }
+
+/* ===== 9. 移动端 / 平板适配（≤1024px）=====
+   手机与平板统一升级为"应用式布局"（Mobile App Shell）：
+   - 顶部应用栏（.sb-mbar，nav.html 内）：品牌 Logo + 标题 + 主题切换；
+   - 底部导航栏（.sidebar 变身）：6 个主入口图标 + 文字标签，固定贴底；
+   - 正文上下让位（body padding），不被两条固定栏遮挡；
+   - 无侧栏页面（视频 / 看图，body.no-sidebar）无顶栏无底栏，正文全屏。 */
+@media (max-width: 1024px) {
+    /* 无侧栏页面（视频播放 / 看图）：无顶栏无底栏，正文全屏 */
+    body.no-sidebar { padding-top: 0; padding-bottom: 0; }
+    body.no-sidebar .sb-mbar { display: none; }
+    body {
+        padding-left: 0;
+        /* 顶部应用栏 + 底部导航的高度占位（含 iPhone 安全区）。
+           mbar 高 49px（32 logo + 16 padding + 1 边框），导航栏高 ~57px，各留 1-3px 缓冲 */
+        padding-top: calc(50px + env(safe-area-inset-top));
+        padding-bottom: calc(60px + env(safe-area-inset-bottom));
+    }
+
+    /* ===== 顶部应用栏 ===== */
+    .sb-mbar {
+        display: flex;
+        position: fixed; top: 0; left: 0; right: 0; z-index: 210;
+        padding: calc(8px + env(safe-area-inset-top)) 12px;
+    }
+    .sb-mbar-actions .theme-toggle { height: 32px; }
+
+    /* ===== 底部导航栏（sidebar 变身）===== */
+    .sidebar {
+        position: fixed; top: auto; left: 0; right: 0; bottom: 0;
+        width: 100%; height: auto; z-index: 200;
+        flex-direction: row; align-items: stretch; gap: 2px;
+        padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+        background: var(--nav-glass);
+        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+        border-top: 1px solid var(--border); border-right: none;
+    }
+    .sb-brand, .sb-foot { display: none; }
+    .sb-nav { flex-direction: row; margin: 0; flex: 1; gap: 2px; overflow: visible; }
+    .sb-link {
+        position: relative; flex: 1;
+        flex-direction: column; justify-content: center; gap: 2px;
+        padding: 6px 2px 5px; font-size: 10px; border-radius: 12px;
+        border: 1px solid transparent; /* 抵消桌面幽灵边框，保持视觉纯净 */
+    }
+    .sb-link .sb-txt { display: block; font-size: 11px; line-height: 1.2; }
+    /* 当前页：品牌淡底 + 主色文字（用户已要求去掉顶部紫色小长条指示） */
+    .sb-link.active { background: var(--accent-soft); color: var(--primary); }
+    .sb-link.active:hover { background: var(--accent-soft); color: var(--primary); }
+    .sb-link.active::before { display: none; }
+
+    /* ===== 正文容器 ===== */
+    .content { margin: 0 auto; padding: 14px 14px 28px; }
+    .page-head { align-items: stretch; }
+    .search-form { flex: 1; min-width: 100%; order: 2; }
+    .search-form input[type="search"] { width: 100%; }
+
+    /* 轻提示：上移，避开底部导航栏 */
+    .toast { bottom: calc(76px + env(safe-area-inset-bottom)); }
+}

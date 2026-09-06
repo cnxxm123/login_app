@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工作日志</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/logs.css') }}">
+</head>
+<body>
+    {% include "nav.html" %}
+    <div class="content">
+        <div class="page-head">
+            <div>
+                <h2 class="page-title">工作日志</h2>
+                <div class="page-sub">记录每一天的工作 · 点击日期标题展开 / 折叠 · 点右下角 <b>＋</b> 快速添加</div>
+            </div>
+            <div class="log-search">
+                <input id="log-q" type="search" placeholder="搜索日志内容…" autocomplete="off">
+            </div>
+        </div>
+
+        <div class="log-stats">
+            <div class="stat">共<b id="stat-total">{{ total }}</b>条</div>
+            <div class="stat">今天<b>{{ today_count }}</b>条</div>
+        </div>
+
+        {% if groups %}
+            {% for g in groups %}
+                <div class="log-group collapsed" data-date="{{ g.date }}">
+                    <div class="log-group-head" role="button" tabindex="0" title="点击展开 / 折叠">
+                        <span class="log-arrow">▾</span>
+                        {{ g.label }}
+                        <span class="log-date">{{ g.date }}</span>
+                        <span class="log-count">{{ g.logs | length }}</span>
+                    </div>
+                    <div class="log-items">
+                    {% for item in g.logs %}
+                        <div class="log-item" data-id="{{ item.id }}">
+                            <div class="log-time">{{ item.time }}</div>
+                            <div class="log-body">
+                                {{- item.content_html -}}
+                                {% if item.edited %}<span class="edited-dot" title="已编辑"></span>{% endif %}
+                            </div>
+                            <div class="log-ops">
+                                <button class="op-btn" type="button" title="编辑" data-id="{{ item.id }}">✏️</button>
+                                <button class="op-btn danger" type="button" title="删除" data-id="{{ item.id }}">🗑</button>
+                            </div>
+                        </div>
+                    {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty">还没有任何日志。点击右下角 <b>＋</b> 开始记录第一条吧！</div>
+        {% endif %}
+    </div>
+
+    <!-- 加号悬浮按钮：点击弹出新增日志弹窗 -->
+    <button class="fab" id="fab-add" type="button" title="新增日志">＋</button>
+
+    <!-- 新增 / 编辑弹窗（复用 common.css 通用弹窗） -->
+    <div class="modal-mask" id="edit-mask" hidden>
+        <div class="modal-box" role="dialog" aria-modal="true">
+            <div class="modal-title" id="edit-title">📝 新增日志</div>
+            <input class="modal-input" type="date" id="edit-date" title="归属日期">
+            <textarea class="modal-input log-textarea" id="edit-content" placeholder="今天做了什么？…"></textarea>
+            <div class="modal-ops">
+                <button class="modal-ok modal-cancel" type="button" id="edit-cancel">取消</button>
+                <button class="modal-ok" type="button" id="edit-save">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 删除确认弹窗 -->
+    <div class="modal-mask" id="del-mask" hidden>
+        <div class="modal-box" role="dialog" aria-modal="true">
+            <div class="modal-title">🗑 删除日志</div>
+            <div class="modal-msg">确定要删除这条日志吗？<br>此操作<b>不可恢复</b>。</div>
+            <div class="modal-ops">
+                <button class="modal-ok modal-cancel" type="button" id="del-cancel">取消</button>
+                <button class="modal-ok danger" type="button" id="del-ok">删除</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+    <script>
+        // ===== 页面配置：后端注入，供 logs.js 使用 =====
+        window.LOGS_CONFIG = {
+    logContent: {{ logs_json | safe }},
+    urls: {
+        add: "{{ url_for('logs.log_add') }}",
+        update: "{{ url_for('logs.log_update') }}",
+        delete: "{{ url_for('logs.log_delete') }}"
+    }
+};
+    </script>
+    <script src="{{ url_for('static', filename='js/logs.js') }}"></script>
+</body>
+</html>

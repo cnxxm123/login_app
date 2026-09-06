@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>扫雷</title>
+<style>
+    :root { --bg:#16161b; --card:#24242b; --line:#3a3a44; --text:#e2e8f0; --muted:#94a3b8; --accent:#22c55e; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:linear-gradient(135deg,#16161b,#24242b); color:var(--text); font-family:"Segoe UI","Microsoft YaHei",sans-serif; min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:20px; }
+    .topbar { width:100%; max-width:520px; display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+    .topbar h1 { font-size:22px; letter-spacing:1px; color:var(--accent); }
+    .topbar a { color:var(--muted); text-decoration:none; font-size:13px; border:1px solid var(--line); padding:6px 12px; border-radius:8px; transition:.2s; }
+    .topbar a:hover { color:var(--text); border-color:var(--muted); }
+    .panel { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.4); }
+    .score-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:8px; }
+    .score-box { font-size:15px; color:var(--muted); background:#16161b; border:1px solid var(--line); border-radius:10px; padding:8px 12px; flex:1; text-align:center; }
+    .score-box b { color:var(--accent); font-size:18px; margin-left:4px; }
+    .board { display:grid; grid-template-columns:repeat(9, 1fr); gap:2px; background:#0b1220; border:1px solid var(--line); border-radius:8px; padding:4px; max-width:400px; margin:0 auto; }
+    .cell { width:100%; aspect-ratio:1; border-radius:6px; font-size:clamp(12px,4.5vw,17px); font-weight:700; display:flex; align-items:center; justify-content:center; cursor:pointer; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; touch-action:manipulation; background:#3a3a44; transition:.12s; }
+    .cell:hover { background:#475569; }
+    .cell.revealed { background:#16161b; cursor:default; }
+    .cell.revealed:hover { background:#16161b; }
+    .cell.boom { background:#7f1d1d; }
+    .c1{color:#60a5fa}.c2{color:#34d399}.c3{color:#fb7185}.c4{color:#a78bfa}.c5{color:#fbbf24}.c6{color:#22d3ee}.c7{color:#f472b6}.c8{color:#e2e8f0}
+    .hint { margin-top:12px; font-size:12px; color:var(--muted); text-align:center; line-height:1.7; }
+    .btn { background:var(--accent); color:#052e16; border:none; padding:8px 20px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; }
+    .btn:hover { filter:brightness(1.1); }
+    .overlay { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; background:rgba(2,6,23,.8); border-radius:8px; }
+    .overlay h2 { font-size:26px; }
+    .diff-row { display:flex; gap:8px; }
+    .dbtn { flex:1; background:#3a3a44; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px 0; font-size:13px; cursor:pointer; touch-action:manipulation; }
+    .dbtn.on { background:var(--accent); color:#052e16; border-color:var(--accent); font-weight:700; }
+    .wrap { position:relative; }
+</style>
+</head>
+<body>
+    <div class="topbar">
+        <h1>💣 扫雷</h1>
+        <a href="/game">← 返回游戏大厅</a>
+    </div>
+    <div class="panel">
+        <div class="score-row">
+            <div class="score-box">⏱ 用时 <b id="time">0</b></div>
+            <div class="score-box">💣 剩余 <b id="mines">10</b></div>
+            <div class="score-box">🏆 最佳 <b id="best">-</b></div>
+        </div>
+        <div class="wrap">
+            <div class="board" id="board"></div>
+            <div class="overlay" id="overlay" style="display:none">
+                <h2 id="ovTitle">开始</h2>
+                <div class="diff-row">
+                    <button class="dbtn" data-d="easy">简单 7×7</button>
+                    <button class="dbtn" data-d="normal">普通 9×9</button>
+                    <button class="dbtn" data-d="hard">困难 12×12</button>
+                </div>
+                <button class="btn" id="start">开始游戏</button>
+            </div>
+        </div>
+        <div class="hint">点击点开格子 · 右键或<b>长按</b>标记地雷 🚩 · 数字表示周围 8 格地雷数 · 点开所有非雷格即获胜</div>
+    </div>
+
+<script>
+(function () {
+    var SIZE = 9, MINE_COUNT = 10;
+    // 难度：简单 7×7/8 雷 / 普通 9×9/10 雷 / 困难 12×12/28 雷
+    var DIFFS = { easy:{size:7,mines:8}, normal:{size:9,mines:10}, hard:{size:12,mines:28} };
+    var diffKey = localStorage.getItem("mines_diff") || "normal";
+    SIZE = DIFFS[diffKey].size; MINE_COUNT = DIFFS[diffKey].mines;
+    function initDiff() {
+        var btns = document.querySelectorAll(".dbtn");
+        btns.forEach(function (b) {
+            if (b.dataset.d === diffKey) b.classList.add("on");
+            b.addEventListener("click", function () {
+                diffKey = b.dataset.d;
+                localStorage.setItem("mines_diff", diffKey);
+                btns.forEach(function (x) { x.classList.remove("on"); });
+                b.classList.add("on");
+                SIZE = DIFFS[diffKey].size; MINE_COUNT = DIFFS[diffKey].mines;
+                minesEl.textContent = MINE_COUNT;
+                prepBoard();
+            });
+        });
+    }
+    var boardEl = document.getElementById("board");
+    var timeEl = document.getElementById("time"), minesEl = document.getElementById("mines"),
+        bestEl = document.getElementById("best"), overlay = document.getElementById("overlay"),
+        ovTitle = document.getElementById("ovTitle");
+
+    var board, cells, revealed, flagCount, firstClick, started, sec, timer;
+
+    function newBoard(safeR, safeC) {
+        board = [];
+        for (var r = 0; r < SIZE; r++) {
+            board.push([]);
+            for (var c = 0; c < SIZE; c++) board[r].push({ mine: false, count: 0 });
+        }
+        // 布雷（避开首击格及其周围）
+        var placed = 0;
+        while (placed < MINE_COUNT) {
+            var r = Math.floor(Math.random() * SIZE), c = Math.floor(Math.random() * SIZE);
+            if (board[r][c].mine) continue;
+            if (Math.abs(r - safeR) <= 1 && Math.abs(c - safeC) <= 1) continue;
+            board[r][c].mine = true; placed++;
+        }
+        // 数字
+        for (var i = 0; i < SIZE; i++)
+            for (var j = 0; j < SIZE; j++)
+                if (!board[i][j].mine) board[i][j].count = neighbors(i, j).filter(function (p) { return board[p.r][p.c].mine; }).length;
+    }
+
+    function neighbors(r, c) {
+        var out = [];
+        for (var dr = -1; dr <= 1; dr++)
+            for (var dc = -1; dc <= 1; dc++) {
+                if (!dr && !dc) continue;
+                var nr = r + dr, nc = c + dc;
+                if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE) out.push({ r: nr, c: nc });
+            }
+        return out;
+    }
+
+    function buildGrid() {
+        boardEl.innerHTML = "";
+        boardEl.style.gridTemplateColumns = "repeat(" + SIZE + ",1fr)";
+        cells = [];
+        for (var r = 0; r < SIZE; r++) {
+            for (var c = 0; c < SIZE; c++) {
+                (function (row, col) {
+                    var d = document.createElement("div");
+                    d.className = "cell";
+                    // 手机端没有右键：长按 0.5 秒标记/取消标记地雷
+                    var longPressTimer = null, longPressed = false;
+                    d.addEventListener("touchstart", function () {
+                        longPressed = false;
+                        longPressTimer = setTimeout(function () { longPressed = true; flag(row, col); }, 500);
+                    }, { passive: true });
+                    d.addEventListener("touchmove", function () { clearTimeout(longPressTimer); }, { passive: true });
+                    d.addEventListener("touchend", function () { clearTimeout(longPressTimer); }, { passive: true });
+                    d.addEventListener("click", function () {
+                        if (longPressed) { longPressed = false; return; }  // 长按触发了插旗，避免随后又点开
+                        click(row, col);
+                    });
+                    d.addEventListener("contextmenu", function (e) { e.preventDefault(); flag(row, col); });
+                    boardEl.appendChild(d);
+                    cells.push({ el: d, r: row, c: col });
+                })(r, c);
+            }
+        }
+    }
+
+    // 重建棋盘并重置状态（不影响遮罩显示，用于切换难度后原地刷新）
+    function prepBoard() {
+        sec = 0; started = false; flagCount = 0; firstClick = true;
+        timeEl.textContent = 0; minesEl.textContent = MINE_COUNT;
+        clearInterval(timer);
+        buildGrid();
+        for (var i = 0; i < cells.length; i++) cells[i].el.textContent = "";
+    }
+    function reset() {
+        prepBoard();
+        overlay.style.display = "none";
+        ovTitle.textContent = "💣 扫雷";
+        document.getElementById("start").textContent = "开始游戏";
+    }
+
+    function start() {
+        started = true;
+        timer = setInterval(function () {
+            sec++; timeEl.textContent = sec;
+        }, 1000);
+    }
+
+    function click(r, c) {
+        if (overlay.style.display !== "none") return;
+        if (!started) start();
+        var cell = board[r][c];
+        if (cell.mine) {
+            revealAll(true);
+            return end(false, "踩到地雷了！");
+        }
+        if (firstClick) { newBoard(r, c); firstClick = false; }
+        reveal(r, c);
+        if (checkWin()) end(true, "恭喜通关！用时 " + sec + " 秒");
+    }
+
+    function flag(r, c) {
+        if (overlay.style.display !== "none") return;
+        if (!started) start();
+        var d = cells[r * SIZE + c].el;
+        if (d.classList.contains("revealed")) return;
+        if (d.textContent === "🚩") { d.textContent = ""; flagCount--; }
+        else { d.textContent = "🚩"; flagCount++; }
+        minesEl.textContent = MINE_COUNT - flagCount;
+    }
+
+    function reveal(r, c) {
+        var d = cells[r * SIZE + c].el;
+        if (d.classList.contains("revealed")) return;
+        var cell = board[r][c];
+        if (d.textContent === "🚩") return;
+        d.classList.add("revealed");
+        if (cell.mine) { d.textContent = "💣"; d.classList.add("boom"); return; }
+        if (cell.count === 0) {
+            d.textContent = "";
+            neighbors(r, c).forEach(function (p) {
+                if (!board[p.r][p.c].mine) reveal(p.r, p.c);
+            });
+        } else {
+            d.textContent = cell.count;
+            d.classList.add("c" + cell.count);
+        }
+    }
+
+    function checkWin() {
+        for (var i = 0; i < SIZE; i++)
+            for (var j = 0; j < SIZE; j++)
+                if (!board[i][j].mine && !cells[i * SIZE + j].el.classList.contains("revealed")) return false;
+        return true;
+    }
+
+    function revealAll(boom) {
+        for (var i = 0; i < SIZE; i++)
+            for (var j = 0; j < SIZE; j++) {
+                var d = cells[i * SIZE + j].el;
+                if (board[i][j].mine) {
+                    var wasFlagged = d.textContent === "🚩";
+                    d.textContent = "💣";
+                    d.classList.add("revealed");
+                    if (boom && !wasFlagged) d.classList.add("boom");
+                }
+            }
+    }
+
+    function end(win, msg) {
+        clearInterval(timer);
+        overlay.style.display = "flex";
+        ovTitle.textContent = msg;
+        document.getElementById("start").textContent = "再来一局";
+        if (win) {
+            var b = +(localStorage.getItem("mines_best") || 99999);
+            if (sec < b) { localStorage.setItem("mines_best", sec); b = sec; }
+            bestEl.textContent = b === 99999 ? "-" : b + "s";
+        }
+    }
+
+    initDiff();
+    document.getElementById("start").addEventListener("click", reset);
+
+    // 初始布局（未开始时不布雷，首击后再布雷）
+    board = [];
+    for (var r0 = 0; r0 < SIZE; r0++) {
+        board.push([]);
+        for (var c0 = 0; c0 < SIZE; c0++) board[r0].push({ mine: false, count: 0 });
+    }
+    prepBoard();
+    // 显示开始遮罩（含难度选择），点击"开始游戏"后才进入对局
+    overlay.style.display = "flex";
+    ovTitle.textContent = "💣 扫雷";
+    document.getElementById("start").textContent = "开始游戏";
+    var b0 = +(localStorage.getItem("mines_best") || 99999);
+    bestEl.textContent = b0 === 99999 ? "-" : b0 + "s";
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+# Python 编译缓存
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 个人 IDE / 编辑器配置
+.vscode/
+.idea/
+
+# 运行时临时文件
+*.log
+.DS_Store
+Thumbs.db
+
+# 运行时自动生成的缓存目录（不入库，可随时清空，服务会自动重建）
+# 视频封面缩略图缓存
+_thumbs/
+# 图片缩略图缓存
+_imgthumbs/
+# H.264/HLS 转码缓存
+_transcodes/
+# 回收站（删除 = 软删除移入这里）
+_trash/
+# 游戏卸载备份目录（卸载 = 软删除移入这里，可还原）
+_removed_games/
+
+# text/ 内容目录中的个人媒体文件（不入库；学习笔记 .md/.py 等文本仍入库存档）
+text/**/*.mp4
+text/**/*.mkv
+text/**/*.webm
+text/**/*.avi
+text/**/*.jpg
+text/**/*.jpeg
+text/**/*.png
+text/**/*.gif
+text/**/*.webp
+
+
+
+# 调试会话产物（TRAE-debugger 等调试工具生成，不入库）
+# 调试日志目录（含 *.ndjson 日志与 *.env 会话配置）
+.dbg/
+# 调试日志（NDJSON 格式）
+*.ndjson
+# 调试会话报告文档
+debug-*.md
+# 调试测试页 / 临时脚本（下划线前缀约定）
+_test_*.html
+_check_*.js
+_extracted.js

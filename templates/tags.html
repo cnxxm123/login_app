@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文件标签</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tags.css') }}">
+</head>
+<body>
+    {% include "nav.html" %}
+    <div class="content">
+        <div class="page-head">
+            <div>
+                <h2 class="page-title">文件标签</h2>
+                <div class="page-sub">全部标签一览 · 点击标签查看打了该标签的文件 · 悬停右上角 ✕ 可删除标签</div>
+            </div>
+        </div>
+
+        <div class="section-title">标签（共 <span id="tag-count">{{ tags | length }}</span> 个）</div>
+        {% if tags %}
+            <div class="tag-cloud" id="tag-cloud">
+                {% for t in tags %}
+                    <div class="tag-wrap" data-name="{{ t.name }}">
+                        <a class="tag-chip" href="{{ url_for('tags.filter_page', tag=t.name) }}">
+                            {{ t.name }}<span class="cnt">{{ t.count }}</span>
+                        </a>
+                        <button class="tag-del" type="button" title="删除标签「{{ t.name }}」"
+                                data-name="{{ t.name }}">✕</button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty">还没有任何标签。在文件浏览页点击卡片上的 🏷 按钮即可给文件打标签。</div>
+        {% endif %}
+    </div>
+
+    <!-- 删除确认弹窗：复用 common.css 的通用弹窗样式 -->
+    <div class="modal-mask" id="del-mask" hidden>
+        <div class="modal-box" role="dialog" aria-modal="true">
+            <div class="modal-title">🗑 删除标签</div>
+            <div class="modal-msg">确定要删除标签「<b id="del-name"></b>」吗？<br>该标签会从所有文件上移除，此操作<b>不可恢复</b>。</div>
+            <div class="modal-ops">
+                <button class="modal-ok modal-cancel" type="button" id="del-cancel">取消</button>
+                <button class="modal-ok danger" type="button" id="del-ok">删除</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+    <script>
+        // ===== 页面配置：后端注入，供 tags.js 使用 =====
+        window.TAGS_CONFIG = {
+    urls: { tagDelete: "{{ url_for('tags.tag_delete') }}" }
+};
+    </script>
+    <script src="{{ url_for('static', filename='js/tags.js') }}"></script>
+</body>
+</html>

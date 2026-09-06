@@ -1,0 +1,369 @@
+/* ===== 自定义网页视频播放器（static/css/player.css）=====
+   仿主流网页播放器（DPlayer / ArtPlayer / B 站播放器）的自定义控制栏样式。
+
+   设计要点：
+   - 播放器容器永远是深色（视频本身是深色内容），因此本文件不依赖 body.dark，
+     用固定深色调 + 品牌色（--primary 的浅色变体 #8b94ff）点缀。
+   - 控制栏 = 底部半透明渐变 + 进度条（缓冲/已播/圆点）+ 按钮行，
+     空闲 3 秒自动隐藏（JS 控制 .hidden 类）。
+   - 进度条用"轨道 + 缓冲 + 已播 + 圆点"四层叠加，悬停时增高并显示时间气泡。
+   - 移动端 / 平板（≤1024px）：隐藏音量滑块（点按钮只做静音切换）、按钮加大触控面积。
+
+   用法：在 view.html 的 <head> 里 common.css 之后引入：
+   <link rel="stylesheet" href="{{ url_for('static', filename='css/player.css') }}">
+*/
+
+/* ===== 1. 播放器容器与视频 ===== */
+.vp {
+    position: relative;          /* 子元素（控制栏/中央按钮/转圈）绝对定位的参照 */
+    width: 100%;
+    background: #000;
+    border-radius: 12px;
+    overflow: hidden;            /* 圆角裁切控制栏与全屏渐变，四角不露出白边 */
+    box-shadow: 0 8px 30px rgba(0, 0, 0, .35);
+}
+.vp-video {
+    width: 100%; max-height: 88vh;   /* 超高视频（竖屏）限高，避免控制栏外全是大黑边 */
+    display: block;
+    object-fit: contain;             /* 保持原始宽高比，不拉伸变形 */
+    background: #000;
+}
+
+/* ===== 2. 底部控制栏 =====
+   绝对定位贴在容器底部，用黑色渐变做"阴影过渡"，按钮才不刺眼 */
+.vp-controls {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 36px 12px 8px;
+    background: linear-gradient(to top, rgba(0, 0, 0, .85), rgba(0, 0, 0, .35) 55%, transparent);
+    opacity: 1;
+    transition: opacity .25s ease;
+    z-index: 10;
+}
+/* 空闲隐藏：JS 加 .hidden 后淡出且不响应鼠标，避免挡住视频点击 */
+.vp-controls.hidden { opacity: 0; pointer-events: none; }
+
+/* ===== 3. 进度条（可点击/拖拽跳转）===== */
+.vp-progress {
+    position: relative;
+    height: 16px;              /* 整条高度较大，方便点击/拖拽（内部轨道只有几像素） */
+    display: flex; align-items: center;
+    cursor: pointer;
+    touch-action: none;        /* 触屏拖拽时禁止浏览器滚动，由 JS 接管 */
+}
+/* 已播放部分：品牌色渐变 + 圆点 */
+.vp-progress-played {
+    position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+    width: 0; height: 4px;
+    background: linear-gradient(90deg, #5b6bff, #8b94ff);
+    border-radius: 999px;
+    transition: width .1s linear, height .15s;
+}
+/* 缓冲部分：比轨道亮一档，盖在轨道上、已播之下 */
+.vp-progress-buffer {
+    position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+    width: 0; height: 4px;
+    background: rgba(255, 255, 255, .28);
+    border-radius: 999px;
+    transition: width .3s ease, height .15s;
+}
+/* 拖动圆点：默认隐藏，悬停/拖拽时显现（主流播放器交互） */
+.vp-progress-thumb {
+    position: absolute; top: 50%; left: 0;
+    width: 13px; height: 13px; transform: translate(-50%, -50%);
+    background: #fff; border-radius: 50%;
+    box-shadow: 0 0 6px rgba(0, 0, 0, .55);
+    opacity: 0; transition: opacity .15s, width .15s, height .15s;
+    pointer-events: none;      /* 圆点只做视觉，点击/拖拽都在 .vp-progress 上 */
+}
+/* 悬停/拖拽时：整条进度条加粗，圆点显现 */
+.vp-progress:hover .vp-progress-thumb,
+.vp-progress.dragging .vp-progress-thumb { opacity: 1; }
+.vp-progress:hover .vp-progress-played,
+.vp-progress:hover .vp-progress-buffer,
+.vp-progress.dragging .vp-progress-played,
+.vp-progress.dragging .vp-progress-buffer { height: 6px; }
+/* 悬停时间气泡：跟随鼠标显示"跳转到第几秒" */
+.vp-hover-time {
+    position: absolute; bottom: 20px; transform: translateX(-50%);
+    background: rgba(0, 0, 0, .78); color: #fff;
+    font-size: 12px; padding: 3px 9px; border-radius: 6px;
+    white-space: nowrap; pointer-events: none;
+}
+.vp-hover-time[hidden] { display: none; }
+
+/* ===== 4. 按钮行 ===== */
+.vp-bottom {
+    display: flex; align-items: center; gap: 2px;
+    margin-top: 2px;
+}
+.vp-left, .vp-right { display: flex; align-items: center; gap: 2px; }
+.vp-spacer { flex: 1; }            /* 把左右两组按钮推到两端 */
+.vp-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 38px; height: 38px; border: none; background: transparent;
+    color: #fff; border-radius: 8px; cursor: pointer;
+    font-family: inherit; transition: background .15s;
+}
+.vp-btn:hover { background: rgba(91, 107, 255, .45); }  /* 悬停：品牌色半透明，更醒目 */
+.vp-btn svg { width: 20px; height: 20px; }
+/* 播放列表按钮开启态：品牌色高亮提示"列表已展开" */
+.vp-btn.active { color: #8b94ff; }
+/* 当前时间 / 总时长：等宽数字，切帧不跳动 */
+.vp-time {
+    color: #e2e8f0; font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+    margin: 0 6px;
+}
+
+/* 音量：按钮 + 悬停展开的横向滑块 */
+.vp-vol { position: relative; display: flex; align-items: center; }
+.vp-vol-slider {
+    width: 0; opacity: 0; margin-left: 0;
+    accent-color: #8b94ff; cursor: pointer;
+    transition: width .2s ease, opacity .2s ease;
+}
+/* 悬停或键盘聚焦时展开滑块（移动端无 hover，滑块在媒体查询里隐藏） */
+.vp-vol:hover .vp-vol-slider,
+.vp-vol:focus-within .vp-vol-slider {
+    width: 86px; opacity: 1; margin-left: 6px;
+}
+
+/* 倍速设置菜单：悬浮在控制栏上方的小面板 */
+.vp-settings {
+    position: absolute; right: 10px; bottom: 54px;
+    min-width: 142px; padding: 6px;
+    background: rgba(15, 23, 42, .94);
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 10px; z-index: 20;
+    backdrop-filter: blur(10px);           /* 玻璃拟态：透出视频画面更高级 */
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .5);
+}
+.vp-settings[hidden] { display: none; }
+.vp-settings-title {
+    color: #94a3b8; font-size: 11px; letter-spacing: 1px;
+    padding: 4px 10px 6px;
+}
+.vp-settings button {
+    display: block; width: 100%; text-align: left;
+    border: none; background: transparent; color: #e2e8f0;
+    font-size: 13px; padding: 8px 10px; border-radius: 7px;
+    cursor: pointer; font-family: inherit; transition: background .15s;
+}
+.vp-settings button:hover { background: rgba(255, 255, 255, .1); }
+.vp-settings button.active { color: #8b94ff; font-weight: 600; }
+
+/* ===== 5. 中央大播放键（暂停时显示）===== */
+.vp-center {
+    position: absolute; inset: 0;               /* 铺满整个播放器 */
+    display: flex; align-items: center; justify-content: center;
+    z-index: 8; pointer-events: none;           /* 不挡视频点击，只有按钮本身可点 */
+}
+.vp-center[hidden] { display: none; }
+.vp-center-play {
+    width: 74px; height: 74px; border: none; border-radius: 50%;
+    background: rgba(0, 0, 0, .45); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; pointer-events: auto;
+    transition: transform .15s, background .15s;
+}
+.vp-center-play svg { width: 30px; height: 30px; margin-left: 3px; }  /* 播放三角视觉居中 */
+.vp-center-play:hover { transform: scale(1.08); background: rgba(91, 107, 255, .8); }
+
+/* ===== 6. 加载转圈（缓冲/切换集数时显示）===== */
+.vp-spinner {
+    position: absolute; left: 50%; top: 50%;
+    width: 46px; height: 46px; margin: -23px 0 0 -23px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, .22);
+    border-top-color: #8b94ff;
+    animation: vp-spin .8s linear infinite;
+    z-index: 9;
+}
+.vp-spinner[hidden] { display: none; }
+@keyframes vp-spin { to { transform: rotate(360deg); } }
+
+/* ===== 7. 错误提示（加载失败显示"重试"）===== */
+.vp-error {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 14px;
+    background: rgba(0, 0, 0, .65); color: #fff; z-index: 12;
+    font-size: 14px;
+}
+.vp-error[hidden] { display: none; }
+.vp-error .vp-retry {
+    display: inline-flex; align-items: center; gap: 6px;
+    border: 1px solid rgba(255, 255, 255, .45); background: rgba(255, 255, 255, .12);
+    color: #fff; padding: 8px 22px; border-radius: 999px;
+    cursor: pointer; font-size: 13px; font-family: inherit;
+    transition: background .15s;
+}
+.vp-error .vp-retry:hover { background: rgba(255, 255, 255, .22); }
+.vp-error .vp-retry svg { width: 15px; height: 15px; }
+
+/* ===== 7.5 续播提示层（再次进入询问"继续播放/从头播放"）===== */
+.vp-resume {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0, 0, 0, .45); backdrop-filter: blur(3px);
+    z-index: 13;    /* 盖住中央播放键，但低于错误层 */
+}
+.vp-resume[hidden] { display: none; }
+.vp-resume-box {
+    text-align: center;
+    background: rgba(15, 23, 42, .92);
+    border: 1px solid rgba(255, 255, 255, .16);
+    border-radius: 16px; padding: 26px 34px;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, .5);
+}
+.vp-resume-title {
+    color: #fff; font-size: 16px; font-weight: 700; letter-spacing: .5px;
+}
+.vp-resume-info {
+    color: #94a3b8; font-size: 13px; margin: 8px 0 18px;
+    font-variant-numeric: tabular-nums;
+}
+.vp-resume-ops { display: flex; gap: 10px; justify-content: center; }
+.vp-resume-btn {
+    border: 1px solid rgba(255, 255, 255, .28); background: rgba(255, 255, 255, .08);
+    color: #fff; padding: 9px 24px; border-radius: 999px;
+    cursor: pointer; font-size: 13px; font-family: inherit;
+    transition: all .18s;
+}
+.vp-resume-btn:hover { background: rgba(255, 255, 255, .18); }
+.vp-resume-btn.primary {
+    background: #5b6bff; border-color: #5b6bff;
+    box-shadow: 0 4px 14px rgba(91, 107, 255, .45);
+}
+.vp-resume-btn.primary:hover { background: #4a57e6; }
+
+/* ===== 7.6 结束覆盖层（播放完成：重播 / 下一集）===== */
+.vp-end {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0, 0, 0, .5); backdrop-filter: blur(3px);
+    z-index: 14;
+}
+.vp-end[hidden] { display: none; }
+.vp-end-box { display: flex; gap: 12px; }
+.vp-end-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    border: 1px solid rgba(255, 255, 255, .3); background: rgba(255, 255, 255, .1);
+    color: #fff; padding: 12px 30px; border-radius: 999px;
+    cursor: pointer; font-size: 14px; font-family: inherit;
+    transition: all .18s;
+}
+.vp-end-btn:hover { background: rgba(255, 255, 255, .22); transform: translateY(-1px); }
+.vp-end-btn svg { width: 16px; height: 16px; }
+.vp-end-btn.next {
+    background: #5b6bff; border-color: #5b6bff;
+    box-shadow: 0 4px 16px rgba(91, 107, 255, .5);
+}
+.vp-end-btn.next:hover { background: #4a57e6; }
+
+/* ===== 7.7 顶部悬浮栏（B站式：返回键 + 标题）=====
+   绝对定位贴在播放器顶部，黑色渐变做阴影过渡，与底部控制栏风格一致。
+   默认隐藏（桌面端有页面工具栏 + 下方 .vp-info 标题，无需悬浮）；
+   移动端 / 平板（≤1024px）显示，并由 player.js 随底部控制栏一起加 .hidden 自动隐藏。 */
+.vp-top {
+    position: absolute; top: 0; left: 0; right: 0;
+    display: none;                       /* 桌面端隐藏 */
+    align-items: center; gap: 10px;
+    padding: 10px 12px;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, .82), rgba(0, 0, 0, .4) 55%, transparent);
+    z-index: 10;
+    opacity: 1;
+    transition: opacity .25s ease;
+}
+.vp-top.hidden { opacity: 0; pointer-events: none; }
+.vp-top-back {
+    display: inline-flex; align-items: center; justify-content: center;
+    flex: 0 0 auto;
+    width: 36px; height: 36px; border-radius: 50%;
+    color: #fff; background: rgba(255, 255, 255, .16);
+    text-decoration: none;
+    -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+    transition: background .15s;
+}
+.vp-top-back:active { background: rgba(255, 255, 255, .32); }
+.vp-top-back svg { width: 20px; height: 20px; }
+.vp-top-title {
+    flex: 1; min-width: 0;
+    color: #fff; font-size: 15px; font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, .5);
+}
+
+/* ===== 8. 全屏 =====
+   把 .vp 容器整体全屏（控制栏/中央按钮跟着一起全屏），视频填满 */
+.vp:fullscreen,
+.vp:-webkit-full-screen {
+    width: 100vw; height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 0; background: #000;
+}
+.vp:fullscreen .vp-video,
+.vp:-webkit-full-screen .vp-video {
+    max-height: 100vh; height: 100%; width: 100%;
+}
+
+/* ===== 9. 移动端 / 平板适配（≤1024px，对应 require.md 移动端规范）=====
+   仿 B 站手机端播放器：顶部悬浮返回栏 + 底部极简控制栏。
+   极简布局只保留：播放/暂停、时间、进度条、倍速、全屏；
+   隐藏音量 / 上一集 / 下一集 / 宽屏 / 网页全屏 / 画中画（触屏上用不到且占地方）。 */
+@media (max-width: 1024px) {
+    /* 顶部悬浮栏：返回键 + 标题，随控制栏一起显隐 */
+    .vp-top { display: flex; }
+
+    .vp-controls { padding: 28px 8px calc(8px + env(safe-area-inset-bottom)); }
+    .vp-btn { width: 40px; height: 40px; }     /* 触控面积适中（B站手机端按钮偏紧凑） */
+    .vp-time { font-size: 11.5px; margin: 0 4px; }
+    .vp-center-play { width: 64px; height: 64px; }
+    .vp-settings { right: 6px; bottom: 52px; min-width: 128px; }
+
+    /* B站极简布局：隐藏这些按钮 */
+    .vp-vol, .vp-left .vp-prev, .vp-left .vp-next,
+    #vp-prev, #vp-next, #vp-wide, #vp-webfull, #vp-pip { display: none !important; }
+    /* 隐藏后：左侧剩 [播放/暂停][时间]，右侧剩 [倍速][全屏]，正是 B 站手机端布局 */
+
+    /* 无 hover 的触屏上滑块难以操作：直接隐藏，点音量按钮只做静音切换 */
+    .vp-vol-slider { display: none; }
+    /* 续播/结束覆盖层：按钮纵向排列，触控面积加大 */
+    .vp-resume-box { padding: 22px 20px; width: min(88vw, 320px); }
+    .vp-resume-ops { flex-direction: column; }
+    .vp-resume-btn { padding: 12px 20px; }
+    .vp-end-box { flex-direction: column; gap: 10px; }
+    .vp-end-btn { justify-content: center; padding: 13px 34px; }
+
+    /* ===== 移动端全屏：CSS 模拟 =====
+       body.vp-mobile-full 类由 player.js 仅在移动端 UA 添加，样式见文件末尾
+       （独立于本媒体查询，确保横屏手机视口宽度 >640px 时同样生效）。 */
+}
+/* ===== 10. 移动端全屏：CSS 模拟（置于媒体查询外，横竖屏均生效）=====
+   不调用浏览器全屏 API（不进入沉浸模式），因此不会出现系统"退出全屏"提示条。
+   播放器铺满视口；横视频 + 竖屏视口时仅把 <video> 旋转 90° 铺满（B 站式横屏），
+   控制栏/顶部栏保持横向正常显示，进度条/按钮交互无需适配。 */
+body.vp-mobile-full { overflow: hidden; }               /* 锁定页面滚动 */
+body.vp-mobile-full .vp-page { display: block; margin: 0; }
+body.vp-mobile-full .vp-main { width: 100%; }
+/* 隐藏页面其余元素（同网页全屏逻辑） */
+body.vp-mobile-full .view-wrap > .toolbar,
+body.vp-mobile-full .tags-row,
+body.vp-mobile-full .reading-bar,
+body.vp-mobile-full .vp-info,
+body.vp-mobile-full .vp-side { display: none; }
+body.vp-mobile-full .vp {
+    position: fixed; inset: 0; z-index: 9999;
+    margin: 0; border-radius: 0; box-shadow: none;
+    background: #000;
+    display: flex; align-items: center; justify-content: center;
+}
+body.vp-mobile-full .vp .vp-video { width: 100%; height: 100%; max-height: none; }
+/* 横视频 + 竖屏视口：整个播放器（视频+控制栏+标题）一起旋转 90°，
+   进度条/标题随之"横过来"（B 站式：全 UI 横屏）。容器宽=屏高、高=屏宽，
+   translate 居中后 rotate 旋转，视频 100%×100% + object-fit:contain 自适应。 */
+body.vp-mobile-full .vp.rotated {
+    top: 50%; left: 50%; right: auto; bottom: auto;
+    width: 100vh; height: 100vw;
+    transform: translate(-50%, -50%) rotate(90deg);
+}

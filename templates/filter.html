@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>标签：{{ tag }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/filter.css') }}">
+</head>
+<body>
+    {% include "nav.html" %}
+    <div class="content">
+        <div class="page-head">
+            <div>
+                <h2 class="page-title">标签筛选：<span class="grad">#{{ tag }}</span></h2>
+                <div class="crumb">
+                    <a href="{{ url_for('tags.index') }}">← 返回标签管理</a>
+                </div>
+            </div>
+        </div>
+
+        {% if dirs %}
+            <div class="section-title">文件夹（{{ dirs | length }}）</div>
+            <div class="list">
+                {% for d in dirs %}
+                    <a class="row" href="{{ url_for('browser.browse', subpath=d.path) }}">
+                        <span class="r-icon">📁</span>
+                        <span class="r-name">{{ d.name }}</span>
+                        <span class="r-path">{{ d.path }}</span>
+                        <span class="r-tags">
+                            {% for t in d.tags %}<span class="r-tag">{{ t }}</span>{% endfor %}
+                        </span>
+                        <button class="r-del" type="button" title="取消标签" onclick="removeTag('{{ d.path }}', event)">✕</button>
+                    </a>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% if files %}
+            <div class="section-title">文件（{{ files | length }}）</div>
+            <div class="list">
+                {% for f in files %}
+                    <a class="row" href="{{ f.url }}" {% if f.external %}target="_blank" rel="noopener"{% endif %}>
+                        <span class="r-icon">
+                            {% if f.kind == "video" %}🎬{% elif f.kind == "audio" %}🎵{% elif f.kind == "image" %}🖼{% else %}📄{% endif %}
+                        </span>
+                        <span class="r-name">{{ f.name }}</span>
+                        <span class="r-path">{{ f.path }}</span>
+                        <span class="r-tags">
+                            {% for t in f.tags %}<span class="r-tag">{{ t }}</span>{% endfor %}
+                        </span>
+                        <button class="r-del" type="button" title="取消标签" onclick="removeTag('{{ f.path }}', event)">✕</button>
+                    </a>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% if not dirs and not files %}
+            <div class="empty">没有找到打了「{{ tag }}」标签的文件（可能文件已被删除）。</div>
+        {% endif %}
+    </div>
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+    <script>
+        // ===== 页面配置：后端注入，供 filter.js 使用 =====
+        window.FILTER_CONFIG = {
+    tag: {{ tag | tojson }},
+    urls: { tagRemove: "{{ url_for('tags.tag_remove') }}" }
+};
+    </script>
+    <script src="{{ url_for('static', filename='js/filter.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>搜索结果 - {{ q }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}">
+</head>
+<body>
+    {% include 'nav.html' %}
+    <div class="content">
+        <!-- 页面头部：面包屑在左，搜索框在右 -->
+        <div class="page-head">
+            <div class="crumb">
+                <a href="{{ url_for('browser.main') }}">主页</a>
+                {% if base %}
+                    <span class="sep">/</span>
+                    <a href="{{ url_for('browser.browse', subpath=base) }}">返回目录</a>
+                {% endif %}
+            </div>
+            <form class="search-form" method="get" action="{{ url_for('browser.search') }}" role="search" autocomplete="off">
+                <input type="hidden" name="path" value="{{ base }}">
+                <input type="hidden" name="mode" value="{{ mode }}">
+                <input type="search" name="q" value="{{ q }}" placeholder="搜索文件…" title="按文件名搜索" autocomplete="off">
+                <button class="search-btn" type="submit" title="搜索" aria-label="搜索"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></button>
+            </form>
+        </div>
+        <h2 class="result-title">搜索「<span class="q">{{ q }}</span>」共 {{ results|length }} 个结果</h2>
+
+        <!-- 搜索模式切换：按文件名 / 按文件内容 -->
+        <div class="mode-bar">
+            <a class="mode-btn {{ 'active' if mode == 'name' else '' }}"
+               href="{{ url_for('browser.search', q=q, path=base, mode='name') }}">📄 按文件名</a>
+            <a class="mode-btn {{ 'active' if mode == 'content' else '' }}"
+               href="{{ url_for('browser.search', q=q, path=base, mode='content') }}">🔎 按内容</a>
+            <span class="mode-tip">{{ '匹配文件内容，只搜文本/代码文件' if mode == 'content' else '匹配文件名或目录名' }}</span>
+        </div>
+
+        {% if results %}
+            <ul class="file-list">
+                {% for r in results %}
+                    <li>
+                        <!-- 目录结果原地浏览；文件（视频/文档/图片）与浏览页一致新标签页打开 -->
+                        <a class="file-main" {% if not r.is_dir %}target="_blank" rel="noopener"{% endif %} href="{{ url_for('browser.browse', subpath=r.path) if r.is_dir else url_for('view.view_file', subpath=r.path) }}">
+                            <span class="icon">{{ '📁' if r.is_dir else '📄' }}</span>
+                            <span class="file-text">
+                                <span class="file-path">{{ r.path }}{{ '/' if r.is_dir }}</span>
+                                {% if r.snippet %}<span class="file-snippet">… {{ r.snippet }} …</span>{% endif %}
+                            </span>
+                        </a>
+                        <a class="file-dl" href="{{ url_for('download.download_dir', subpath=r.path) }}" title="下载">⬇</a>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <div class="empty">未找到匹配「{{ q }}」的内容</div>
+        {% endif %}
+    </div>
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+</body>
+</html>
