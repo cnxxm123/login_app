@@ -13,6 +13,10 @@
 
 游戏是纯前端 HTML/JS 单页，无需后端参与游戏逻辑，只是静态托管。
 卸载/还原的纯逻辑在 services/game_utils（移动/列表/还原/删除）。
+
+【暂时停用说明】2026-09-08 起游戏功能暂停启用，本文件与全部路由代码保留未删。
+启用方式：在 app.py 顶部恢复 `from blueprints.games import games_bp` 的 import，
+并在 create_app() 中恢复 `app.register_blueprint(games_bp)` 的注册即可。
 """
 
 import os

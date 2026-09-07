@@ -74,6 +74,10 @@ TRASH_DIR = os.path.join(BASE_DIR, "_trash")
 MAX_FORM_PARTS = 20000
 MAX_UPLOAD_BYTES = 16 * 1024 * 1024 * 1024  # 16 GB
 
+# ========== 游戏功能配置（暂时停用，代码保留）==========
+# 【停用说明】游戏功能于 2026-09-08 起暂停启用，以下配置全部保留。
+# 以后再启用时：恢复 app.py 中 games 蓝图的 import 与注册即可，
+# 本配置无需改动。
 # 游戏目录：每个子文件夹含 index.html 即一个小游戏，点击后在新标签页游玩
 GAME_DIR = os.path.join(BASE_DIR, "game")
 

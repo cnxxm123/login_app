@@ -1,5 +1,5 @@
 {
-  "next_id": 46,
+  "next_id": 47,
   "logs": [
     {
       "id": 3,
@@ -111,6 +111,14 @@
       "category": "更新游戏",
       "content": "wegame",
       "created_at": "2026-09-07 22:47:46",
+      "updated_at": null
+    },
+    {
+      "id": 46,
+      "log_date": "2026-09-08",
+      "category": "更新游戏",
+      "content": "更新steam",
+      "created_at": "2026-09-08 00:00:24",
       "updated_at": null
     }
   ]

@@ -1,6 +1,10 @@
 """game_utils 模块（services 包）
 游戏卸载/还原（纯逻辑层，不依赖 Flask）。
 
+【暂时停用说明】2026-09-08 起游戏功能暂停启用，本模块代码保留未删。
+本模块只在 blueprints/games.py 中被引用；启用游戏功能时，
+恢复 app.py 中 games 蓝图的 import 与注册即可自动生效。
+
 设计：与文本回收站（trash_utils）同样的"软删除"思路 ——
 卸载游戏不是把文件夹物理删掉，而是整体移动到 GAME_UNINSTALL_DIR
 （_removed_games）里，旁边写一个同名 .json 记录原游戏名与卸载时间，

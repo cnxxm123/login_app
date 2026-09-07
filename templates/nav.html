@@ -32,10 +32,15 @@
            href="{{ url_for('stats.index') }}" title="按类型与目录统计磁盘占用">
             <span class="sb-ico">📊</span><span class="sb-txt">磁盘统计</span>
         </a>
-        <a class="sb-link{% if request.endpoint in ('games.hall', 'games.uninstalled') %} active{% endif %}"
+        <!-- ========== 游戏大厅（暂时停用，代码保留）==========
+             游戏功能于 2026-09-08 起暂停启用，入口链接暂不显示。
+             以后再启用时：取消本段注释，并恢复 app.py 中 games 蓝图的
+             import 与 register_blueprint 两处注释即可。 -->
+        <!-- <a class="sb-link{% if request.endpoint in ('games.hall', 'games.uninstalled') %} active{% endif %}"
            href="{{ url_for('games.hall') }}" title="网页小游戏合集，即点即玩">
             <span class="sb-ico">🎮</span><span class="sb-txt">游戏大厅</span>
-        </a>
+        </a> -->
+
         <a class="sb-link{% if request.endpoint == 'trash.index' %} active{% endif %}"
            href="{{ url_for('trash.index') }}" title="回收站（已删除内容，可还原）">
             <span class="sb-ico">🗑</span><span class="sb-txt">回收站</span>

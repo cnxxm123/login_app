@@ -39,7 +39,11 @@ from flask import Flask  # Flask 框架核心：创建应用对象
 
 from blueprints.browser import browser_bp     # 浏览蓝图（/、/browse/...）
 from blueprints.download import download_bp   # 下载蓝图（/download/...）
-from blueprints.games import games_bp         # 游戏蓝图（/game、/game/...）
+# ========== 游戏功能（暂时停用，代码保留）==========
+# 【停用说明】游戏功能于 2026-09-08 起暂时不启用，相关代码全部保留。
+# 以后再启用时，只需取消下面这行 import 和 create_app() 中的
+# app.register_blueprint(games_bp) 两处注释即可，其余无需改动。
+# from blueprints.games import games_bp         # 游戏蓝图（/game、/game/...）
 from blueprints.logs import logs_bp           # 日志蓝图（/logs、/log/add...）
 from blueprints.manage import manage_bp       # 管理蓝图（/upload/...、/rename/...、/delete/...）
 from blueprints.media import media_bp         # 媒体蓝图（/media/...、/thumb/...）
@@ -85,7 +89,9 @@ def create_app() -> Flask:
     app.register_blueprint(media_bp)    # 注册媒体蓝图 → 提供 /media/...、/thumb/...
     app.register_blueprint(download_bp)  # 注册下载蓝图 → 提供 /download/...
     app.register_blueprint(manage_bp)    # 注册管理蓝图 → 提供 /upload/...、/rename/...、/delete/...
-    app.register_blueprint(games_bp)     # 注册游戏蓝图 → 提供 /game（游戏大厅）、/game/...
+    # 【游戏功能暂时停用】原注册语句保留如下，启用时取消注释即可
+    # （需同时恢复 app.py 顶部的 games 蓝图 import）：
+    # app.register_blueprint(games_bp)     # 注册游戏蓝图 → 提供 /game（游戏大厅）、/game/...
     app.register_blueprint(logs_bp)      # 注册日志蓝图 → 提供 /logs、/log/add、/log/update、/log/delete
     app.register_blueprint(trash_bp)     # 注册回收站蓝图 → 提供 /trash、/trash/restore/... 等
     app.register_blueprint(tags_bp)      # 注册标签蓝图 → 提供 /tags、/tags/filter、/tag/...

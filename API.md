@@ -20,7 +20,7 @@
 | 封面缓存目录 | `config.THUMB_DIR`（`BASE_DIR/_thumbs`），视频封面缩略图，可随时清空 |
 | 图片缩略图缓存目录 | `config.IMG_THUMB_DIR`（`BASE_DIR/_imgthumbs`），图片压缩缩略图，可随时清空 |
 | 转码缓存目录 | `config.TRANSCODE_DIR`（`BASE_DIR/_transcodes`），视频兼容转码缓存，可随时清空 |
-| 游戏卸载目录 | `config.GAME_UNINSTALL_DIR`（`BASE_DIR/_removed_games`），游戏卸载 = 软删除移入此目录，可还原 |
+| 游戏卸载目录 | `config.GAME_UNINSTALL_DIR`（`BASE_DIR/_removed_games`），游戏卸载 = 软删除移入此目录，可还原（游戏功能自 2026-09-08 起**暂时停用**，配置保留） |
 
 ### 1.2 访问控制
 
@@ -348,6 +348,11 @@
 
 ## 8. 游戏接口（`blueprints/games.py`）
 
+> **【暂时停用】** 游戏功能自 **2026-09-08** 起暂停启用：`games` 蓝图不再注册，
+> 以下接口当前均不可访问（返回 404），文档与代码全部保留。
+> 启用方法：恢复 `app.py` 顶部 `from blueprints.games import games_bp` 的 import，
+> 以及 `create_app()` 中 `app.register_blueprint(games_bp)` 的注册即可。
+
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | GET | `/game` | 游戏大厅，列出所有含 `index.html` 的游戏 |
@@ -453,8 +458,8 @@
 | 管理 `/edit`、`/save` | `path_utils.safe_path`、`text_utils.read_text_file` | `TEXT_EXTENSIONS` |
 | 管理 `/move`、`/copy`、`/batch_*` | `path_utils.safe_path`、`file_ops.move_items` / `copy_items` / `_unique_name`（重名冲突）、`trash_utils.move_to_trash`（批量删除） | `TRASH_DIR` |
 | 回收站 `/trash` | `trash_utils.list_trash` / `restore` / `permanent_delete` / `empty_trash` | `TRASH_DIR` |
-| 游戏 `/game` | — | `GAME_DIR` |
-| 游戏卸载 `/game/uninstall` 等 | `game_utils.uninstall` / `list_uninstalled` / `restore` / `purge` | `GAME_UNINSTALL_DIR` |
+| 游戏 `/game`（暂时停用） | — | `GAME_DIR` |
+| 游戏卸载 `/game/uninstall` 等（暂时停用） | `game_utils.uninstall` / `list_uninstalled` / `restore` / `purge` | `GAME_UNINSTALL_DIR` |
 | 统计 `/stats` | `stats_utils.disk_stats` | — |
 | 标签 `/tags`、`/tag/*` | `tag_store.all_tags` / `paths_by_tag` / `get_tags` / `set_tags` / `remove_tag` / `delete_tag` | — |
 
@@ -463,7 +468,7 @@
 ## 12. 二次开发指引
 
 - **新增文件类型预览**：只需改 `config.py` 的扩展名表（如把新扩展名加进 `TEXT_EXTENSIONS`），并在 `blueprints/view.py` 的分派处补充渲染逻辑。
-- **新增游戏**：往 `login_app/game/` 下放一个含 `index.html` 的文件夹即可，大厅自动列出。
+- **新增游戏**：往 `login_app/game/` 下放一个含 `index.html` 的文件夹即可，大厅自动列出（游戏功能当前**暂时停用**，启用方法见第 8 章说明）。
 - **新增接口**：在对应的 `blueprints/*.py` 中加路由；若涉及磁盘路径，一律经 `services/path_utils.safe_path()` 校验。
 - **新增统计维度**：在 `services/stats_utils.disk_stats()` 里扩展返回结构，模板 `stats.html` 增加对应条形图即可。
 - **修改内容根目录**：设置环境变量 `TEXT_DIR`（如 `$env:TEXT_DIR="F:\某目录"`）后重启服务；不设置则用默认 `login_app/text/`。改完保存并**删除 `__pycache__` 目录**再重启才生效。
