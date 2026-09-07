@@ -25,11 +25,12 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 #   - 留空 ""（或注释掉本行）时，依次回退到环境变量 TEXT_DIR，再回退到项目内 text/。
 # 本机（无 F 盘）不指定目录，留空回退到项目内 text/；如需浏览其他文件夹，
 # 把下面路径字符串替换成目标目录即可（例如 CONTENT_PATH = r"D:\我的资料"）。
-CONTENT_PATH = "F:\sex"
+CONTENT_PATH = r"F:\sex"
 
-# 内容目录最终取值：CONTENT_PATH（本文件直接指定）> 环境变量 TEXT_DIR > 项目内 text/
+# 内容目录最终取值：CONTENT_PATH（存在时）> 环境变量 TEXT_DIR > 项目内 text/
+# 自动适配环境：F:\sex 不可用（如本机无 F 盘）时回退，避免指向无效路径
 TEXT_DIR = (
-    CONTENT_PATH
+    (CONTENT_PATH if os.path.isdir(CONTENT_PATH) else "")
     or os.environ.get("TEXT_DIR")
     or os.path.join(BASE_DIR, "text")
 )
