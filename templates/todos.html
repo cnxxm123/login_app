@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>待办事项</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/todos.css') }}">
+</head>
+<body>
+    {% include "nav.html" %}
+    <div class="content">
+        <div class="page-head">
+            <div>
+                <h2 class="page-title">待办事项</h2>
+                <div class="page-sub">记录要完成的事 · 点击日期标题展开 / 折叠 · 勾选完成 · 点右下角 <b>＋</b> 快速添加</div>
+            </div>
+            <div class="todo-search">
+                <input id="todo-q" type="search" placeholder="搜索待办内容…" autocomplete="off">
+            </div>
+        </div>
+
+        <div class="todo-stats">
+            <div class="stat">共<b id="stat-total">{{ total }}</b>条</div>
+            <div class="stat">今天<b>{{ today_count }}</b>条</div>
+            <div class="stat">未完成<b id="stat-undone">{{ undone_count }}</b>条</div>
+        </div>
+
+        <div id="todo-list">
+        {% if groups %}
+            {% for g in groups %}
+                <div class="todo-group collapsed" data-date="{{ g.date }}">
+                    <div class="todo-group-head" role="button" tabindex="0" title="点击展开 / 折叠">
+                        <span class="todo-arrow">▾</span>
+                        {{ g.label }}
+                        <span class="todo-date">{{ g.date }}</span>
+                        <span class="todo-count">{{ g.todos | length }}</span>
+                    </div>
+                    <div class="todo-items">
+                    {% for c in g.cats %}
+                        <!-- 类别子分组：默认折叠，点击类别标题展开 / 收起该类别下的全部待办 -->
+                        <div class="todo-cat-group{% if c.uncat %} uncat{% endif %} collapsed" data-cat="{{ c.cat }}">
+                            <div class="todo-cat-head" role="button" tabindex="0" title="点击展开 / 折叠该类别">
+                                <span class="todo-cat-arrow">▾</span>
+                                {% if c.uncat %}
+                                    <span class="todo-cat-name uncat">{{ c.cat }}</span>
+                                {% else %}
+                                    <span class="todo-cat-name" data-category="{{ c.cat }}">{{ c.cat }}</span>
+                                {% endif %}
+                                <span class="todo-cat-count">{{ c["items"] | length }}</span>
+                            </div>
+                            <div class="todo-cat-items">
+                            {% for item in c["items"] %}
+                                <div class="todo-item{% if item.done %} done{% endif %}" data-id="{{ item.id }}">
+                                    <!-- 完成状态复选框：勾选 = 已完成（内容划线置灰） -->
+                                    <label class="todo-check" title="标记完成 / 未完成">
+                                        <input type="checkbox"{% if item.done %} checked{% endif %}>
+                                        <span class="todo-checkbox" aria-hidden="true"></span>
+                                    </label>
+                                    <div class="todo-body">
+                                        <div class="todo-line">
+                                            <span class="todo-time">{{ item.time }}</span>
+                                            {% if item.edited %}<span class="edited-dot" title="已编辑"></span>{% endif %}
+                                        </div>
+                                        <div class="todo-content">
+                                            {{- item.content_html -}}
+                                        </div>
+                                    </div>
+                                    <div class="todo-ops">
+                                        <button class="op-btn" type="button" title="编辑" data-id="{{ item.id }}">✏️</button>
+                                        <button class="op-btn danger" type="button" title="删除" data-id="{{ item.id }}">🗑</button>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty">还没有任何待办。点击右下角 <b>＋</b> 开始添加第一条吧！</div>
+        {% endif %}
+        </div>
+    </div>
+
+    <!-- 加号悬浮按钮：点击弹出新增待办弹窗 -->
+    <button class="fab" id="fab-add" type="button" title="新增待办">＋</button>
+
+    <!-- 新增 / 编辑弹窗（复用 common.css 通用弹窗） -->
+    <div class="modal-mask" id="edit-mask" hidden>
+        <div class="modal-box" role="dialog" aria-modal="true">
+            <div class="modal-title" id="edit-title">📋 新增待办</div>
+            <div class="modal-row">
+                <input class="modal-input" type="date" id="edit-date" title="计划日期">
+                <select class="modal-input" id="edit-category" title="类别">
+                    {% for cat in categories %}
+                        <option value="{{ cat }}">{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <textarea class="modal-input todo-textarea" id="edit-content" placeholder="要做什么？…"></textarea>
+            <div class="modal-ops">
+                <button class="modal-ok modal-cancel" type="button" id="edit-cancel">取消</button>
+                <button class="modal-ok" type="button" id="edit-save">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 删除确认弹窗 -->
+    <div class="modal-mask" id="del-mask" hidden>
+        <div class="modal-box" role="dialog" aria-modal="true">
+            <div class="modal-title">🗑 删除待办</div>
+            <div class="modal-msg">确定要删除这条待办吗？<br>此操作<b>不可恢复</b>。</div>
+            <div class="modal-ops">
+                <button class="modal-ok modal-cancel" type="button" id="del-cancel">取消</button>
+                <button class="modal-ok danger" type="button" id="del-ok">删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 完成确认弹窗：勾选完成 = 转移到今天的工作日志 -->
+    <div class="modal-mask" id="move-mask" hidden>
+        <div class="modal-box" role="dialog" aria-modal="true">
+            <div class="modal-title">✅ 完成任务</div>
+            <div class="modal-msg">确定完成这条待办吗？<br>完成后将转移到<b>今天</b>的工作日志（保留类别与内容），并从未完成列表中移除。</div>
+            <div class="modal-ops">
+                <button class="modal-ok modal-cancel" type="button" id="move-cancel">取消</button>
+                <button class="modal-ok" type="button" id="move-ok">确定完成</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+    <script>
+        // ===== 页面配置：后端注入，供 todos.js 使用 =====
+        window.TODOS_CONFIG = {
+    todoData: {{ todos_json | safe }},
+    urls: {
+        add: "{{ url_for('todos.todo_add') }}",
+        update: "{{ url_for('todos.todo_update') }}",
+        toggle: "{{ url_for('todos.todo_toggle') }}",
+        delete: "{{ url_for('todos.todo_delete') }}"
+    }
+};
+    </script>
+    <script src="{{ url_for('static', filename='js/todos.js') }}"></script>
+</body>
+</html>

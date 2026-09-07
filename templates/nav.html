@@ -24,6 +24,10 @@
            href="{{ url_for('logs.index') }}" title="记录每天的工作 / 备忘">
             <span class="sb-ico">📝</span><span class="sb-txt">工作日志</span>
         </a>
+        <a class="sb-link{% if request.endpoint == 'todos.index' %} active{% endif %}"
+           href="{{ url_for('todos.index') }}" title="待办事项：上架 / 更新 / 问题处理">
+            <span class="sb-ico">📋</span><span class="sb-txt">待办事项</span>
+        </a>
         <a class="sb-link{% if request.endpoint == 'stats.index' %} active{% endif %}"
            href="{{ url_for('stats.index') }}" title="按类型与目录统计磁盘占用">
             <span class="sb-ico">📊</span><span class="sb-txt">磁盘统计</span>

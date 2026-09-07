@@ -45,6 +45,7 @@ from blueprints.manage import manage_bp       # 管理蓝图（/upload/...、/re
 from blueprints.media import media_bp         # 媒体蓝图（/media/...、/thumb/...）
 from blueprints.stats import stats_bp         # 统计蓝图（/stats）
 from blueprints.tags import tags_bp           # 标签蓝图（/tags、/tag/...）
+from blueprints.todos import todos_bp         # 待办蓝图（/todos、/todo/add、/todo/toggle...）
 from blueprints.trash import trash_bp         # 回收站蓝图（/trash、/trash/restore/...、/trash/delete/...、/trash/empty）
 from blueprints.view import view_bp           # 查看蓝图（/view/...）
 from config import MAX_FORM_PARTS, MAX_UPLOAD_BYTES  # 上传上限
@@ -88,6 +89,7 @@ def create_app() -> Flask:
     app.register_blueprint(logs_bp)      # 注册日志蓝图 → 提供 /logs、/log/add、/log/update、/log/delete
     app.register_blueprint(trash_bp)     # 注册回收站蓝图 → 提供 /trash、/trash/restore/... 等
     app.register_blueprint(tags_bp)      # 注册标签蓝图 → 提供 /tags、/tags/filter、/tag/...
+    app.register_blueprint(todos_bp)     # 注册待办蓝图 → 提供 /todos、/todo/add、/todo/toggle 等
     app.register_blueprint(stats_bp)     # 注册统计蓝图 → 提供 /stats
     return app
 

@@ -44,6 +44,41 @@
             font-size: 12px; border-radius: 999px; padding: 1px 9px; font-weight: 600;
         }
 
+        /* ===== 类别子分组：日期内的可折叠类别 ===== */
+        .log-cat-group { margin: 0 0 8px; }
+        .log-cat-head {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 13px; font-weight: 600; color: var(--text);
+            cursor: pointer; user-select: none; padding: 4px 4px; border-radius: 8px;
+        }
+        .log-cat-head:hover { color: var(--primary); }
+        /* 展开/收起箭头：▾ 展开态，折叠时旋转成 ▸ */
+        .log-cat-head .log-cat-arrow {
+            flex: none; width: 18px; height: 18px; display: inline-flex;
+            align-items: center; justify-content: center; font-size: 10px;
+            color: var(--text-2); background: var(--surface-2); border-radius: 50%;
+            transition: transform .25s;
+        }
+        .log-cat-group.collapsed .log-cat-arrow { transform: rotate(-90deg); }
+        .log-cat-group.collapsed .log-cat-items { display: none; }
+        /* 类别名：彩色小标签（与待办同套配色），点击即折叠/展开 */
+        .log-cat-head .log-cat-name {
+            color: #fff; font-size: 11px; font-weight: 600; letter-spacing: .5px;
+            border-radius: 999px; padding: 2px 10px; white-space: nowrap;
+        }
+        .log-cat-head .log-cat-name[data-category="上架游戏"] { background: #16a34a; }  /* 绿：上架 */
+        .log-cat-head .log-cat-name[data-category="更新游戏"] { background: #2563eb; }  /* 蓝：更新 */
+        .log-cat-head .log-cat-name[data-category="问题处理"] { background: #ea580c; }  /* 橙红：问题 */
+        /* 老日志没有类别：灰色"未分类" */
+        .log-cat-head .log-cat-name.uncat { background: var(--text-3); opacity: .75; }
+        /* 该类别下的记录条数 */
+        .log-cat-head .log-cat-count {
+            background: var(--surface-2); color: var(--text-2); font-size: 11px;
+            border-radius: 999px; padding: 0 8px; font-weight: 600;
+        }
+        /* 记录相对类别标题缩进，突出层级 */
+        .log-cat-items { padding-left: 26px; }
+
         /* ===== 日志卡片 ===== */
         .log-item {
             display: flex; gap: 14px; align-items: flex-start;
@@ -71,11 +106,17 @@
             transition: var(--t); display: flex; align-items: center; justify-content: center;
         }
         .log-item .op-btn:hover { background: var(--primary); color: #fff; }
+        /* 转为待办按钮：琥珀色，与编辑/删除区分 */
+        .log-item .op-btn.move { color: #d97706; background: rgba(217, 119, 6, .12); }
+        .log-item .op-btn.move:hover { background: #d97706; color: #fff; }
         .log-item .op-btn.danger { color: var(--danger); background: var(--danger-soft); }
         .log-item .op-btn.danger:hover { background: var(--danger); color: #fff; }
 
         /* 弹窗里多行输入框 */
         .log-textarea { min-height: 130px; resize: vertical; line-height: 1.7; }
+        /* 弹窗：日期与类别并排一行 */
+        .modal-row { display: flex; gap: 8px; }
+        .modal-row .modal-input { flex: 1; min-width: 0; }
 
         /* ===== 加号悬浮按钮（FAB）===== */
         .fab {
@@ -98,5 +139,6 @@
             .log-search { flex: 1; min-width: 100%; order: 2; }                /* 搜索占满一行 */
             .log-search input { width: 100%; }
             .log-group-head { padding: 8px 0; gap: 8px; }   /* 整行触控区域加大 */
+            .modal-row { flex-direction: column; }          /* 手机端日期/类别竖排 */
         }
     

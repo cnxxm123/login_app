@@ -25,6 +25,7 @@
             <div class="stat">今天<b>{{ today_count }}</b>条</div>
         </div>
 
+        <div id="log-list">
         {% if groups %}
             {% for g in groups %}
                 <div class="log-group collapsed" data-date="{{ g.date }}">
@@ -35,16 +36,33 @@
                         <span class="log-count">{{ g.logs | length }}</span>
                     </div>
                     <div class="log-items">
-                    {% for item in g.logs %}
-                        <div class="log-item" data-id="{{ item.id }}">
-                            <div class="log-time">{{ item.time }}</div>
-                            <div class="log-body">
-                                {{- item.content_html -}}
-                                {% if item.edited %}<span class="edited-dot" title="已编辑"></span>{% endif %}
+                    {% for c in g.cats %}
+                        <!-- 类别子分组：默认折叠，点击类别标题展开 / 收起该类别下的全部记录 -->
+                        <div class="log-cat-group{% if c.uncat %} uncat{% endif %} collapsed" data-cat="{{ c.cat }}">
+                            <div class="log-cat-head" role="button" tabindex="0" title="点击展开 / 折叠该类别">
+                                <span class="log-cat-arrow">▾</span>
+                                {% if c.uncat %}
+                                    <span class="log-cat-name uncat">{{ c.cat }}</span>
+                                {% else %}
+                                    <span class="log-cat-name" data-category="{{ c.cat }}">{{ c.cat }}</span>
+                                {% endif %}
+                                <span class="log-cat-count">{{ c["items"] | length }}</span>
                             </div>
-                            <div class="log-ops">
-                                <button class="op-btn" type="button" title="编辑" data-id="{{ item.id }}">✏️</button>
-                                <button class="op-btn danger" type="button" title="删除" data-id="{{ item.id }}">🗑</button>
+                            <div class="log-cat-items">
+                            {% for item in c["items"] %}
+                                <div class="log-item" data-id="{{ item.id }}">
+                                    <div class="log-time">{{ item.time }}</div>
+                                    <div class="log-body">
+                                        {{- item.content_html -}}
+                                        {% if item.edited %}<span class="edited-dot" title="已编辑"></span>{% endif %}
+                                    </div>
+                                    <div class="log-ops">
+                                        <button class="op-btn move" type="button" title="转为待办" data-id="{{ item.id }}">📌</button>
+                                        <button class="op-btn" type="button" title="编辑" data-id="{{ item.id }}">✏️</button>
+                                        <button class="op-btn danger" type="button" title="删除" data-id="{{ item.id }}">🗑</button>
+                                    </div>
+                                </div>
+                            {% endfor %}
                             </div>
                         </div>
                     {% endfor %}
@@ -54,6 +72,7 @@
         {% else %}
             <div class="empty">还没有任何日志。点击右下角 <b>＋</b> 开始记录第一条吧！</div>
         {% endif %}
+        </div>
     </div>
 
     <!-- 加号悬浮按钮：点击弹出新增日志弹窗 -->
@@ -63,7 +82,14 @@
     <div class="modal-mask" id="edit-mask" hidden>
         <div class="modal-box" role="dialog" aria-modal="true">
             <div class="modal-title" id="edit-title">📝 新增日志</div>
-            <input class="modal-input" type="date" id="edit-date" title="归属日期">
+            <div class="modal-row">
+                <input class="modal-input" type="date" id="edit-date" title="归属日期">
+                <select class="modal-input" id="edit-category" title="类别">
+                    {% for cat in categories %}
+                        <option value="{{ cat }}">{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
             <textarea class="modal-input log-textarea" id="edit-content" placeholder="今天做了什么？…"></textarea>
             <div class="modal-ops">
                 <button class="modal-ok modal-cancel" type="button" id="edit-cancel">取消</button>
@@ -84,6 +110,18 @@
         </div>
     </div>
 
+    <!-- 转为待办确认弹窗 -->
+    <div class="modal-mask" id="move-mask" hidden>
+        <div class="modal-box" role="dialog" aria-modal="true">
+            <div class="modal-title">📌 转为待办</div>
+            <div class="modal-msg">确定将这条日志转为待办吗？<br>将移入<b>今天</b>的待办事项（保留类别与内容），原日志会删除。</div>
+            <div class="modal-ops">
+                <button class="modal-ok modal-cancel" type="button" id="move-cancel">取消</button>
+                <button class="modal-ok" type="button" id="move-ok">确定转移</button>
+            </div>
+        </div>
+    </div>
+
     <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
     <script>
         // ===== 页面配置：后端注入，供 logs.js 使用 =====
@@ -92,7 +130,8 @@
     urls: {
         add: "{{ url_for('logs.log_add') }}",
         update: "{{ url_for('logs.log_update') }}",
-        delete: "{{ url_for('logs.log_delete') }}"
+        delete: "{{ url_for('logs.log_delete') }}",
+        moveTodo: "{{ url_for('logs.log_move_todo') }}"
     }
 };
     </script>

@@ -1,102 +1,116 @@
 {
-  "next_id": 28,
+  "next_id": 46,
   "logs": [
     {
       "id": 3,
       "log_date": "2026-09-05",
       "content": "更新无畏契约",
       "created_at": "2026-09-05 23:05:42",
-      "updated_at": "2026-09-05 23:06:33"
+      "updated_at": "2026-09-07 21:32:15",
+      "category": "更新游戏"
     },
     {
       "id": 4,
       "log_date": "2026-09-05",
       "content": "更新龙岛异兽",
       "created_at": "2026-09-05 23:06:06",
-      "updated_at": null
+      "updated_at": "2026-09-07 21:32:07",
+      "category": "更新游戏"
     },
     {
       "id": 5,
       "log_date": "2026-09-05",
       "content": "更新无限暖暖",
       "created_at": "2026-09-05 23:06:57",
-      "updated_at": "2026-09-05 23:54:17"
+      "updated_at": "2026-09-07 21:32:02",
+      "category": "更新游戏"
     },
     {
       "id": 6,
       "log_date": "2026-09-05",
       "content": "上架2个游戏",
       "created_at": "2026-09-05 23:07:52",
-      "updated_at": "2026-09-05 23:57:54"
-    },
-    {
-      "id": 9,
-      "log_date": "2026-09-07",
-      "content": "wegame更新(待办)",
-      "created_at": "2026-09-06 15:16:25",
-      "updated_at": null
-    },
-    {
-      "id": 10,
-      "log_date": "2026-09-07",
-      "content": "wegame流浪之路降临更新(已挂维护)",
-      "created_at": "2026-09-06 15:17:22",
-      "updated_at": "2026-09-07 10:08:57"
-    },
-    {
-      "id": 11,
-      "log_date": "2026-09-07",
-      "content": "雷神加速器更新(待办)",
-      "created_at": "2026-09-06 15:18:05",
-      "updated_at": null
-    },
-    {
-      "id": 13,
-      "log_date": "2026-09-07",
-      "content": "地平线6steam更新(已挂维护)下载完成,测试完成",
-      "created_at": "2026-09-06 15:18:44",
-      "updated_at": "2026-09-07 13:40:11"
+      "updated_at": "2026-09-07 21:31:57",
+      "category": "上架游戏"
     },
     {
       "id": 22,
       "log_date": "2026-09-07",
       "content": "西瓜：l0v9xkvmqvogzgqv 问题描述：无法进入一直卡在进入画面说啟动成功后一会又退回",
       "created_at": "2026-09-07 09:33:58",
-      "updated_at": null
+      "updated_at": "2026-09-07 21:33:12",
+      "category": "问题处理"
     },
     {
       "id": 23,
       "log_date": "2026-09-07",
       "content": "西瓜：u3852af5dd82f8b0\n【游戏上架】 游戏名 + 版本号：黎明行者之血 问题描述：好游戏，上就完了",
       "created_at": "2026-09-07 09:36:47",
-      "updated_at": null
+      "updated_at": "2026-09-07 21:33:06",
+      "category": "问题处理"
     },
     {
       "id": 24,
       "log_date": "2026-09-07",
       "content": "西瓜：【游玩问题】 本局ID：frvr5nngcrmdmtax 问题描述：根本就打不开 一直在那个页面等了好久都不行",
       "created_at": "2026-09-07 09:40:03",
-      "updated_at": null
-    },
-    {
-      "id": 25,
-      "log_date": "2026-09-07",
-      "content": "西瓜cp901610755617456128\n问题描述：卡着不动了",
-      "created_at": "2026-09-07 09:44:12",
-      "updated_at": null
+      "updated_at": "2026-09-07 21:32:58",
+      "category": "问题处理"
     },
     {
       "id": 26,
       "log_date": "2026-09-07",
       "content": "上架脑叶公司\n画质：在注册表中\n语言：存档中",
       "created_at": "2026-09-07 10:52:30",
-      "updated_at": "2026-09-07 10:53:43"
+      "updated_at": "2026-09-07 21:32:48",
+      "category": "上架游戏"
     },
     {
-      "id": 27,
+      "id": 32,
       "log_date": "2026-09-07",
-      "content": "更新steam(待办)",
-      "created_at": "2026-09-07 14:38:07",
+      "category": "更新游戏",
+      "content": "地平线6steam更新,测试完成",
+      "created_at": "2026-09-07 22:07:43",
+      "updated_at": null
+    },
+    {
+      "id": 34,
+      "log_date": "2026-09-07",
+      "category": "上架游戏",
+      "content": "上架外星人降临 自走棋",
+      "created_at": "2026-09-07 22:09:40",
+      "updated_at": null
+    },
+    {
+      "id": 35,
+      "log_date": "2026-09-07",
+      "category": "上架游戏",
+      "content": "上架月光光心慌慌",
+      "created_at": "2026-09-07 22:10:44",
+      "updated_at": null
+    },
+    {
+      "id": 40,
+      "log_date": "2026-09-07",
+      "category": "问题处理",
+      "content": "西瓜cp901610755617456128\n问题描述：卡着不动了",
+      "created_at": "2026-09-07 22:18:55",
+      "updated_at": null
+    },
+    {
+      "id": 44,
+      "log_date": "2026-09-07",
+      "category": "更新游戏",
+      "content": "雷神加速器更新(待办)",
+      "created_at": "2026-09-07 22:40:15",
+      "updated_at": null
+    },
+    {
+      "id": 45,
+      "log_date": "2026-09-07",
+      "category": "更新游戏",
+      "content": "wegame",
+      "created_at": "2026-09-07 22:47:46",
       "updated_at": null
     }
   ]

@@ -55,10 +55,14 @@ def _save(data: dict) -> None:
 
 
 def _to_row(rec: dict) -> dict:
-    """把存储记录转成统一字典：日期为字符串、时间为 datetime（与模板/蓝图约定一致）。"""
+    """把存储记录转成统一字典：日期为字符串、时间为 datetime（与模板/蓝图约定一致）。
+
+    category 做兼容处理：老日志可能没有类别字段，缺省为空字符串（页面显示"未分类"）。
+    """
     return {
         "id": rec["id"],
         "log_date": rec["log_date"],
+        "category": rec.get("category", ""),  # 类别（上架游戏 / 更新游戏 / 问题处理；老数据为空）
         "content": rec["content"],
         "created_at": datetime.strptime(rec["created_at"], _TIME_FMT),
         "updated_at": (
@@ -69,8 +73,8 @@ def _to_row(rec: dict) -> dict:
     }
 
 
-def add_log(log_date: str, content: str) -> int:
-    """新增一条日志，返回新记录 id。"""
+def add_log(log_date: str, category: str, content: str) -> int:
+    """新增一条日志（带类别），返回新记录 id。"""
     with _lock:
         data = _load()
         new_id = data["next_id"]
@@ -78,6 +82,7 @@ def add_log(log_date: str, content: str) -> int:
             {
                 "id": new_id,
                 "log_date": log_date,
+                "category": category,
                 "content": content,
                 "created_at": datetime.now().strftime(_TIME_FMT),
                 "updated_at": None,
@@ -107,13 +112,14 @@ def get_log(log_id: int):
     return None
 
 
-def update_log(log_id: int, log_date: str, content: str) -> bool:
-    """修改某条日志的日期与内容；返回是否真的更新到（id 不存在返回 False）。"""
+def update_log(log_id: int, log_date: str, category: str, content: str) -> bool:
+    """修改某条日志的日期/类别/内容；返回是否真的更新到（id 不存在返回 False）。"""
     with _lock:
         data = _load()
         for rec in data["logs"]:
             if rec["id"] == log_id:
                 rec["log_date"] = log_date
+                rec["category"] = category
                 rec["content"] = content
                 rec["updated_at"] = datetime.now().strftime(_TIME_FMT)
                 _save(data)
