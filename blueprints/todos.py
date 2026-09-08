@@ -55,21 +55,6 @@ def _group_label(d: datetime.date) -> str:
     return f"{d.year}年{d.month}月{d.day}日 周{_WEEKDAYS[d.weekday()]}"
 
 
-def _group_categories(items: list) -> list:
-    """把同一天的记录按类别分组：类别白名单顺序在前，未分类（老数据）放最后。"""
-    cat_map = {c: [] for c in WORK_CATEGORIES}
-    uncat = []
-    for item in items:
-        if item["category"] in cat_map:
-            cat_map[item["category"]].append(item)
-        else:
-            uncat.append(item)  # 空类别等未知值归入"未分类"
-    cats = [{"cat": c, "items": cat_map[c]} for c in WORK_CATEGORIES if cat_map[c]]
-    if uncat:
-        cats.append({"cat": "未分类", "uncat": True, "items": uncat})
-    return cats
-
-
 @todos_bp.route("/todos")
 def index():
     """待办事项页：按日期倒序分组展示全部待办。"""
@@ -93,9 +78,6 @@ def index():
             groups[-1]["todos"].append(item)
         else:
             groups.append({"label": _group_label(d), "date": row["todo_date"], "todos": [item]})
-    # 日期分组内再按类别分组（cats），供模板渲染可折叠的类别子分组
-    for g in groups:
-        g["cats"] = _group_categories(g["todos"])
     today = datetime.date.today().isoformat()
     # 编辑弹窗预填用：{id: 记录} 的 JSON 映射（含类别与内容），直接嵌进页面 <script>。
     # ensure_ascii=False 保留中文；再把 < 转义成 \u003c，防止内容里的 </script> 破坏脚本标签。

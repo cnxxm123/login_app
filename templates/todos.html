@@ -37,41 +37,26 @@
                         <span class="todo-count">{{ g.todos | length }}</span>
                     </div>
                     <div class="todo-items">
-                    {% for c in g.cats %}
-                        <!-- 类别子分组：默认折叠，点击类别标题展开 / 收起该类别下的全部待办 -->
-                        <div class="todo-cat-group{% if c.uncat %} uncat{% endif %} collapsed" data-cat="{{ c.cat }}">
-                            <div class="todo-cat-head" role="button" tabindex="0" title="点击展开 / 折叠该类别">
-                                <span class="todo-cat-arrow">▾</span>
-                                {% if c.uncat %}
-                                    <span class="todo-cat-name uncat">{{ c.cat }}</span>
-                                {% else %}
-                                    <span class="todo-cat-name" data-category="{{ c.cat }}">{{ c.cat }}</span>
-                                {% endif %}
-                                <span class="todo-cat-count">{{ c["items"] | length }}</span>
-                            </div>
-                            <div class="todo-cat-items">
-                            {% for item in c["items"] %}
-                                <div class="todo-item{% if item.done %} done{% endif %}" data-id="{{ item.id }}">
-                                    <!-- 完成状态复选框：勾选 = 已完成（内容划线置灰） -->
-                                    <label class="todo-check" title="标记完成 / 未完成">
-                                        <input type="checkbox"{% if item.done %} checked{% endif %}>
-                                        <span class="todo-checkbox" aria-hidden="true"></span>
-                                    </label>
-                                    <div class="todo-body">
-                                        <div class="todo-line">
-                                            <span class="todo-time">{{ item.time }}</span>
-                                            {% if item.edited %}<span class="edited-dot" title="已编辑"></span>{% endif %}
-                                        </div>
-                                        <div class="todo-content">
-                                            {{- item.content_html -}}
-                                        </div>
-                                    </div>
-                                    <div class="todo-ops">
-                                        <button class="op-btn" type="button" title="编辑" data-id="{{ item.id }}">✏️</button>
-                                        <button class="op-btn danger" type="button" title="删除" data-id="{{ item.id }}">🗑</button>
-                                    </div>
+                    {% for item in g.todos %}
+                        <div class="todo-item{% if item.done %} done{% endif %}" data-id="{{ item.id }}">
+                            <!-- 完成状态复选框：勾选 = 已完成（内容划线置灰） -->
+                            <label class="todo-check" title="标记完成 / 未完成">
+                                <input type="checkbox"{% if item.done %} checked{% endif %}>
+                                <span class="todo-checkbox" aria-hidden="true"></span>
+                            </label>
+                            <div class="todo-body">
+                                <div class="todo-line">
+                                    <span class="todo-time">{{ item.time }}</span>
+                                    <span class="todo-cat{% if item.category not in categories %} uncat{% endif %}" data-category="{{ item.category }}">{{ item.category }}</span>
+                                    {% if item.edited %}<span class="edited-dot" title="已编辑"></span>{% endif %}
                                 </div>
-                            {% endfor %}
+                                <div class="todo-content">
+                                    {{- item.content_html -}}
+                                </div>
+                            </div>
+                            <div class="todo-ops">
+                                <button class="op-btn" type="button" title="编辑" data-id="{{ item.id }}">✏️</button>
+                                <button class="op-btn danger" type="button" title="删除" data-id="{{ item.id }}">🗑</button>
                             </div>
                         </div>
                     {% endfor %}

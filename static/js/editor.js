@@ -1,14 +1,5 @@
-// ===== 轻提示 =====
-function toast(msg, isErr) {
-    var t = document.createElement("div");
-    t.className = "toast" + (isErr ? " err" : "");
-    t.textContent = msg;
-    document.body.appendChild(t);
-    setTimeout(function () { t.classList.add("hide"); }, 2000);
-    setTimeout(function () { t.remove(); }, 2600);
-}
-
 // ===== 保存：表单 POST /save/<path>，成功后跳回查看页（带 saved=1 显示"已保存"）=====
+// 提示统一用 theme.js 提供的共享 toast()
 function saveFile() {
     var btn = document.getElementById("save-btn");
     var editor = document.getElementById("editor");

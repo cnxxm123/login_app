@@ -48,9 +48,9 @@ function saveTodo() {
     var date = editDate.value;
     var category = editCategory.value;
     var content = editContent.value.trim();
-    if (!date) { alert("请选择日期"); return; }
-    if (!category) { alert("请选择类别"); return; }
-    if (!content) { alert("内容不能为空"); return; }
+    if (!date) { toast("请选择日期", true); return; }
+    if (!category) { toast("请选择类别", true); return; }
+    if (!content) { toast("内容不能为空", true); return; }
     var btn = document.getElementById("edit-save");
     btn.disabled = true;
     var body = new URLSearchParams({ todo_date: date, category: category, content: content });
@@ -61,7 +61,7 @@ function saveTodo() {
     fetch(url, { method: "POST", body: body })
         .then(function (r) { return r.json(); })
         .then(function (data) {
-            if (!data.ok) { alert(data.error || "保存失败"); btn.disabled = false; return; }
+            if (!data.ok) { toast(data.error || "保存失败", true); btn.disabled = false; return; }
             // 维护编辑预填缓存：编辑覆盖原记录；新增记录后端返回的新 id
             if (editingId) {
                 TODO_DATA[String(editingId)] = { category: category, content: content };
@@ -72,7 +72,7 @@ function saveTodo() {
             btn.disabled = false;
             refreshList();  // 局部刷新列表，保持展开状态，避免整页刷新闪烁
         })
-        .catch(function () { alert("网络错误，请重试"); btn.disabled = false; });
+        .catch(function () { toast("网络错误，请重试", true); btn.disabled = false; });
 }
 document.getElementById("edit-save").onclick = saveTodo;
 
@@ -95,27 +95,12 @@ function rememberDateGroup(group) {
     localStorage.setItem(EXPAND_KEY, JSON.stringify(expanded));
 }
 
-// 记录类别分组的展开状态：key = "日期|类别"
-function rememberCatGroup(catGroup) {
-    var expanded = loadExpanded();
-    var key = catGroup.closest(".todo-group").getAttribute("data-date") + "|" +
-              catGroup.getAttribute("data-cat");
-    if (catGroup.classList.contains("collapsed")) delete expanded[key];
-    else expanded[key] = true;
-    localStorage.setItem(EXPAND_KEY, JSON.stringify(expanded));
-}
-
-// 页面加载时恢复：把记录过"展开"的日期 / 类别分组取消折叠
+// 页面加载时恢复：把记录过"展开"的日期分组取消折叠
 function restoreExpanded() {
     var expanded = loadExpanded();
     document.querySelectorAll(".todo-group").forEach(function (group) {
         var date = group.getAttribute("data-date");
         if (expanded[date]) group.classList.remove("collapsed");
-        group.querySelectorAll(".todo-cat-group").forEach(function (catGroup) {
-            if (expanded[date + "|" + catGroup.getAttribute("data-cat")]) {
-                catGroup.classList.remove("collapsed");
-            }
-        });
     });
 }
 restoreExpanded();  // 首次加载恢复记忆的展开状态
@@ -140,7 +125,7 @@ function refreshList() {
         editingId = null;
         restoreExpanded();  // 恢复用户展开的分组
         applySearch(kw);    // 保留当前搜索过滤
-    }).catch(function () { alert("刷新列表失败，请手动刷新页面"); });
+    }).catch(function () { toast("刷新列表失败，请手动刷新页面", true); });
 }
 
 // ===== 日期分组折叠（事件委托，列表局部刷新后依然有效）=====
@@ -150,20 +135,13 @@ document.addEventListener("click", function (ev) {
         var group = head.closest(".todo-group");
         group.classList.toggle("collapsed");
         rememberDateGroup(group);  // 记忆当前展开状态
-        return;
-    }
-    var catHead = ev.target.closest(".todo-cat-head");
-    if (catHead) {
-        var catGroup = catHead.closest(".todo-cat-group");
-        catGroup.classList.toggle("collapsed");
-        rememberCatGroup(catGroup);  // 记忆当前展开状态
     }
 });
 // 键盘支持：聚焦到分组标题时按 Enter / 空格切换（委托绑定）
 document.addEventListener("keydown", function (ev) {
     if (ev.key !== "Enter" && ev.key !== " ") return;
     var t = ev.target;
-    if (t && t.closest(".todo-group-head, .todo-cat-head")) {
+    if (t && t.closest(".todo-group-head")) {
         ev.preventDefault();
         t.click();
     }
@@ -187,10 +165,10 @@ document.addEventListener("change", function (ev) {
         method: "POST",
         body: new URLSearchParams({ id: id })
     }).then(function (r) { return r.json(); }).then(function (data) {
-        if (!data.ok) { alert(data.error || "操作失败"); box.checked = true; return; }
+        if (!data.ok) { toast(data.error || "操作失败", true); box.checked = true; return; }
         item.classList.toggle("done", false);  // 恢复未完成样式
         updateUndoneCount(1);                  // 未完成数 +1
-    }).catch(function () { alert("网络错误，请重试"); box.checked = true; });
+    }).catch(function () { toast("网络错误，请重试", true); box.checked = true; });
 });
 
 // ===== 完成确认弹窗：确定 → 转移；取消 → 恢复勾选框 =====
@@ -215,10 +193,10 @@ document.getElementById("move-ok").onclick = function () {
         method: "POST",
         body: new URLSearchParams({ id: id })
     }).then(function (r) { return r.json(); }).then(function (data) {
-        if (!data.ok) { alert(data.error || "操作失败"); }
+        if (!data.ok) { toast(data.error || "操作失败", true); }
         delete TODO_DATA[String(id)];  // 已完成的待办转移到日志，移除缓存
         refreshList();  // 局部刷新：待办消失、今天日志新增（成功或失败都恢复最新列表）
-    }).catch(function () { alert("网络错误，请重试"); }).finally(function () {
+    }).catch(function () { toast("网络错误，请重试", true); }).finally(function () {
         document.getElementById("move-ok").disabled = false;
         moveMask.hidden = true;
         pendingMove = null;
@@ -261,12 +239,12 @@ document.getElementById("del-ok").onclick = function () {
         method: "POST",
         body: new URLSearchParams({ id: id })
     }).then(function (r) { return r.json(); }).then(function (data) {
-        if (!data.ok) { alert(data.error || "删除失败"); return; }
+        if (!data.ok) { toast(data.error || "删除失败", true); return; }
         delete TODO_DATA[String(id)];  // 移除编辑预填缓存
         delMask.hidden = true;         // 立即关闭删除确认弹窗
         pendingDel = null;
         refreshList();
-    }).catch(function () { alert("网络错误，请重试"); }).finally(function () {
+    }).catch(function () { toast("网络错误，请重试", true); }).finally(function () {
         document.getElementById("del-ok").disabled = false;
     });
 };
@@ -278,22 +256,14 @@ function applySearch(kw) {
     var matched = 0;
     document.querySelectorAll(".todo-group").forEach(function (group) {
         var showGroup = false;
-        // 先逐类别分组过滤：类别内无匹配则整组隐藏
-        group.querySelectorAll(".todo-cat-group").forEach(function (catGroup) {
-            var showCat = false;
-            catGroup.querySelectorAll(".todo-item").forEach(function (item) {
-                var text = item.querySelector(".todo-content").textContent.toLowerCase();
-                var show = !kw || text.indexOf(kw) !== -1;
-                item.style.display = show ? "" : "none";
-                if (show) showCat = true;
-            });
-            catGroup.style.display = showCat ? "" : "none";
-            // 搜索联动：有匹配的类别分组自动展开（仅在搜索词非空时干预折叠状态，
-            // 清空搜索时保持用户手动展开的分组，由 restoreExpanded 决定）
-            if (kw && showCat) catGroup.classList.remove("collapsed");
-            if (showCat) showGroup = true;
+        group.querySelectorAll(".todo-item").forEach(function (item) {
+            var text = item.querySelector(".todo-content").textContent.toLowerCase();
+            var show = !kw || text.indexOf(kw) !== -1;
+            item.style.display = show ? "" : "none";
+            if (show) showGroup = true;
         });
-        // 日期分组：类别全部无匹配则整组隐藏
+        // 日期分组：全部无匹配则整组隐藏；搜索时自动展开有匹配的分组
+        // （清空搜索时保持用户手动展开的分组，由 restoreExpanded 决定）
         group.style.display = showGroup ? "" : "none";
         if (kw && showGroup) group.classList.remove("collapsed");
         if (showGroup) matched++;

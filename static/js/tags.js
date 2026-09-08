@@ -45,11 +45,11 @@ document.getElementById("del-ok").onclick = function () {
                 }
             }
         } else {
-            alert(data.error || "删除失败");
+            toast(data.error || "删除失败", true);
         }
         closeDel();
     }).catch(function () {
-        alert("网络错误，请重试");
+        toast("网络错误，请重试", true);
         closeDel();
     }).finally(function () {
         document.getElementById("del-ok").disabled = false;

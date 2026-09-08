@@ -47,9 +47,9 @@ function saveLog() {
     var date = editDate.value;
     var category = editCategory.value;
     var content = editContent.value.trim();
-    if (!date) { alert("请选择日期"); return; }
-    if (!category) { alert("请选择类别"); return; }
-    if (!content) { alert("内容不能为空"); return; }
+    if (!date) { toast("请选择日期", true); return; }
+    if (!category) { toast("请选择类别", true); return; }
+    if (!content) { toast("内容不能为空", true); return; }
     var btn = document.getElementById("edit-save");
     btn.disabled = true;
     var body = new URLSearchParams({ log_date: date, category: category, content: content });
@@ -60,7 +60,7 @@ function saveLog() {
     fetch(url, { method: "POST", body: body })
         .then(function (r) { return r.json(); })
         .then(function (data) {
-            if (!data.ok) { alert(data.error || "保存失败"); btn.disabled = false; return; }
+            if (!data.ok) { toast(data.error || "保存失败", true); btn.disabled = false; return; }
             // 维护编辑预填缓存：编辑覆盖原记录；新增记录后端返回的新 id
             if (editingId) {
                 LOG_CONTENT[String(editingId)] = { category: category, content: content };
@@ -71,7 +71,7 @@ function saveLog() {
             btn.disabled = false;
             refreshList();  // 局部刷新列表，保持展开状态，避免整页刷新闪烁
         })
-        .catch(function () { alert("网络错误，请重试"); btn.disabled = false; });
+        .catch(function () { toast("网络错误，请重试", true); btn.disabled = false; });
 }
 document.getElementById("edit-save").onclick = saveLog;
 
@@ -139,7 +139,7 @@ function refreshList() {
         editingId = null;
         restoreExpanded();  // 恢复用户展开的分组
         applySearch(kw);    // 保留当前搜索过滤
-    }).catch(function () { alert("刷新列表失败，请手动刷新页面"); });
+    }).catch(function () { toast("刷新列表失败，请手动刷新页面", true); });
 }
 
 // ===== 日期分组折叠（事件委托，列表局部刷新后依然有效）=====
@@ -204,12 +204,12 @@ document.getElementById("del-ok").onclick = function () {
         method: "POST",
         body: new URLSearchParams({ id: id })
     }).then(function (r) { return r.json(); }).then(function (data) {
-        if (!data.ok) { alert(data.error || "删除失败"); return; }
+        if (!data.ok) { toast(data.error || "删除失败", true); return; }
         delete LOG_CONTENT[String(id)];  // 移除编辑预填缓存
         delMask.hidden = true;           // 立即关闭删除确认弹窗
         pendingDel = null;
         refreshList();
-    }).catch(function () { alert("网络错误，请重试"); }).finally(function () {
+    }).catch(function () { toast("网络错误，请重试", true); }).finally(function () {
         document.getElementById("del-ok").disabled = false;
     });
 };
@@ -228,12 +228,12 @@ document.getElementById("move-ok").onclick = function () {
         method: "POST",
         body: new URLSearchParams({ id: id })
     }).then(function (r) { return r.json(); }).then(function (data) {
-        if (!data.ok) { alert(data.error || "转移失败"); return; }
+        if (!data.ok) { toast(data.error || "转移失败", true); return; }
         delete LOG_CONTENT[String(id)];  // 原日志已转移，移除编辑预填缓存
         moveMask.hidden = true;          // 立即关闭转移确认弹窗
         pendingMove = null;
         refreshList();  // 局部刷新：日志消失、今天的待办新增
-    }).catch(function () { alert("网络错误，请重试"); }).finally(function () {
+    }).catch(function () { toast("网络错误，请重试", true); }).finally(function () {
         document.getElementById("move-ok").disabled = false;
     });
 };
