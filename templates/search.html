@@ -49,7 +49,7 @@
                                 {% if r.snippet %}<span class="file-snippet">… {{ r.snippet }} …</span>{% endif %}
                             </span>
                         </a>
-                        <a class="file-dl" href="{{ url_for('download.download_dir', subpath=r.path) }}" title="下载">⬇</a>
+                        <a class="file-dl" href="{{ url_for('download.download_dir', subpath=r.path) }}" title="下载" aria-label="下载">⬇</a>
                     </li>
                 {% endfor %}
             </ul>
@@ -58,5 +58,6 @@
         {% endif %}
     </div>
     <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/confirm-download.js') }}"></script>
 </body>
 </html>

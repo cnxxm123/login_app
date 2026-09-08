@@ -225,30 +225,3 @@
                 if (head) head.classList.toggle("open", !panel.hidden);
             };
         })();
-
-        // ===== 文件标签：编辑（promptBox 输入逗号分隔标签）与移除（confirmBox 确认后删除）=====
-        function tagItem() {
-            var path = window.VIEW_CONFIG.path;  // 当前文件的相对路径（后端注入）
-            fetch(window.VIEW_CONFIG.urls.tagGet + "?path=" + encodeURIComponent(path))
-                .then(function (r) { return r.json(); })
-                .then(function (data) {
-                    var current = (data.ok && data.tags) ? data.tags.join(", ") : "";
-                    promptBox("用逗号分隔多个标签（留空 = 清空全部标签）：", current, function (val) {
-                        var fd = new FormData();
-                        fd.append("path", path);
-                        fd.append("tags", val);
-                        fetch(window.VIEW_CONFIG.urls.tagSet, { method: "POST", body: fd })
-                            .then(function () { location.reload(); });
-                    });
-                });
-        }
-        function removeTag(tag) {
-            confirmBox("移除标签「" + tag + "」？", function () {
-                var path = window.VIEW_CONFIG.path;
-                var fd = new FormData();
-                fd.append("path", path);
-                fd.append("tag", tag);
-                fetch(window.VIEW_CONFIG.urls.tagRemove, { method: "POST", body: fd })
-                    .then(function () { location.reload(); });
-            });
-        }

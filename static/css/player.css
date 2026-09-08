@@ -322,8 +322,7 @@
     .vp-settings { right: 6px; bottom: 52px; min-width: 128px; }
 
     /* B站极简布局：隐藏这些按钮 */
-    .vp-vol, .vp-left .vp-prev, .vp-left .vp-next,
-    #vp-prev, #vp-next, #vp-wide, #vp-webfull, #vp-pip { display: none !important; }
+    .vp-vol, #vp-prev, #vp-next, #vp-wide, #vp-webfull, #vp-pip { display: none !important; }
     /* 隐藏后：左侧剩 [播放/暂停][时间]，右侧剩 [倍速][全屏]，正是 B 站手机端布局 */
 
     /* 无 hover 的触屏上滑块难以操作：直接隐藏，点音量按钮只做静音切换 */
@@ -348,7 +347,6 @@ body.vp-mobile-full .vp-page { display: block; margin: 0; }
 body.vp-mobile-full .vp-main { width: 100%; }
 /* 隐藏页面其余元素（同网页全屏逻辑） */
 body.vp-mobile-full .view-wrap > .toolbar,
-body.vp-mobile-full .tags-row,
 body.vp-mobile-full .reading-bar,
 body.vp-mobile-full .vp-info,
 body.vp-mobile-full .vp-side { display: none; }

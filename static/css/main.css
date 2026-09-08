@@ -9,15 +9,6 @@
            search.html 的搜索框不受影响）；移动端该搜索框本就隐藏。 ===== */
         .head-left .search-form { border-radius: 8px; }
         .head-left .search-btn { border-radius: 6px; }
-        /* 卡片底部操作按钮组（下载、重命名、删除），文件夹/文件通用 */
-        .op-btn {
-            width: 30px; height: 30px; border: none; border-radius: 8px; cursor: pointer;
-            background: var(--accent-soft); color: var(--primary); font-size: 13px; transition: var(--t);
-            display: flex; align-items: center; justify-content: center; font-family: inherit;
-        }
-        .op-btn:hover { background: var(--primary); color: #fff; }
-        .op-btn.danger { color: var(--danger); background: var(--danger-soft); }
-        .op-btn.danger:hover { background: var(--danger); color: #fff; }
         /* ===== 上传按钮 + 弹出菜单：上传文件/上传文件夹/新建文件夹收敛为一个按钮 ===== */
         .up-menu { position: relative; }
         .up-btn {
@@ -56,15 +47,13 @@
             display: flex; flex-direction: column;
             background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px;
             transition: var(--t); position: relative;
-            touch-action: manipulation; /* 长按手势不触发系统缩放/菜单 */
+            touch-action: manipulation; /* 触屏点击优化：禁用双击缩放，减少点击延迟 */
             animation: fadeUp .35s ease both; /* 复用 common.css 的淡入动效 */
         }
         .file-card:hover {
             border-color: var(--border-strong); background: var(--surface); transform: translateY(-2px);
             box-shadow: var(--shadow-md);
         }
-        /* 更多菜单展开时：提升当前卡片层级，浮层不被相邻卡片遮挡 */
-        .file-card.z-top { z-index: 60; }
         .file-card .fc-thumb {
             position: relative; aspect-ratio: 4 / 3; background: #262b36; overflow: hidden;
             display: flex; align-items: center; justify-content: center;
@@ -99,7 +88,7 @@
         }
         .fc-dur.show { opacity: 1; }
         /* ===== 沉浸式文件夹卡片（参考云游戏/云电脑平台的"文件夹框"风格）===== */
-        /* 封面铺满整张卡片，标题/标签/操作悬浮在底部渐变遮罩上；
+        /* 封面铺满整张卡片，标题/操作悬浮在底部渐变遮罩上；
            卡片本身不裁剪，裁剪交给 fc-thumb，避免遮罩上浮的操作菜单被卡顶截断 */
         .file-card.folder-card { aspect-ratio: 3 / 4; }
         .file-card.folder-card .fc-thumb {
@@ -127,7 +116,7 @@
             backdrop-filter: blur(4px); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14);
             pointer-events: none;
         }
-        /* 底部渐变遮罩层：承载标签 + 标题 + 操作；
+        /* 底部渐变遮罩层：承载标题 + 操作；
            整体 pointer-events:none 让空白处点击穿透到封面链接，仅操作区可交互 */
         .fc-overlay {
             position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
@@ -137,15 +126,13 @@
             display: flex; flex-direction: column; gap: 6px;
             pointer-events: none;
         }
-        .fc-overlay .fc-tags { padding: 0; }
         .fc-overlay .fc-name {
             color: #fff; padding: 0; min-height: 0; flex: none; font-size: 13.5px;
             text-shadow: 0 1px 3px rgba(0, 0, 0, .6); pointer-events: auto;
         }
         .file-card.folder-card:hover .fc-name { color: #fff; }
-        .fc-overlay .fc-ops { padding: 2px 0 0; justify-content: flex-end; pointer-events: auto; }
         /* ===== 无封面文件夹：名称精确居中 + 渐变文字 ===== */
-        /* 遮罩撑满整卡；名字绝对定位于卡片正中，标签/操作用 margin-top:auto 沉底 */
+        /* 遮罩撑满整卡；名字绝对定位于卡片正中，操作用 margin-top:auto 沉底 */
         .file-card.folder-card.folder-plain .fc-thumb::after {
             content: ""; position: absolute; inset: 0;
             background:
@@ -176,8 +163,6 @@
             background: linear-gradient(180deg, #fff 25%, #d6dae3 100%);
             -webkit-background-clip: text; background-clip: text;
         }
-        .file-card.folder-card.folder-plain .fc-overlay .fc-tags { margin-top: auto; justify-content: center; }
-        .file-card.folder-card.folder-plain .fc-overlay .fc-ops { justify-content: flex-end; }
         /* 卡片级美术效果：悬浮发光描边 + 流光扫过 */
         .file-card.folder-card.folder-plain::before {
             content: ""; position: absolute; inset: -1px; border-radius: 12px; z-index: 6;
@@ -196,18 +181,16 @@
         }
         @keyframes plainSheen { to { background-position: -60% 0; } }
         @keyframes plainAmbient { 0%, 100% { opacity: .75; } 50% { opacity: 1; } }
-        /* 悬浮按钮在图片上的观感：半透明白色毛玻璃胶囊 */
-        .folder-card .op-btn {
-            background: rgba(255, 255, 255, .16); color: #fff;
-            backdrop-filter: blur(6px); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .2);
+        /* 右上角下载图标：低调小图标，无底色圆圈，仅悬停时变亮 */
+        .fc-dl {
+            position: absolute; top: 10px; right: 10px; z-index: 3;
+            width: 22px; height: 22px;
+            display: flex; align-items: center; justify-content: center;
+            color: rgba(255, 255, 255, .72); font-size: 12px; line-height: 1;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, .45);
+            text-decoration: none; transition: var(--t); pointer-events: auto;
         }
-        .folder-card .op-btn:hover { background: var(--primary); color: #fff; box-shadow: none; }
-        .folder-card .op-btn.danger { background: rgba(239, 68, 68, .28); color: #ffd9d9; }
-        .folder-card .op-btn.danger:hover { background: var(--danger); color: #fff; }
-        /* 复选按钮移到右上角，避开左上角的"📁 N 张"徽标 */
-        .folder-card .fc-check { top: 10px; left: auto; right: 10px; z-index: 4; }
-        /* 浮层里的标签：浅色底在深色遮罩上更清晰 */
-        .folder-card .fc-tag { background: rgba(255, 255, 255, .14); color: #fff; }
+        .fc-dl:hover { color: #fff; opacity: 1; }
         .file-card .fc-name {
             padding: 10px 12px 2px; font-size: 13px; color: var(--text); text-decoration: none;
             word-break: break-all; line-height: 1.45; flex: 1;
@@ -216,78 +199,10 @@
             min-height: calc(1.45em * 2 + 10px);
         }
         .file-card:hover .fc-name { color: var(--primary-2); }
-        /* 卡片标签行：显示已打的标签，多个标签并排小胶囊 */
-        .fc-tags { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 12px 0; }
-        .fc-tags:empty { display: none; }
-        .fc-tag {
-            background: var(--accent-soft); color: var(--primary); border-radius: 999px;
-            font-size: 11px; padding: 1px 8px; max-width: 100%;
-            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-        }
-        .file-card .fc-ops { display: flex; align-items: center; gap: 6px; padding: 8px 12px 12px; justify-content: flex-end; }
-        /* "⋯ 更多"菜单：次要操作收进浮层，点击展开，向上弹出 */
-        .op-more { position: relative; }
-        .op-more .more-btn { font-weight: 700; letter-spacing: 1px; }
-        .op-more .op-dropdown {
-            position: absolute; right: 0; bottom: calc(100% + 6px); min-width: 132px;
-            background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
-            box-shadow: var(--shadow-md); padding: 6px; z-index: 70;
-            display: flex; flex-direction: column; gap: 2px;
-            opacity: 0; transform: translateY(8px) scale(.96); pointer-events: none;
-            transform-origin: bottom right; transition: var(--t);
-        }
-        .op-more.open .op-dropdown { opacity: 1; transform: none; pointer-events: auto; }
-        /* 浮层里的条目：整行文字按钮，点击整行触发 */
-        .op-dropdown .op-btn {
-            width: 100%; height: auto; justify-content: flex-start; gap: 8px;
-            padding: 8px 10px; border-radius: 7px; font-size: 12.5px; background: transparent;
-            color: var(--text); white-space: nowrap;
-        }
-        .op-dropdown .op-btn:hover { background: var(--accent-soft); color: var(--primary); }
-        .op-dropdown .op-btn.danger:hover { background: var(--danger-soft); color: var(--danger); }
-        /* 选中状态：卡片描边高亮，配合复选框 */
-        .file-card.selected { border-color: var(--primary); background: var(--surface); box-shadow: 0 0 0 2px rgba(79, 94, 232, .28); }
-        /* 复选框：悬浮在缩略图左上角；默认隐藏，长按卡片后淡入（body.selecting），
-           保持卡片观感干净 */
-        .fc-check {
-            position: absolute; top: 8px; left: 8px; z-index: 5;
-            width: 20px; height: 20px; cursor: pointer; accent-color: var(--primary);
-            box-shadow: 0 1px 4px rgba(0,0,0,.35); border-radius: 4px;
-            opacity: 0; pointer-events: none; transition: opacity .15s ease;
-        }
-        body.selecting .fc-check { opacity: 1; pointer-events: auto; }
-        /* 批量操作栏：有选中项时出现在内容顶部，吸顶显示 */
-        .batch-bar {
-            display: none; align-items: center; gap: 10px; flex-wrap: wrap;
-            margin: 14px 0 0; padding: 10px 14px;
-            background: var(--accent-soft); border: 1px solid var(--border-strong); border-radius: 10px;
-            font-size: 13px; color: var(--primary); position: sticky; top: 10px; z-index: 40;
-        }
-        .batch-bar.show { display: flex; }
-        .batch-bar .cnt { font-weight: 600; }
-        .batch-bar .spacer { flex: 1; }
-        .batch-btn {
-            border: none; border-radius: 8px; padding: 7px 14px; cursor: pointer;
-            background: var(--primary); color: #fff; font-size: 13px; transition: var(--t); font-family: inherit;
-        }
-        .batch-btn:hover { background: var(--primary-2); }
-        .batch-btn.ghost { background: var(--surface); color: var(--primary); border: 1px solid var(--border-strong); }
-        .batch-btn.ghost:hover { background: var(--accent-soft); }
-        .batch-btn.danger { background: var(--danger); }
-        .batch-btn.danger:hover { filter: brightness(.9); }
-        /* 目标目录输入框（移动/复制弹窗用）：可手输相对路径，也提供下拉建议 */
-        .dir-input {
-            width: 100%; box-sizing: border-box; padding: 9px 12px; margin-bottom: 6px;
-            font-size: 14px; color: var(--text); background: var(--surface-2);
-            border: 1px solid var(--border); border-radius: 8px; font-family: inherit; outline: none;
-        }
-        .dir-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 94, 232, .14); }
-        .dir-hint-line { font-size: 12px; color: var(--text-3); margin-bottom: 12px; }
 
         /* 暗色模式：颜色已由 common.css 变量自动适配，此处仅保留特殊处理 */
         /* 只改底色层，保留上面的品牌光斑渐变 */
         body.dark .fc-thumb { background-color: #05070f; }
-        body.dark .file-card.selected { background: var(--surface); }
 
         /* ===== 移动端 / 平板适配（≤1024px，公共导航栏见 common.css）===== */
         @media (max-width: 1024px) {
@@ -306,22 +221,11 @@
             .file-card.folder-card.folder-plain .fc-overlay .fc-name { font-size: 15px; }
             .fc-folder-badge { font-size: 10.5px; padding: 2px 8px; }
             .file-card .fc-name { font-size: 12px; padding: 8px 10px 2px; }
-            .file-card .fc-ops { gap: 8px; padding: 8px 10px 10px; }
-            /* 操作按钮：加大到 34px，方便手指点按 */
-            .op-btn { width: 34px; height: 34px; font-size: 14px; }
-            /* 卡片 hover 位移在触屏上会卡住、且会破坏"更多"菜单的 fixed 锚点，移动端禁用 */
+            /* 下载图标：移动端加大触控面积 */
+            .fc-dl { width: 34px; height: 34px; }
+            /* 卡片 hover 位移在触屏上会卡住，移动端禁用 */
             .file-card:hover { transform: none; }
-            /* "更多"菜单：底部弹出式操作面板，上移避开底部导航栏 */
-            .op-more .op-dropdown {
-                position: fixed; left: 12px; right: 12px; bottom: calc(76px + env(safe-area-inset-bottom));
-                width: auto; min-width: 0;
-                transform: translateY(16px) scale(.98); transform-origin: bottom center; z-index: 90;
-            }
-            .op-more .op-dropdown .op-btn { padding: 12px; font-size: 14px; }
             .welcome { font-size: 17px; }
-            /* 批量操作栏：吸顶位置下移到顶部应用栏下方，按钮加大触控面积 */
-            .batch-bar { top: calc(50px + env(safe-area-inset-top)); padding: 10px 12px; gap: 8px; }
-            .batch-btn { padding: 9px 12px; }
             /* 上传菜单：移动端改放顶部应用栏（切换主题旁，见 nav.html），
                页面头部的菜单隐藏；按钮高度与"切换主题"一致。
                注意：顶栏 .sb-mbar 带 backdrop-filter，会让 position:fixed

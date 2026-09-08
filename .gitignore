@@ -19,8 +19,6 @@ _thumbs/
 _imgthumbs/
 # H.264/HLS 转码缓存
 _transcodes/
-# 回收站（删除 = 软删除移入这里）
-_trash/
 # 游戏卸载备份目录（卸载 = 软删除移入这里，可还原）
 _removed_games/
 

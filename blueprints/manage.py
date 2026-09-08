@@ -1,38 +1,23 @@
 """manage 模块（blueprints 包）
-管理蓝图：文件上传、重命名、删除（文件/文件夹）、新建文件夹、
-在线文本编辑、移动/复制、批量操作（批量移动/复制/删除）。
+管理蓝图：文件上传、新建文件夹、在线文本编辑。
 
-路由前缀：/upload、/rename、/delete、/mkdir、/edit、/save、
-/move、/copy、/batch_move、/batch_copy、/batch_delete。
+路由前缀：/upload、/mkdir、/edit、/save。
 操作完成后重定向回操作所在的目录页，避免停留在失效路径：
-- 改变条目自身路径的操作（rename/delete/move/copy 等）跳回其上级目录；
 - 在当前目录内新增内容的操作（mkdir/upload）跳回当前目录。
 
 【与其它模块的分工】
 - 路径安全校验来自 services/path_utils（纯逻辑层）
-- 移动/复制/批量操作的核心逻辑来自 services/file_ops（纯逻辑层）
-- 删除为"软删除"：不再物理清除，而是移入回收站（services/trash_utils），可还原
 """
 
-import json
 import os
 
-from flask import Blueprint, abort, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, abort, redirect, render_template, request, url_for
 
 from config import CODE_LANGUAGES, TEXT_EXTENSIONS
-from services import file_ops, trash_utils
 from services.path_utils import safe_path
 from services.text_utils import read_text_file
 
 manage_bp = Blueprint("manage", __name__)
-
-
-def _redirect_back(subpath: str):
-    """操作完成后跳回目标条目的上级目录（上级可能为空 → 根目录）。"""
-    parent = os.path.dirname(subpath).replace("\\", "/")
-    if parent:
-        return redirect(url_for("browser.browse", subpath=parent))
-    return redirect(url_for("browser.main"))
 
 
 def _redirect_here(subpath: str):
@@ -100,8 +85,8 @@ def _do_mkdir(subpath: str):
     """在当前目录下新建文件夹。
 
     文件夹名取表单字段 new_folder：去首尾空格后，
-    不允许为空 / "." / ".." / 含路径分隔符（防目录穿越），
-    与 rename 的新名称校验保持一致；同名存在时返回 409。
+    不允许为空 / "." / ".." / 含路径分隔符（防目录穿越）；
+    同名存在时返回 409。
     """
     target = safe_path(subpath)
     if target is None or not os.path.isdir(target):
@@ -126,31 +111,6 @@ def mkdir_root():
 def mkdir(subpath: str):
     """新建文件夹：new_folder 为表单字段，在当前目录下创建。"""
     return _do_mkdir(subpath)
-
-
-@manage_bp.route("/rename/<path:subpath>", methods=["POST"])
-def rename(subpath: str):
-    """重命名：new_name 为表单字段；拒绝包含路径分隔符或与现同名。"""
-    target = safe_path(subpath)
-    if target is None or not os.path.exists(target):
-        abort(404)
-    new_name = (request.form.get("new_name") or "").strip()
-    # 防目录穿越：新名称里不允许出现路径分隔符
-    if not new_name or "/" in new_name or "\\" in new_name:
-        abort(400)
-    new_path = os.path.join(os.path.dirname(target), new_name)
-    if os.path.exists(new_path):
-        abort(409)  # 同名文件已存在
-    os.rename(target, new_path)
-    return _redirect_back(subpath)
-
-
-@manage_bp.route("/delete/<path:subpath>", methods=["POST"])
-def delete(subpath: str):
-    """删除：软删除，把文件/目录移入回收站（可还原，前端有确认弹窗）。"""
-    if not trash_utils.move_to_trash(subpath):
-        abort(404)
-    return _redirect_back(subpath)
 
 
 def _is_editable(target: str) -> bool:
@@ -206,84 +166,3 @@ def save(subpath: str):
     with open(target, "w", encoding="utf-8") as f:
         f.write(content)
     return redirect(url_for("view.view_file", subpath=subpath, saved=1))
-
-
-def _json_redirect_error(msg: str, status: int):
-    """批量/移动复制接口返回统一 JSON 错误体。"""
-    return jsonify({"ok": False, "error": msg}), status
-
-
-def _parse_paths() -> list:
-    """从表单解析条目路径列表（paths 可多值，也用逗号分隔兜底）。"""
-    raw = request.form.getlist("paths")
-    paths = []
-    for p in raw:
-        paths += [x for x in p.split(",") if x]
-    return paths
-
-
-@manage_bp.route("/move/<path:subpath>", methods=["POST"])
-def move(subpath: str):
-    """移动单个条目：dest_subpath 为表单字段（目标目录相对路径）。"""
-    dest = (request.form.get("dest_subpath") or "").strip()
-    ok, msg = file_ops.move_item(subpath, dest)
-    if not ok:
-        return _json_redirect_error(
-            {"not_found": "源文件不存在", "bad_dest": "目标目录无效", "into_self": "不能移动到自己的子目录"}.get(msg, "移动失败"),
-            400 if msg != "not_found" else 404,
-        )
-    return jsonify({"ok": True, "name": msg})
-
-
-@manage_bp.route("/copy/<path:subpath>", methods=["POST"])
-def copy(subpath: str):
-    """复制单个条目：dest_subpath 为表单字段（目标目录相对路径）。"""
-    dest = (request.form.get("dest_subpath") or "").strip()
-    ok, msg = file_ops.copy_item(subpath, dest)
-    if not ok:
-        return _json_redirect_error(
-            {"not_found": "源文件不存在", "bad_dest": "目标目录无效", "into_self": "不能复制到自己的子目录"}.get(msg, "复制失败"),
-            400 if msg != "not_found" else 404,
-        )
-    return jsonify({"ok": True, "name": msg})
-
-
-@manage_bp.route("/batch_move/", methods=["POST"])
-def batch_move():
-    """批量移动：paths 为条目列表（表单多值/逗号分隔），dest_subpath 为目标目录。"""
-    paths = _parse_paths()
-    if not paths:
-        return _json_redirect_error("未选择任何条目", 400)
-    ok, fail, valid, errors = file_ops.move_items(paths, (request.form.get("dest_subpath") or "").strip())
-    if not valid:
-        return _json_redirect_error("目标目录无效", 400)
-    return jsonify({"ok": True, "succeed": ok, "failed": fail, "errors": errors})
-
-
-@manage_bp.route("/batch_copy/", methods=["POST"])
-def batch_copy():
-    """批量复制：paths 为条目列表（表单多值/逗号分隔），dest_subpath 为目标目录。"""
-    paths = _parse_paths()
-    if not paths:
-        return _json_redirect_error("未选择任何条目", 400)
-    ok, fail, valid, errors = file_ops.copy_items(paths, (request.form.get("dest_subpath") or "").strip())
-    if not valid:
-        return _json_redirect_error("目标目录无效", 400)
-    return jsonify({"ok": True, "succeed": ok, "failed": fail, "errors": errors})
-
-
-@manage_bp.route("/batch_delete/", methods=["POST"])
-def batch_delete():
-    """批量删除：paths 为条目列表（表单多值/逗号分隔），逐条软删除进回收站。"""
-    paths = _parse_paths()
-    if not paths:
-        return _json_redirect_error("未选择任何条目", 400)
-    ok = fail = 0
-    errors = []
-    for p in paths:
-        if trash_utils.move_to_trash(p):
-            ok += 1
-        else:
-            fail += 1
-            errors.append(p)
-    return jsonify({"ok": True, "succeed": ok, "failed": fail, "errors": errors})

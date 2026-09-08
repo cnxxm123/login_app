@@ -9,7 +9,7 @@
 
 import os
 
-# 本文件所在目录的绝对路径（E:\projectwork\login_app）
+# 本文件所在目录的绝对路径（F:\login_app）
 # os.path.abspath(__file__) 归一化为绝对路径；os.path.dirname 取所在目录
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -23,8 +23,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # 说明：
 #   - 用 r"..." 原始字符串，反斜杠无需转义，路径用 \ 或 / 都可以；
 #   - 留空 ""（或注释掉本行）时，依次回退到环境变量 TEXT_DIR，再回退到项目内 text/。
-# 本机（无 F 盘）不指定目录，留空回退到项目内 text/；如需浏览其他文件夹，
-# 把下面路径字符串替换成目标目录即可（例如 CONTENT_PATH = r"D:\我的资料"）。
+# 当前浏览根目录设为 F:\sex（本机 F 盘存在时生效）；
+# 如需浏览其他文件夹，把下面路径字符串替换成目标目录即可（例如 CONTENT_PATH = r"D:\我的资料"）。
 CONTENT_PATH = r"F:\sex"
 
 # 内容目录最终取值：CONTENT_PATH（存在时）> 环境变量 TEXT_DIR > 项目内 text/
@@ -35,7 +35,7 @@ TEXT_DIR = (
     or os.path.join(BASE_DIR, "text")
 )
 
-# 工作日志存储目录：放在项目根目录下（与 game 目录平级），自动新建"工作日志"文件夹。
+# 工作日志存储目录：放在项目根目录下（与 text 目录平级），自动新建"工作日志"文件夹。
 # 日志以 JSON 文件（logs.json）保存在其中，可直接查看 / 备份；首次写入时自动创建。
 LOG_DIR = os.path.join(BASE_DIR, "工作日志")
 LOG_FILE = os.path.join(LOG_DIR, "logs.json")
@@ -63,28 +63,12 @@ IMG_THUMB_DIR = os.path.join(BASE_DIR, "_imgthumbs")
 # 同样放在项目目录内，避免污染浏览内容。
 TRANSCODE_DIR = os.path.join(BASE_DIR, "_transcodes")
 
-# 回收站目录：删除 = 移到这里的软删除，可还原；清空才真正物理删除。
-# 与 _thumbs 一样放在项目目录内（不在 TEXT_DIR 里），浏览/搜索都不会误入。
-TRASH_DIR = os.path.join(BASE_DIR, "_trash")
-
 # 上传限制（同时用于 Flask 请求体校验与页面提醒，保证两侧一致）：
 # - MAX_FORM_PARTS：一次 multipart 请求最多多少个"部件"（每个文件算 1 个）。
 #   文件夹上传是把整棵目录打包成一次请求，文件数超过该值会报 413。
 # - MAX_UPLOAD_BYTES：单次请求体总大小上限（字节）。
 MAX_FORM_PARTS = 20000
 MAX_UPLOAD_BYTES = 16 * 1024 * 1024 * 1024  # 16 GB
-
-# ========== 游戏功能配置（暂时停用，代码保留）==========
-# 【停用说明】游戏功能于 2026-09-08 起暂停启用，以下配置全部保留。
-# 以后再启用时：恢复 app.py 中 games 蓝图的 import 与注册即可，
-# 本配置无需改动。
-# 游戏目录：每个子文件夹含 index.html 即一个小游戏，点击后在新标签页游玩
-GAME_DIR = os.path.join(BASE_DIR, "game")
-
-# 已卸载游戏备份目录：卸载 = 把游戏文件夹移动到这里（软删除），可一键还原。
-# 与 _trash（文本回收站）同样的思路：不放回 GAME_DIR 就不会再出现在大厅，
-# 同时也不会被误删，确认后才彻底删除。放项目目录内，不污染游戏目录。
-GAME_UNINSTALL_DIR = os.path.join(BASE_DIR, "_removed_games")
 
 # 可预览的文本文件扩展名
 # 命中这些扩展名的文件会被当成文本读取并在网页展示

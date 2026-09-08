@@ -10,11 +10,13 @@
 - 路径安全校验来自 services/path_utils（纯逻辑层）
 """
 
-import io
 import os
+import sys
+import tempfile
 import zipfile
+from urllib.parse import quote as _url_quote
 
-from flask import Blueprint, abort, send_file
+from flask import Blueprint, abort, Response, send_file
 
 from services.path_utils import safe_path    # 路径安全校验
 
@@ -28,7 +30,9 @@ def download_dir(subpath: str):
 
     典型用途：漫画目录一键打包下载 / 单独下载某个文件。
     - zip 内相对路径按目录结构保留（不含 __pycache__ / .pyc）
-    - 用 BytesIO 在内存里生成，再流式返回给浏览器
+    - 目录打包**写入磁盘临时文件**（而非内存 BytesIO）：
+      大目录（几个 GB）打包时内存占用恒定，不会撑爆内存导致卡顿；
+      临时文件在响应发送完毕后自动删除，不残留垃圾。
     """
     target = safe_path(subpath)  # 防目录穿越
     if target is None:
@@ -46,21 +50,55 @@ def download_dir(subpath: str):
     if not os.path.isdir(target):
         abort(404)
 
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        for root, dirs, files in os.walk(target):
-            dirs[:] = [d for d in dirs if d != "__pycache__"]  # 剪枝，不打包缓存
-            for name in files:
-                if name.endswith(".pyc"):
-                    continue
-                full = os.path.join(root, name)
-                arc = os.path.relpath(full, target)  # zip 内相对路径
-                zf.write(full, arc)
-    buf.seek(0)
+    # 用 mkstemp 创建临时 zip：返回 (fd, 路径)，立即关闭 fd，
+    # 之后只通过路径操作，避免句柄泄漏。
+    fd, tmp_path = tempfile.mkstemp(suffix=".zip")
+    os.close(fd)
+    try:
+        # zipfile 直接写文件路径（磁盘），压缩过程占用内存恒定
+        with zipfile.ZipFile(tmp_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            for root, dirs, files in os.walk(target):
+                dirs[:] = [d for d in dirs if d != "__pycache__"]  # 剪枝，不打包缓存
+                for name in files:
+                    if name.endswith(".pyc"):
+                        continue
+                    full = os.path.join(root, name)
+                    arc = os.path.relpath(full, target)  # zip 内相对路径
+                    zf.write(full, arc)
+    except Exception:
+        # 打包失败：立即删掉临时文件，避免残留占用磁盘
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+        raise
+
+    # 流式发送 zip，发送完（或客户端中断）后由生成器的 finally 删除临时文件。
+    # 不直接用 send_file：send_file 对磁盘文件走文件包装器，close 回调不可靠；
+    # 生成器在迭代结束/异常/断开时必然执行 finally，保证临时文件被清理。
+    def generate():
+        try:
+            with open(tmp_path, "rb") as f:
+                while True:
+                    chunk = f.read(64 * 1024)
+                    if not chunk:
+                        break
+                    yield chunk
+        finally:
+            try:
+                os.remove(tmp_path)
+                print(f"[download] cleaned {tmp_path}", file=sys.stderr)
+            except OSError as e:
+                print(f"[download] cleanup failed {tmp_path}: {e}", file=sys.stderr)
+
     base = os.path.basename(target) or "download"
-    return send_file(
-        buf,
-        as_attachment=True,
-        download_name=f"{base}.zip",
-        mimetype="application/zip",
+    filename = f"{base}.zip"
+    resp = Response(generate(), mimetype="application/zip")
+    # 中文文件名用 RFC 5987 编码（filename*=UTF-8''...），避免下载名乱码
+    resp.headers["Content-Disposition"] = (
+        "attachment; "
+        f"filename=\"download.zip\"; filename*=UTF-8''{_url_quote(filename)}"
     )
+    # 预知总大小：浏览器据此显示下载进度条（生成器响应不会自动带 Content-Length）
+    resp.headers["Content-Length"] = str(os.path.getsize(tmp_path))
+    return resp

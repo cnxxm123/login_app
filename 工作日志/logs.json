@@ -1,5 +1,5 @@
 {
-  "next_id": 50,
+  "next_id": 52,
   "logs": [
     {
       "id": 3,
@@ -69,9 +69,9 @@
       "id": 32,
       "log_date": "2026-09-07",
       "category": "更新游戏",
-      "content": "地平线6steam更新,测试完成",
+      "content": "地平线6steam更新",
       "created_at": "2026-09-07 22:07:43",
-      "updated_at": null
+      "updated_at": "2026-09-08 22:07:26"
     },
     {
       "id": 34,
@@ -101,9 +101,9 @@
       "id": 44,
       "log_date": "2026-09-07",
       "category": "更新游戏",
-      "content": "雷神加速器更新(待办)",
+      "content": "雷神加速器更新",
       "created_at": "2026-09-07 22:40:15",
-      "updated_at": null
+      "updated_at": "2026-09-08 22:07:22"
     },
     {
       "id": 45,
@@ -143,6 +143,22 @@
       "category": "问题处理",
       "content": "测试埃尔登法环模组",
       "created_at": "2026-09-08 11:35:42",
+      "updated_at": null
+    },
+    {
+      "id": 50,
+      "log_date": "2026-09-08",
+      "category": "上架游戏",
+      "content": "数码宝贝",
+      "created_at": "2026-09-08 22:05:41",
+      "updated_at": null
+    },
+    {
+      "id": 51,
+      "log_date": "2026-09-08",
+      "category": "上架游戏",
+      "content": "阿宅的我被二次元女同事搭讪了【试玩版】",
+      "created_at": "2026-09-08 22:06:48",
       "updated_at": null
     }
   ]

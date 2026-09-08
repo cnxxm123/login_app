@@ -11,15 +11,6 @@
       "updated_at": null
     },
     {
-      "id": 23,
-      "todo_date": "2026-09-08",
-      "category": "上架游戏",
-      "content": "分发老头环",
-      "done": false,
-      "created_at": "2026-09-08 11:45:24",
-      "updated_at": null
-    },
-    {
       "id": 24,
       "todo_date": "2026-09-09",
       "category": "上架游戏",

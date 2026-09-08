@@ -2,24 +2,6 @@
         // 沙箱预览 iframe 禁用了 prompt/confirm/alert，用自绘弹窗代替。
         // 输入模式：确认 resolve 输入值（去首尾空格），取消/点遮罩 resolve null；
         // 纯提示/确认模式：确认 resolve true，取消 resolve false。
-        // 按路径逐段编码：保证 / 分隔符保留，且文件名里的 # / ? 等特殊字符安全
-        function encPath(p) { return p.split("/").map(encodeURIComponent).join("/"); }
-        // "⋯ 更多"菜单：点击展开当前，关闭其它；点击外部任意处关闭全部
-        function toggleMore(ev, btn) {
-            ev.stopPropagation();
-            var more = btn.closest(".op-more");
-            var card = btn.closest(".file-card");
-            var wasOpen = more.classList.contains("open");
-            document.querySelectorAll(".op-more.open").forEach(function (m) { m.classList.remove("open"); });
-            document.querySelectorAll(".file-card.z-top").forEach(function (c) { c.classList.remove("z-top"); });
-            if (!wasOpen) { more.classList.add("open"); if (card) card.classList.add("z-top"); }
-        }
-        document.addEventListener("click", function (ev) {
-            if (!ev.target.closest(".op-more")) {
-                document.querySelectorAll(".op-more.open").forEach(function (m) { m.classList.remove("open"); });
-                document.querySelectorAll(".file-card.z-top").forEach(function (c) { c.classList.remove("z-top"); });
-            }
-        });
         function openModal(opts) {
             return new Promise(function (resolve) {
                 var mask = document.getElementById("modal-mask");
@@ -51,36 +33,6 @@
         // 轻提示：复用弹窗做纯提示（沙箱禁用 alert）
         function notify(msg) {
             openModal({ title: "提示", message: msg, okText: "知道了" });
-        }
-
-        // ===== 打标签：弹出输入框编辑该条目（文件/文件夹）的标签，保存后刷新 =====
-        // 先 GET /tag/get 取当前标签预填到输入框（避免覆盖式误操作），
-        // 再用 POST /tag/set 整体替换；输入框留空 = 清空全部标签。
-        function tagItem(path) {
-            fetch(window.MAIN_CONFIG.urls.tagGet + "?path=" + encodeURIComponent(path))
-                .then(function (r) { return r.json(); })
-                .then(function (data) {
-                    var current = (data.ok && data.tags) ? data.tags.join(", ") : "";
-                    return openModal({
-                        title: "编辑标签",
-                        message: "用逗号分隔多个标签；清空输入框可移除全部标签。",
-                        input: true,
-                        value: current,
-                        placeholder: "如：教程, 重要, 待读",
-                        okText: "保存"
-                    }).then(function (val) {
-                        if (val === null) return;  // 用户取消
-                        var fd = new FormData();
-                        fd.append("path", path);
-                        fd.append("tags", val);
-                        fetch(window.MAIN_CONFIG.urls.tagSet, { method: "POST", body: fd })
-                            .then(function (r) { return r.json(); })
-                            .then(function (res) {
-                                if (res.ok) { location.reload(); }
-                                else { notify("保存失败：" + (res.error || "未知错误")); }
-                            });
-                    });
-                });
         }
 
         // ===== 上传提醒：点击"上传"时弹窗确认本次文件数与大小 =====
@@ -202,35 +154,6 @@
             };
         })();
 
-        // 重命名：弹窗输入新名称 → POST /rename/<path>
-        function renameItem(path) {
-            openModal({ title: "重命名", message: "输入新的名称：", input: true, placeholder: "新名称" })
-                .then(function (name) {
-                    if (!name) return;
-                    var fd = new FormData();
-                    fd.append("new_name", name);
-                    fetch(window.MAIN_CONFIG.urls.rename + encodeURI(path), { method: "POST", body: fd })
-                        .then(function (r) {
-                            if (r.redirected) { location.href = r.url; return; }
-                            if (r.ok) { location.reload(); }
-                            else if (r.status === 409) { notify("已存在同名文件/文件夹"); }
-                            else { notify("重命名失败"); }
-                        });
-                });
-        }
-        // 删除：弹窗二次确认 → POST /delete/<path>（软删除，移入回收站可还原）
-        function deleteItem(path) {
-            openModal({ title: "删除确认", message: "确定删除？内容将移入回收站，可随时还原。", okText: "删除" })
-                .then(function (ok) {
-                    if (!ok) return;
-                    fetch(window.MAIN_CONFIG.urls.delete + encodeURI(path), { method: "POST" })
-                        .then(function (r) {
-                            if (r.redirected) { location.href = r.url; return; }
-                            if (r.ok) { location.reload(); }
-                            else { notify("删除失败"); }
-                        });
-                });
-        }
         // 新建文件夹：弹窗输入名称 → POST /mkdir/<当前目录>
         function mkdirItem() {
             openModal({ title: "新建文件夹", message: "输入新文件夹名称：", input: true, placeholder: "文件夹名称", okText: "创建" })
@@ -248,168 +171,6 @@
                 });
         }
 
-        // ===== 批量选择：勾选任意条目后显示批量操作栏 =====
-        // 当前目录的子目录相对路径：作为移动/复制弹窗输入框的下拉建议（服务端渲染）
-        var SUBDIRS = window.MAIN_CONFIG.subdirs;
-        (function () {
-            var list = document.getElementById("subdir-list");
-            if (list) {
-                SUBDIRS.forEach(function (p) {
-                    var o = document.createElement("option");
-                    o.value = p; list.appendChild(o);
-                });
-            }
-        })();
-        // 收集所有被勾选的条目相对路径
-        function selectedPaths() {
-            var paths = [];
-            document.querySelectorAll(".file-card input.fc-check:checked").forEach(function (c) {
-                var card = c.closest(".file-card");
-                if (card && card.dataset.path) paths.push(card.dataset.path);
-            });
-            return paths;
-        }
-        // 根据复选框状态更新卡片高亮 + 批量栏显示
-        function updateBatch() {
-            var n = 0;
-            document.querySelectorAll(".file-card input.fc-check").forEach(function (c) {
-                var card = c.closest(".file-card");
-                if (card) card.classList.toggle("selected", c.checked);
-                if (c.checked) n++;
-            });
-            var bar = document.getElementById("batch-bar");
-            if (bar) {
-                bar.classList.toggle("show", n > 0);
-                document.getElementById("batch-cnt").textContent = "已选 " + n + " 项";
-            }
-        }
-        // 取消所有选择
-        function clearSelection() {
-            document.querySelectorAll("input.fc-check").forEach(function (c) { c.checked = false; });
-            document.body.classList.remove("selecting");
-            updateBatch();
-        }
-        // ===== 长按选择：复选框默认隐藏，长按卡片后淡入并自动勾选当前卡片 =====
-        (function () {
-            var timer = null, longPressed = false;
-            var HOLD = 500; // 长按阈值（毫秒）
-            var sx = 0, sy = 0;
-            function cancel() { if (timer) { clearTimeout(timer); timer = null; } }
-            document.addEventListener("pointerdown", function (e) {
-                if (e.pointerType === "mouse" && e.button !== 0) return; // 仅左键
-                var card = e.target.closest(".file-card");
-                if (!card) return;
-                // 交互区（复选框/操作按钮/更多菜单）不触发长按
-                if (e.target.closest(".fc-check, .fc-ops, .op-more, .op-dropdown")) return;
-                sx = e.clientX; sy = e.clientY; cancel();
-                timer = setTimeout(function () {
-                    timer = null;
-                    longPressed = true;
-                    document.body.classList.add("selecting"); // 所有复选框淡入
-                    var cb = card.querySelector("input.fc-check");
-                    if (cb) { cb.checked = true; updateBatch(); } // 长按即勾选当前卡片
-                }, HOLD);
-            }, true);
-            document.addEventListener("pointermove", function (e) {
-                if (timer && (Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10)) cancel();
-            }, true);
-            ["pointerup", "pointercancel", "pointerleave"].forEach(function (ev) {
-                document.addEventListener(ev, cancel, true);
-            });
-            // 长按后若未产生 click（如拖动离开）：延迟复位，避免误拦后续点击
-            document.addEventListener("pointerup", function () {
-                if (longPressed) setTimeout(function () { longPressed = false; }, 800);
-            }, true);
-            // 长按后拦截系统右键/长按菜单
-            document.addEventListener("contextmenu", function (e) {
-                if (longPressed) { e.preventDefault(); }
-            }, true);
-            // 长按后松开的那次点击：阻止缩略图跳转
-            document.addEventListener("click", function (e) {
-                if (longPressed) { e.preventDefault(); e.stopPropagation(); longPressed = false; }
-            }, true);
-        })();
-        // ===== 移动/复制 =====
-        // 目标目录弹窗：返回 Promise，确认 resolve 目标相对路径（可空=根目录），取消 resolve null
-        function askDestDir(title) {
-            return new Promise(function (resolve) {
-                var mask = document.getElementById("move-mask");
-                var input = document.getElementById("move-dir");
-                document.getElementById("move-title").textContent = title;
-                input.value = "";
-                input.focus();
-                function close() { mask.hidden = true; }
-                document.getElementById("move-ok").onclick = function () {
-                    close(); resolve(input.value.trim());
-                };
-                document.getElementById("move-cancel").onclick = function () { close(); resolve(null); };
-                mask.onclick = function (e) { if (e.target === mask) { close(); resolve(null); } };
-                mask.hidden = false;
-            });
-        }
-        // 单个条目移动/复制：isMove=true 移动，false 复制
-        function moveCopyItem(path, isMove) {
-            var action = isMove ? "移动" : "复制";
-            askDestDir(action + "「" + path + "」到…").then(function (dest) {
-                if (dest === null) return;
-                var url = isMove ? window.MAIN_CONFIG.urls.move : window.MAIN_CONFIG.urls.copy;
-                var fd = new FormData();
-                fd.append("dest_subpath", dest);
-                fetch(url + encPath(path), { method: "POST", body: fd })
-                    .then(function (r) { return r.json().then(function (d) { return { status: r.status, d: d }; }); })
-                    .then(function (res) {
-                        if (res.d.ok) { location.reload(); }
-                        else { notify(action + "失败：" + (res.d.error || "未知错误")); }
-                    })
-                    .catch(function () { notify(action + "失败：网络错误"); });
-            });
-        }
-        // 批量移动/复制
-        function batchMoveCopy(isMove) {
-            var paths = selectedPaths();
-            if (!paths.length) { notify("请先勾选要操作的条目"); return; }
-            var action = isMove ? "移动" : "复制";
-            askDestDir("将选中的 " + paths.length + " 项" + action + "到…").then(function (dest) {
-                if (dest === null) return;
-                var url = isMove ? window.MAIN_CONFIG.urls.batchMove : window.MAIN_CONFIG.urls.batchCopy;
-                var fd = new FormData();
-                fd.append("dest_subpath", dest);
-                paths.forEach(function (p) { fd.append("paths", p); });
-                fetch(url, { method: "POST", body: fd })
-                    .then(function (r) { return r.json().then(function (d) { return { status: r.status, d: d }; }); })
-                    .then(function (res) {
-                        if (!res.d.ok) { notify(action + "失败：" + (res.d.error || "未知错误")); return; }
-                        var msg = action + "完成：成功 " + res.d.succeed + " 个";
-                        if (res.d.failed) msg += "，失败 " + res.d.failed + " 个";
-                        notify(msg);
-                        location.reload();
-                    })
-                    .catch(function () { notify(action + "失败：网络错误"); });
-            });
-        }
-        function batchMove() { batchMoveCopy(true); }
-        function batchCopy() { batchMoveCopy(false); }
-        // 批量删除：二次确认 → POST /batch_delete/（软删除，进回收站）
-        function batchDelete() {
-            var paths = selectedPaths();
-            if (!paths.length) { notify("请先勾选要删除的条目"); return; }
-            openModal({ title: "批量删除确认", message: "确定删除选中的 <b>" + paths.length + "</b> 项？内容将移入回收站，可随时还原。", html: true, okText: "删除" })
-                .then(function (ok) {
-                    if (!ok) return;
-                    var fd = new FormData();
-                    paths.forEach(function (p) { fd.append("paths", p); });
-                    fetch(window.MAIN_CONFIG.urls.batchDelete, { method: "POST", body: fd })
-                        .then(function (r) { return r.json().then(function (d) { return { status: r.status, d: d }; }); })
-                        .then(function (res) {
-                            if (!res.d.ok) { notify("批量删除失败：" + (res.d.error || "未知错误")); return; }
-                            var msg = "已删除 " + res.d.succeed + " 个";
-                            if (res.d.failed) msg += "，失败 " + res.d.failed + " 个";
-                            notify(msg);
-                            location.reload();
-                        })
-                        .catch(function () { notify("批量删除失败：网络错误"); });
-                });
-        }
         // ===== 上传文件夹：整棵目录树的所有文件都在 input.files 里，
         // 每个文件带 webkitRelativePath（如 "漫画/第1话/001.jpg"）。
         // 用 FormData 把相对路径作为上传文件名提交，后端据此逐级建目录还原结构。 =====

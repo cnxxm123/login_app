@@ -98,32 +98,6 @@
             border: 1px solid var(--border); box-shadow: 0 2px 8px rgba(0, 0, 0, .05); cursor: pointer; font-family: inherit;
             display: inline-flex; align-items: center; gap: 6px; transition: all .2s;
         }
-        /* 当前文件标签行：胶囊式展示 + 逐个移除 + 编辑按钮 */
-        .tags-row {
-            display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
-            max-width: 1080px; margin: 10px auto 0; padding: 0 20px;
-        }
-        .tags-label { color: var(--text-3); font-size: 13px; }
-        .tag-pill {
-            display: inline-flex; align-items: center; gap: 4px;
-            background: var(--accent-soft); color: var(--primary); border-radius: 999px;
-            font-size: 12.5px; padding: 3px 10px;
-        }
-        .tag-pill button {
-            border: none; background: transparent; color: inherit; cursor: pointer;
-            font-size: 11px; padding: 0; line-height: 1; opacity: .7; font-family: inherit;
-        }
-        .tag-pill button:hover { opacity: 1; }
-        .tags-edit {
-            border: 1px dashed var(--border-strong); background: transparent; color: var(--primary);
-            border-radius: 999px; font-size: 12px; padding: 3px 12px; cursor: pointer;
-            font-family: inherit; transition: all .2s;
-        }
-        .tags-edit:hover { background: var(--accent-soft); border-color: var(--primary); }
-        body.dark .tags-label { color: var(--text-2); }
-        body.dark .tag-pill { background: var(--border); color: var(--primary-2); }
-        body.dark .tags-edit { border-color: var(--border-strong); color: var(--primary-2); }
-        body.dark .tags-edit:hover { background: var(--border); border-color: var(--primary); }
         .tool-btn:hover { color: var(--primary); border-color: var(--primary); }
         /* 工具栏右侧按钮组（编辑 / 目录），与左侧"返回"按钮分居两端 */
         .toolbar-right { display: flex; align-items: center; gap: 8px; }
@@ -319,7 +293,6 @@
         /* ===== 视频播放页（B 站式布局）：无左侧导航栏，播放器居中靠左 + 右侧"接下来播放"列表 ===== */
         body.video-page .view-wrap { max-width: 1500px; }
         body.video-page .toolbar { max-width: 1460px; }
-        body.video-page .tags-row { max-width: 1460px; }
         /* 视频页去掉正文卡片的留白/圆角，让播放器全宽铺开（卡片感由播放器自身保留） */
         body.video-page .doc {
             max-width: none; margin: 0; padding: 0;
@@ -385,7 +358,6 @@
 
         /* ===== 网页全屏模式：隐藏页面其余元素，播放器铺满浏览器窗口 ===== */
         body.vp-web-full .view-wrap > .toolbar,
-        body.vp-web-full .tags-row,
         body.vp-web-full .reading-bar,
         body.vp-web-full .vp-info,
         body.vp-web-full .vp-side { display: none; }
@@ -427,9 +399,5 @@
             .icon-btn { width: 40px; height: 40px; }
             /* "已保存"提示：上移避开底部导航栏 */
             .save-toast { bottom: calc(76px + env(safe-area-inset-bottom)); }
-            /* 标签行按钮：加大触控面积 */
-            .tag-pill { padding: 5px 12px; }
-            .tag-pill button { font-size: 12px; }
-            .tags-edit { padding: 5px 14px; }
         }
     

@@ -16,11 +16,9 @@
 | --- | --- |
 | 监听地址 | `0.0.0.0:5000`（同一局域网可通过 `http://<本机IP>:5000` 访问） |
 | 内容根目录 | `config.TEXT_DIR`（默认 `login_app/text/`，可用环境变量 `TEXT_DIR` 覆盖），所有"内容路径"均相对它 |
-| 回收站目录 | `config.TRASH_DIR`（`BASE_DIR/_trash`），删除 = 软删除移入此目录，不在内容目录内 |
 | 封面缓存目录 | `config.THUMB_DIR`（`BASE_DIR/_thumbs`），视频封面缩略图，可随时清空 |
 | 图片缩略图缓存目录 | `config.IMG_THUMB_DIR`（`BASE_DIR/_imgthumbs`），图片压缩缩略图，可随时清空 |
 | 转码缓存目录 | `config.TRANSCODE_DIR`（`BASE_DIR/_transcodes`），视频兼容转码缓存，可随时清空 |
-| 游戏卸载目录 | `config.GAME_UNINSTALL_DIR`（`BASE_DIR/_removed_games`），游戏卸载 = 软删除移入此目录，可还原（游戏功能自 2026-09-08 起**暂时停用**，配置保留） |
 
 ### 1.2 访问控制
 
@@ -42,9 +40,9 @@
 | --- | --- |
 | `200` | 成功（页面 / 文件流） |
 | `302` | 重定向（操作完成后跳回上级目录、空搜索跳回起始目录、图集条件不满足回退目录浏览） |
-| `400` | 参数非法（如重命名新名称含路径分隔符） |
+| `400` | 参数非法（如新建文件夹名称含路径分隔符） |
 | `404` | 路径不存在 / 越界 / 非目标类型（目录穿越时也返回 404） |
-| `409` | 冲突（如重命名时目标名称已存在） |
+| `409` | 冲突（如新建文件夹时名称已存在） |
 
 ---
 
@@ -67,7 +65,7 @@
 - **新标签页规则**：图集卡片（`new_tab=True`）与视频/文档/图片文件卡片（`external=True`）一样，点击在新标签页打开（`target="_blank" rel="noopener"`），不打断目录浏览；普通文件夹卡片仍原地打开目录浏览页。搜索页的文件结果同样新标签页打开，目录结果原地打开。
 - 主页/浏览页还提供**网格 / 列表两种视图**：列表视图单列展示（显示文件大小与类型图标），偏好经 `main_view` 键存 localStorage 记住；目录头部显示"目录 + 文件数量"统计。
 - `files` 中每个条目含：`name`、`kind`（`video`/`image`/`text`）、`thumb`（视频封面/图片缩略图）、
-  `url`、`external`（是否新标签页打开）、`path`（供下载）、`size`（文件字节数，读失败为 0，列表视图显示大小）、`editable`（是否可在线编辑）、`tags`（当前条目标签，卡片上直接显示）。
+  `url`、`external`（是否新标签页打开）、`path`（供下载）、`size`（文件字节数，读失败为 0，列表视图显示大小）、`editable`（是否可在线编辑）。
 - 视频条目的 `url` 指向**查看页** `/view/<path>`，由查看页自定义播放器播放（加载 `/media` 流地址），不再直接打开 `/media` 裸流。
 - 路径非法或不是目录 → `404`。
 
@@ -116,7 +114,7 @@
 
 - 视频/音频会同时构建"整目录同类媒体"连播列表（`dir_media`），播放结束自动切下一首/集。
 - 渲染 `templates/view.html`，含：`content_html`、`office_html`、`encoding`、`media_type`、`media_url`、
-  `images`、`image_urls`、`playlist`（连播列表）、`playlist_index`（当前文件下标）、`tags`（当前文件标签）、`parent` 等。
+  `images`、`image_urls`、`playlist`（连播列表）、`playlist_index`（当前文件下标）、`parent` 等。
 
 ### 3.1.1 视频播放器（自定义控制栏 + 进度记忆）
 
@@ -220,8 +218,12 @@
 - 路径不存在或越界 → `404`。
 - 目标为**文件**：以附件形式返回原文件（`Content-Disposition: attachment`），
   开启 `conditional=True` 支持断点续传。
-- 目标为**目录**：用内存 `BytesIO` 打包成 zip 返回
-  （文件名 = 目录名 + `.zip`；自动剔除 `__pycache__` 与 `.pyc`）。
+- 目标为**目录**：先写入**磁盘临时文件**再流式返回
+  （文件名 = 目录名 + `.zip`；自动剔除 `__pycache__` 与 `.pyc`；
+  打包大目录时内存占用恒定，临时文件发送完自动删除）。
+- **前端交互**：所有下载入口（文件/文件夹卡片右上角 ⬇、搜索结果旁 ⬇、图片预览页"下载整本"）
+  点击时先弹**自绘确认框**（`static/js/confirm-download.js`，沙箱 iframe 禁用原生 confirm），
+  确认后才发起下载；取消则停留在当前页。
 
 ---
 
@@ -233,15 +235,8 @@
 | POST | `/upload/<path:subpath>` | 上传多个文件到指定目录 |
 | POST | `/mkdir/` | 在根目录新建文件夹 |
 | POST | `/mkdir/<path:subpath>` | 在指定目录新建文件夹 |
-| POST | `/rename/<path:subpath>` | 重命名文件或目录 |
-| POST | `/delete/<path:subpath>` | 删除文件或目录（目录递归） |
 | GET | `/edit/<path:subpath>` | 打开在线文本编辑器 |
 | POST | `/save/<path:subpath>` | 保存在线编辑内容 |
-| POST | `/move/<path:subpath>` | 移动文件 / 目录 |
-| POST | `/copy/<path:subpath>` | 复制文件 / 目录 |
-| POST | `/batch_move/` | 批量移动 |
-| POST | `/batch_copy/` | 批量复制 |
-| POST | `/batch_delete/` | 批量软删除 |
 
 > 操作成功后统一 `302` 跳回**上级目录**（上级为空则跳 `/`），避免停留在失效路径。
 
@@ -260,215 +255,42 @@
 - `new_folder` 为空、为 `.`/`..` 或含 `/`、`\` → `400`（防目录穿越）。
 - 新路径已存在 → `409`；目标目录不存在 → `404`。
 
-### 6.3 POST /rename/<path:subpath>
-
-- **参数**（表单）: `new_name`（新名称，去首尾空格）。
-- `new_name` 为空或含 `/`、`\` → `400`（防目录穿越）。
-- 新路径已存在 → `409`；目标不存在 → `404`。
-
-### 6.4 POST /delete/<path:subpath>
-
-- **软删除**：不再物理清除，而是把目标**移入回收站**（`config.TRASH_DIR`），
-  并在回收站内写入同名 `.json` 元数据记录"原位置 + 删除时间"（`services/trash_utils.move_to_trash`）。
-- 目标不存在或越界 → `404`。
-- 文件与目录均可删除（目录整棵移入回收站），误删可在回收站一键还原。
-
-### 6.5 GET /edit/<path:subpath>
+### 6.3 GET /edit/<path:subpath>
 
 - 打开在线文本编辑器（渲染 `templates/editor.html`），仅**文本类扩展名**（`config.TEXT_EXTENSIONS`）可编辑，否则 `400`。
 - 用 `services/text_utils.read_text_file` 自动识别编码（utf-8 / gbk 等）读取内容。
 - 目标不存在或越界 → `404`；读取失败 → `400`。
 - 页面通过 `url_for('manage.save', subpath=path)` 拿到保存接口地址。
 
-### 6.6 POST /save/<path:subpath>
+### 6.4 POST /save/<path:subpath>
 
 - **参数**（表单）: `content`（编辑后的全文）。
 - 目标必须存在且为文本类文件，否则 `400`。
 - 统一以 **UTF-8** 编码写回（原编码信息在编辑页展示，前端有确认提示）。
 - 成功 → `302` 跳回编辑页（可继续编辑）；目标不存在/越界 → `404`。
 
-### 6.7 POST /move/<path:subpath> 与 POST /copy/<path:subpath>
-
-- **参数**（表单）: `dest_subpath`（目标目录的相对路径）。
-- 目标目录不存在 / 越界 / 移动目标目录到自身内部（`into_self`）→ `400`，返回 `{ok: False, error}`。
-- 目标位置**重名自动改名**：`名字 (1).后缀`、`名字 (2).后缀`…（`services/file_ops._unique_name`）。
-- 源不存在或越界 → `404`。
-- 成功 → 返回 JSON `{ok: True, name: 最终文件名}`。
-
-### 6.8 POST /batch_move/ 与 POST /batch_copy/
-
-- **参数**（表单）: `paths`（可传多个同名字段，每个为一项的相对路径）+ `dest_subpath`（目标目录）。
-- `paths` 为空 → `400`；目标目录无效 → `400`。
-- **逐条执行、部分成功不中断**：单个失败只计入 `failed` 并记录错误信息。
-- 返回 JSON：`{ok: True, succeed: N, failed: N, errors: ["path: 原因", ...]}`。
-- 移动时会拒绝把目录移入自身内部；移动/复制均自动处理重名冲突（改名）。
-
-### 6.9 POST /batch_delete/
-
-- **参数**（表单）: `paths`（可多个，每项为一项的相对路径）。
-- **逐条软删除**（移入回收站，可还原），单个失败只计入 `failed`。
-- 返回 JSON：`{ok: True, succeed: N, failed: N, errors: ["path", ...]}`。
-
 ---
 
-## 7. 回收站接口（`blueprints/trash.py`）
-
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| GET | `/trash` | 回收站列表页 |
-| POST | `/trash/restore/<name>` | 还原条目到原位置 |
-| POST | `/trash/delete/<name>` | 彻底删除单个条目（物理删除） |
-| POST | `/trash/empty` | 清空回收站（全部物理删除） |
-
-### 7.1 GET /trash
-
-- 渲染 `templates/trash.html`。
-- 列出回收站全部条目（跳过 `.json` 元数据文件），按删除时间倒序。
-- 每项含：`name`（回收站内名称）、`is_dir`、`original`（原相对路径）、`deleted_at`（删除时间）。
-
-### 7.2 POST /trash/restore/<name>
-
-- `<name>` 为回收站内单层条目名（URL 编码）；不允许含路径分隔符，越界 → `404`。
-- 还原：读 `.json` 元数据取原位置（经 `safe_path` 再校验），移回原处；
-  原父目录已不存在会自动重建。
-- 原位置已存在同名项 → `409`（前端提示先处理冲突）；元数据缺失 / 路径非法 → `404`。
-- 成功 → `302` 跳回原位置所在目录（原位置在根目录则跳 `/`）。
-
-### 7.3 POST /trash/delete/<name>
-
-- 彻底删除单个条目（物理删除，不可恢复；前端有二次确认）。
-- 条目不存在或越界 → `404`；成功 → `302` 跳回 `/trash`。
-
-### 7.4 POST /trash/empty
-
-- 清空回收站全部条目（物理删除，前端有二次确认）。
-- 成功 → `302` 跳回 `/trash`。
-
----
-
-## 8. 游戏接口（`blueprints/games.py`）
-
-> **【暂时停用】** 游戏功能自 **2026-09-08** 起暂停启用：`games` 蓝图不再注册，
-> 以下接口当前均不可访问（返回 404），文档与代码全部保留。
-> 启用方法：恢复 `app.py` 顶部 `from blueprints.games import games_bp` 的 import，
-> 以及 `create_app()` 中 `app.register_blueprint(games_bp)` 的注册即可。
-
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| GET | `/game` | 游戏大厅，列出所有含 `index.html` 的游戏 |
-| GET | `/game/<path:filepath>` | 返回游戏目录内静态文件（index.html / js / css） |
-| POST | `/game/uninstall/<name>` | 卸载游戏：软删除移入 `_removed_games/`，可还原 |
-| GET | `/game/uninstalled` | 已卸载游戏管理页（列表 + 还原 / 彻底删除） |
-| POST | `/game/restore/<name>` | 还原已卸载游戏回游戏大厅 |
-| POST | `/game/purge/<name>` | 彻底删除已卸载游戏（物理删除，不可恢复） |
-
-- 游戏目录：`config.GAME_DIR`（`login_app/game/`），每个子文件夹含 `index.html` 即一个小游戏。
-- `/game` 渲染 `templates/games.html`（卡片式，图标来自 `GAME_ICONS` 表，未收录显示 🎮）。
-- `/game/<path>` 用 `send_from_directory` 服务静态文件，自带目录穿越防护（越界 → `404`）。
-- 游戏卡片以 `target="_blank"` 在新标签页打开。
-- 卸载 / 还原 / 彻底删除由 `services/game_utils.py` 提供纯逻辑：
-  - `uninstall(name)`：把 `game/<name>/` 移动到 `_removed_games/<name>/`，并写一个 `.json` 记录卸载时间；
-  - `list_uninstalled()` / `restore(name)` / `purge(name)`：管理已卸载游戏；
-  - `/game/uninstalled` 渲染 `templates/games_uninstalled.html`（无已卸载游戏时仍显示页面）。
-
----
-
-## 9. 统计接口（`blueprints/stats.py`）
-
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| GET | `/stats` | 磁盘占用统计页（按文件类型 / 目录） |
-
-### 9.1 GET /stats
-
-- 渲染 `templates/stats.html`。
-- 由 `services/stats_utils.disk_stats()` 扫描 `TEXT_DIR`，返回"按文件类型"与"按目录"两组占用数据，
-  模板用纯 CSS 条形图（色块 + 百分比宽度，无第三方依赖）可视化。
-- 页面上下文：`stats`、`type_colors`（类型 → 颜色映射）。
-
----
-
-## 10. 标签接口（`blueprints/tags.py`）
-
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| GET | `/tags` | 标签管理页（全部标签 + 使用次数） |
-| GET | `/tags/filter` | 按标签筛选：`?tag=名称` |
-| GET | `/tag/get` | 查询某路径当前全部标签（JSON） |
-| POST | `/tag/set` | 打标签（整体替换） |
-| POST | `/tag/remove` | 取消单个标签 |
-| POST | `/tag/delete` | 删除整个标签（不可恢复） |
-
-### 10.1 GET /tags
-
-- 渲染 `templates/tags.html`，列出全部标签及使用次数（`services/tag_store.all_tags()`），点标签可进入筛选页。
-
-### 10.2 GET /tags/filter
-
-- **查询参数**: `tag`（标签名，去首尾空格）；为空 → `302` 跳回 `/tags`。
-- 展示打该标签的全部文件/目录（只保留仍真实存在的条目，文件被删除后标签自动跳过），
-  文件卡片复用浏览页的 `build_file_items`，保证样式一致。
-- 渲染 `templates/filter.html`。
-
-### 10.3 GET /tag/get
-
-- **查询参数**: `path`（相对路径）；缺省 → `400`。
-- 成功 → `{ok: True, tags: [标签名, ...]}`。
-
-### 10.4 POST /tag/set
-
-- **表单**: `path`（相对路径）、`tags`（逗号分隔标签串，可空 = 清空）。
-- 打标签为**整体替换**式：把该路径的标签列表替换为本次提交的列表（空串 = 清空全部标签）。
-- 路径不存在 / 越界 → `400`；保存失败 → `500`。
-- 成功 → `{ok: True, tags: [...]}`。
-
-### 10.5 POST /tag/remove
-
-- **表单**: `path`（相对路径）、`tag`（要移除的标签名）。
-- 参数不完整 → `400`；标签不存在 → `404`。
-- 成功 → `{ok: True}`。
-
-### 10.6 POST /tag/delete
-
-- **表单**: `tag`（标签名）。删除整个标签，并级联清掉所有文件上的该标签（不可恢复，前端二次确认）。
-- 缺省 → `400`；标签不存在 → `404`。
-- 成功 → `{ok: True}`。
-
-### 10.7 数据库
-
-- 标签存于 `login_db` 的 `tags` 与 `file_tags` 表（结构见 `db.py` 的 `init_db()`），读写统一经 `services/tag_store`。
-- `file_tags` 用 `(tag_id, path_md5)` 唯一键防止重复打标；`path_md5` 为路径 md5（32 位），避免长路径索引超长。
-
----
-
-## 11. 模块依赖速查
+## 7. 模块依赖速查
 
 | 接口 | 依赖的纯逻辑层（`services/`） | 依赖的配置（`config.py`） |
 | --- | --- | --- |
-| 浏览 `/`、`/browse` | `dir_utils.list_entries`、`tag_store.tags_for_paths`（卡片标签） | `IMAGE_EXTENSIONS`、`PDF_EXTENSIONS`、`VIDEO_EXTENSIONS`、`AUDIO_EXTENSIONS` |
+| 浏览 `/`、`/browse` | `dir_utils.list_entries` | `IMAGE_EXTENSIONS`、`PDF_EXTENSIONS`、`VIDEO_EXTENSIONS`、`AUDIO_EXTENSIONS` |
 | 搜索 `/search` | `dir_utils.search_files`、`search_content` | — |
 | 时长 `/duration` | `path_utils.safe_path`、`media_utils.get_video_duration` | `VIDEO_EXTENSIONS` |
-| 查看 `/view` | `path_utils.safe_path`、`dir_utils.dir_images` / `dir_media`、`text_utils.read_text_file` / `render_content_to_html`、`office_utils.render_office_to_html`、`tag_store.get_tags` | `TEXT_EXTENSIONS`、`CODE_LANGUAGES`、`IMAGE_EXTENSIONS`、`PDF_EXTENSIONS`、`VIDEO_EXTENSIONS`、`AUDIO_EXTENSIONS`、`OFFICE_EXTENSIONS` |
+| 查看 `/view` | `path_utils.safe_path`、`dir_utils.dir_images` / `dir_media`、`text_utils.read_text_file` / `render_content_to_html`、`office_utils.render_office_to_html` | `TEXT_EXTENSIONS`、`CODE_LANGUAGES`、`IMAGE_EXTENSIONS`、`PDF_EXTENSIONS`、`VIDEO_EXTENSIONS`、`AUDIO_EXTENSIONS`、`OFFICE_EXTENSIONS` |
 | 媒体 `/media` | `path_utils.safe_path`、`media_utils.ensure_playable`（视频兼容转码） | `IMAGE_MIME`、`PDF_EXTENSIONS`、`VIDEO_MIME`、`AUDIO_MIME`、`TRANSCODE_DIR` |
 | 缩略图 `/thumb` | `path_utils.safe_path`、`media_utils.get_video_thumb` | `THUMB_DIR` |
 | 图片缩略图 `/imgthumb` | `path_utils.safe_path`、`media_utils.get_image_thumb` | `IMG_THUMB_DIR` |
 | 封面高清缩略图 `/imgcover` | `path_utils.safe_path`、`media_utils.get_cover_thumb` | `IMG_THUMB_DIR` |
 | 下载 `/download` | `path_utils.safe_path` | — |
-| 管理 `/upload`、`/mkdir`、`/rename`、`/delete` | `path_utils.safe_path`、`trash_utils.move_to_trash`（删除） | `TRASH_DIR` |
+| 管理 `/upload`、`/mkdir` | `path_utils.safe_path` | — |
 | 管理 `/edit`、`/save` | `path_utils.safe_path`、`text_utils.read_text_file` | `TEXT_EXTENSIONS` |
-| 管理 `/move`、`/copy`、`/batch_*` | `path_utils.safe_path`、`file_ops.move_items` / `copy_items` / `_unique_name`（重名冲突）、`trash_utils.move_to_trash`（批量删除） | `TRASH_DIR` |
-| 回收站 `/trash` | `trash_utils.list_trash` / `restore` / `permanent_delete` / `empty_trash` | `TRASH_DIR` |
-| 游戏 `/game`（暂时停用） | — | `GAME_DIR` |
-| 游戏卸载 `/game/uninstall` 等（暂时停用） | `game_utils.uninstall` / `list_uninstalled` / `restore` / `purge` | `GAME_UNINSTALL_DIR` |
-| 统计 `/stats` | `stats_utils.disk_stats` | — |
-| 标签 `/tags`、`/tag/*` | `tag_store.all_tags` / `paths_by_tag` / `get_tags` / `set_tags` / `remove_tag` / `delete_tag` | — |
 
 ---
 
-## 12. 二次开发指引
+## 8. 二次开发指引
 
 - **新增文件类型预览**：只需改 `config.py` 的扩展名表（如把新扩展名加进 `TEXT_EXTENSIONS`），并在 `blueprints/view.py` 的分派处补充渲染逻辑。
-- **新增游戏**：往 `login_app/game/` 下放一个含 `index.html` 的文件夹即可，大厅自动列出（游戏功能当前**暂时停用**，启用方法见第 8 章说明）。
 - **新增接口**：在对应的 `blueprints/*.py` 中加路由；若涉及磁盘路径，一律经 `services/path_utils.safe_path()` 校验。
-- **新增统计维度**：在 `services/stats_utils.disk_stats()` 里扩展返回结构，模板 `stats.html` 增加对应条形图即可。
 - **修改内容根目录**：设置环境变量 `TEXT_DIR`（如 `$env:TEXT_DIR="F:\某目录"`）后重启服务；不设置则用默认 `login_app/text/`。改完保存并**删除 `__pycache__` 目录**再重启才生效。

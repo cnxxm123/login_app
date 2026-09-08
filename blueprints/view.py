@@ -29,7 +29,6 @@ from config import (
 from services.dir_utils import dir_all_images, dir_images, dir_media, is_cover_image  # 图集判定 / 目录图片列表 / 目录音视频列表 / 封面图判定
 from services.office_utils import render_office_to_html  # Office 文档解析（docx/xlsx/xls）
 from services.path_utils import safe_path                # 路径安全校验
-from services import tag_store                           # 文件标签读写（查看页显示/编辑标签）
 from services.text_utils import read_text_file, render_content_to_html  # 读文本 + Markdown 渲染
 
 # 创建"查看"蓝图；模板里 url_for('view.xxx') 的 view 即此名字
@@ -124,7 +123,6 @@ def view_file(subpath: str):
         image_urls=image_urls,              # 图片地址列表（单页阅读器用）
         playlist=playlist,                  # 音视频连播列表
         playlist_index=playlist_index,      # 当前文件在连播列表中的下标
-        tags=tag_store.get_tags(subpath),   # 当前文件的标签（查看页顶部显示/编辑）
     )
 
 

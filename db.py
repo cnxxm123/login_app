@@ -1,12 +1,10 @@
 """
 db 模块
 负责数据库连接与初始化：
-1. 自动创建 login_db 数据库
-2. 创建 tags / file_tags 表（文件标签）
+- 自动创建 login_db 数据库
 
-【为什么用 MySQL 存标签？】
-标签数据需要持久化（重启进程不丢），并支持按标签反查文件，
-因此用 MySQL 而不是内存或文件。
+【说明】
+原标签功能（tags / file_tags 表）已彻底移除，本模块只负责建库。
 """
 
 import os  # 读取环境变量 DB_USER / DB_PASSWORD，便于跨机器部署免改代码
@@ -52,25 +50,13 @@ def _resolve_db_password() -> str:
     )
 
 
-def get_connection(database: str = DB_NAME):
-    """建立到 login_db 的连接（需先执行 init_db）。
-
-    **DB_CONFIG 把字典展开成关键字参数：
-    pymysql.connect(host=..., user=..., password=..., charset=...)
-    再通过 {"database": database} 指定要连接的库。
-    """
-    # 合并：在原配置基础上补上自动探测的密码和要连接的库
-    config = {**DB_CONFIG, "password": _resolve_db_password(), "database": database}
-    return pymysql.connect(**config)
-
-
 def init_db():
-    """建库建表（幂等，可重复执行）。
+    """建库（幂等，可重复执行）。
 
-    "幂等" = 重复执行结果一样，不会重复建库/建表，
+    "幂等" = 重复执行结果一样，不会重复建库，
     所以每次启动调用都安全。
     """
-    # 1. 连接 MySQL 服务（不带 database），创建 login_db 数据库
+    # 连接 MySQL 服务（不带 database），创建 login_db 数据库
     conn = pymysql.connect(**{**DB_CONFIG, "password": _resolve_db_password()})
     try:
         with conn.cursor() as cur:
@@ -82,43 +68,6 @@ def init_db():
         conn.commit()  # 提交事务，让上面的语句实际生效
     finally:
         conn.close()  # 无论成功失败都要关闭连接，避免占用数据库连接资源
-
-    # 2. 连接 login_db，创建标签相关表
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            # 文件标签表：tags 存标签名，file_tags 存"标签 × 文件"的多对多关系
-            #    - tags.name 加 UNIQUE：同一个标签只存一行（其它文件引用它的 id）
-            #    - file_tags 用 (tag_id, path_md5) 做唯一键：一个文件同标签只打一次
-            #    - path_md5 是路径的 md5（32 位定长），避免用长路径做索引超长（utf8mb4 索引长度受限）
-            #    - 外键级联删除：删除某标签时，file_tags 里所有引用一并删除
-            cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS tags (
-                    id INT AUTO_INCREMENT PRIMARY KEY,           -- 标签自增主键
-                    name VARCHAR(100) NOT NULL UNIQUE,           -- 标签名（唯一，如"教程"/"重要"）
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP -- 创建时间
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-                """
-            )
-            cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS file_tags (
-                    id INT AUTO_INCREMENT PRIMARY KEY,           -- 记录自增主键
-                    tag_id INT NOT NULL,                         -- 所属标签 id（外键）
-                    path VARCHAR(1000) NOT NULL,                 -- 文件相对 TEXT_DIR 的路径（可读）
-                    path_md5 CHAR(32) NOT NULL,                  -- 路径的 md5（用于唯一索引/查询）
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE KEY uq_tag_path (tag_id, path_md5),   -- 同一文件同一标签只打一次
-                    KEY idx_path (path_md5),                     -- 按文件反查标签走此索引
-                    CONSTRAINT fk_file_tags_tag FOREIGN KEY (tag_id)
-                        REFERENCES tags(id) ON DELETE CASCADE
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-                """
-            )
-        conn.commit()
-    finally:
-        conn.close()
 
 
 # 允许直接运行 python db.py 单独初始化数据库（调试用）

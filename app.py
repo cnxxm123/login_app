@@ -11,8 +11,7 @@
   - view.py      查看蓝图：文档/图片/PDF/视频 查看页
   - media.py     媒体蓝图：图片/PDF/视频 流式返回 + 视频封面缩略图
   - download.py  下载蓝图：单文件下载 / 目录打包 zip 下载
-  - manage.py    管理蓝图：上传 / 重命名 / 删除
-  - games.py     游戏蓝图：游戏大厅 + 游戏静态文件服务
+  - manage.py    管理蓝图：上传 / 新建文件夹 / 在线编辑
 - services 包（纯业务逻辑层，不依赖 Flask，不处理 HTTP）
   - path_utils.py  路径安全校验（防目录穿越）
   - dir_utils.py   列目录 / 自然排序 / 递归搜索 / 目录图片列表
@@ -24,9 +23,7 @@
 - view 蓝图：/view/<path>（见 blueprints/view.py）
 - media 蓝图：/media/<path>、/thumb/<path>（见 blueprints/media.py）
 - download 蓝图：/download/<path>（见 blueprints/download.py）
-- manage 蓝图：/upload/<path>、/rename/<path>、/delete/<path>、/mkdir（见 blueprints/manage.py）
-- games 蓝图：/game（游戏大厅）、/game/<path>（见 blueprints/games.py）
-- trash 蓝图：/trash、/trash/restore/<name>、/trash/delete/<name>、/trash/empty（见 blueprints/trash.py）
+- manage 蓝图：/upload/<path>、/mkdir、/edit、/save（见 blueprints/manage.py）
 
 【什么是蓝图 Blueprint？】
 蓝图是 Flask 用来"按功能拆分路由"的机制。
@@ -39,18 +36,10 @@ from flask import Flask  # Flask 框架核心：创建应用对象
 
 from blueprints.browser import browser_bp     # 浏览蓝图（/、/browse/...）
 from blueprints.download import download_bp   # 下载蓝图（/download/...）
-# ========== 游戏功能（暂时停用，代码保留）==========
-# 【停用说明】游戏功能于 2026-09-08 起暂时不启用，相关代码全部保留。
-# 以后再启用时，只需取消下面这行 import 和 create_app() 中的
-# app.register_blueprint(games_bp) 两处注释即可，其余无需改动。
-# from blueprints.games import games_bp         # 游戏蓝图（/game、/game/...）
 from blueprints.logs import logs_bp           # 日志蓝图（/logs、/log/add...）
-from blueprints.manage import manage_bp       # 管理蓝图（/upload/...、/rename/...、/delete/...）
+from blueprints.manage import manage_bp       # 管理蓝图（/upload/...、/mkdir、/edit/...）
 from blueprints.media import media_bp         # 媒体蓝图（/media/...、/thumb/...）
-from blueprints.stats import stats_bp         # 统计蓝图（/stats）
-from blueprints.tags import tags_bp           # 标签蓝图（/tags、/tag/...）
 from blueprints.todos import todos_bp         # 待办蓝图（/todos、/todo/add、/todo/toggle...）
-from blueprints.trash import trash_bp         # 回收站蓝图（/trash、/trash/restore/...、/trash/delete/...、/trash/empty）
 from blueprints.view import view_bp           # 查看蓝图（/view/...）
 from config import MAX_FORM_PARTS, MAX_UPLOAD_BYTES  # 上传上限
 from db import init_db                        # 数据库初始化函数（幂等）
@@ -88,15 +77,9 @@ def create_app() -> Flask:
     app.register_blueprint(view_bp)     # 注册查看蓝图 → 提供 /view/...
     app.register_blueprint(media_bp)    # 注册媒体蓝图 → 提供 /media/...、/thumb/...
     app.register_blueprint(download_bp)  # 注册下载蓝图 → 提供 /download/...
-    app.register_blueprint(manage_bp)    # 注册管理蓝图 → 提供 /upload/...、/rename/...、/delete/...
-    # 【游戏功能暂时停用】原注册语句保留如下，启用时取消注释即可
-    # （需同时恢复 app.py 顶部的 games 蓝图 import）：
-    # app.register_blueprint(games_bp)     # 注册游戏蓝图 → 提供 /game（游戏大厅）、/game/...
+    app.register_blueprint(manage_bp)    # 注册管理蓝图 → 提供 /upload/...、/mkdir、/edit/...
     app.register_blueprint(logs_bp)      # 注册日志蓝图 → 提供 /logs、/log/add、/log/update、/log/delete
-    app.register_blueprint(trash_bp)     # 注册回收站蓝图 → 提供 /trash、/trash/restore/... 等
-    app.register_blueprint(tags_bp)      # 注册标签蓝图 → 提供 /tags、/tags/filter、/tag/...
     app.register_blueprint(todos_bp)     # 注册待办蓝图 → 提供 /todos、/todo/add、/todo/toggle 等
-    app.register_blueprint(stats_bp)     # 注册统计蓝图 → 提供 /stats
     return app
 
 

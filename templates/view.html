@@ -20,20 +20,10 @@
             {% endif %}
             <!-- 目录按钮：只有文档含标题时才会由 JS 显示 -->
             <button class="tool-btn" id="toc-toggle" type="button" hidden title="显示/隐藏文档目录">📑 目录</button>
-            <!-- 标签按钮：给当前文件打标签 / 管理标签 -->
-            <button class="tool-btn" type="button" onclick="tagItem()" title="打标签 / 管理标签">🏷 标签</button>
         </div>
     </div>
     <!-- 阅读进度条：跟随滚动显示阅读位置（仅文档/图片浏览有实际意义，其他类型长度短基本无感） -->
     <div class="reading-bar" id="reading-bar" aria-hidden="true"></div>
-    <!-- 当前文件标签行：显示已打的标签 -->
-    <div class="tags-row" id="tags-row">
-        <span class="tags-label">🏷</span>
-        {% for t in tags %}
-            <span class="tag-pill" data-tag="{{ t }}">{{ t }} <button type="button" onclick="removeTag('{{ t }}')" title="移除该标签">✕</button></span>
-        {% endfor %}
-        <button class="tags-edit" type="button" onclick="tagItem()" title="编辑标签">＋ 编辑</button>
-    </div>
     <!-- 文档目录（TOC）侧边面板：JS 解析 .md-body 里的标题生成 -->
     <div class="toc-panel" id="toc-panel" hidden>
         <div class="toc-title">📑 目录</div>
@@ -46,7 +36,7 @@
         {% elif media_type == "image" %}
             <div class="meta">
                 <span class="badge">图片</span><span>共 {{ images|length }} 张</span>
-                <a class="nav-btn" href="{{ url_for('download.download_dir', subpath=parent) }}">⬇ 下载整本</a>
+                <a class="nav-btn" href="{{ url_for('download.download_dir', subpath=parent) }}" data-download-confirm="打包下载整本" aria-label="打包下载整本">⬇ 下载整本</a>
             </div>
             <!-- 图片阅读器工具栏：模式切换 / 翻页 / 缩放 / 全屏 -->
             <div class="reader-bar">
@@ -170,21 +160,16 @@
     <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
     <script src="{{ url_for('static', filename='js/player.js') }}"></script>
     <script>
-        // ===== 页面配置：后端注入（图片列表/播放列表/路径/标签接口），供 view.js 使用 =====
+        // ===== 页面配置：后端注入（图片列表/播放列表/路径），供 view.js 使用 =====
         window.VIEW_CONFIG = {
             imageUrls: {{ image_urls | tojson }},
             currentUrl: {{ url_for('media.media', subpath=path) | tojson }},
             parent: {{ parent | tojson }},
             playlist: {{ playlist | tojson }},
-            playlistIndex: {{ playlist_index }},
-            path: {{ path | tojson }},
-            urls: {
-                tagGet: "{{ url_for('tags.tag_get') }}",
-                tagSet: "{{ url_for('tags.tag_set') }}",
-                tagRemove: "{{ url_for('tags.tag_remove') }}"
-            }
+            playlistIndex: {{ playlist_index }}
         };
     </script>
     <script src="{{ url_for('static', filename='js/view.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/confirm-download.js') }}"></script>
 </body>
 </html>

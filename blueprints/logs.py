@@ -11,7 +11,7 @@
 
 【与其它模块的分工】
 - 日志读写全部委托给 services/log_store（纯逻辑层，JSON 文件存储），本模块只处理 HTTP
-- 与 tags 蓝图的写法保持一致：POST 接口返回 JSON，页面用 fetch 调用
+- POST 接口返回 JSON，页面用 fetch 调用
 """
 
 import datetime  # 日期解析 / 今天 / 昨天 判断

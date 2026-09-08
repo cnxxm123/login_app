@@ -13,23 +13,23 @@ import os
 import re
 import subprocess
 import threading
+from functools import lru_cache
 
 from config import IMG_THUMB_DIR, THUMB_DIR, TRANSCODE_DIR
 
 # 按路径加锁，防止并发请求同时用 ffmpeg 写同一个缓存文件（互相 -y 截断会把缓存写坏，
 # 坏缓存被 isfile 命中后永久复用，表现为"视频有时候放不了/封面裂图"）。
-_path_locks: dict[str, threading.Lock] = {}
-_path_locks_guard = threading.Lock()
-
-
+#
+# 【防内存泄漏】用 lru_cache 做成"固定容量 LRU 锁池"：
+# - maxsize=512：最多同时持有 512 把路径锁，超出的"最久未使用"锁自动淘汰，
+#   避免原实现里 dict 只增不减——服务跑得越久、浏览过的文件越多字典越大（内存泄漏）。
+# - 锁在 with 块里是秒级持有，即使某把锁被淘汰后同路径再次出现，也只是新建一把锁，
+#   最坏结果是同一缓存文件被并发写两次（有 .part + os.replace 原子替换兜底），
+#   不影响正确性，代价可忽略。
+@lru_cache(maxsize=512)
 def _path_lock(key: str) -> threading.Lock:
-    """取某个路径对应的互斥锁（进程内唯一，首次创建后复用）。"""
-    with _path_locks_guard:
-        lock = _path_locks.get(key)
-        if lock is None:
-            lock = threading.Lock()
-            _path_locks[key] = lock
-        return lock
+    """取某个路径对应的互斥锁（LRU 缓存：最多 512 把，久未使用自动淘汰）。"""
+    return threading.Lock()
 
 
 def get_video_thumb(video_path: str) -> bytes | None:

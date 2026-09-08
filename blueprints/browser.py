@@ -25,7 +25,6 @@ from config import (
 from services.dir_utils import dir_all_images, find_cover_image, is_cover_image, list_entries, search_content, search_files  # 纯逻辑：列目录 / 递归搜索 / 图集判定 / 封面图
 from services.media_utils import get_video_duration  # 视频时长探测
 from services.path_utils import safe_path  # 相对路径 → 安全绝对路径（越界防护）
-from services import tag_store  # 文件标签读写（浏览页卡片显示标签用）
 
 # 创建"浏览"蓝图；模板里 url_for('browser.xxx') 的 browser 即此名字
 browser_bp = Blueprint("browser", __name__)
@@ -85,14 +84,6 @@ def browse_context(subpath: str) -> dict | None:
     # （如搜索"封面"仍能直接搜到/打开，不受影响）
     visible_files = [f for f in files if not is_cover_image(f)]
     file_entries = build_file_items(visible_files, rel)
-    # 一次性批量查出当前目录所有条目（文件夹+文件）的标签，
-    # 避免每个条目单独查数据库造成大量小查询（N+1 问题）
-    all_paths = [d["path"] for d in dir_entries] + [f["path"] for f in file_entries]
-    tags_map = tag_store.tags_for_paths(all_paths)
-    for d in dir_entries:
-        d["tags"] = tags_map.get(d["path"], [])
-    for f in file_entries:
-        f["tags"] = tags_map.get(f["path"], [])
 
     # 按"是否有封面"拆分文件夹：有封面的（图片文件夹）排在前区展示，
     # 无封面的（纯文件夹）独立成区，网格各自换行，不再混排

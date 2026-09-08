@@ -10,7 +10,7 @@
      移动端 / 平板（≤1024px）自动折叠为顶部图标栏。
    - 微交互：悬停描边加深 / 内容淡入上移 / 按钮按压反馈。
 
-   各页面特有的样式（文件网格 / 阅读器 / 游戏卡片等）仍保留在各自模板的
+   各页面特有的样式（文件网格 / 阅读器等）仍保留在各自模板的
    内联 <style> 中，并复用下方的 CSS 变量。使用方式：
    <head> 引入本文件 → body 开头 include nav.html。
 */
@@ -221,11 +221,6 @@ body.dark .content {
     font-size: 22px; font-weight: 700; color: var(--text);
     margin: 0 0 6px; letter-spacing: .4px; line-height: 1.35;
 }
-.welcome .name, .page-title .grad {
-    background: var(--grad);
-    -webkit-background-clip: text; background-clip: text;
-    color: transparent; -webkit-text-fill-color: transparent;
-}
 /* 页面头部行：标题组在左，搜索等操作在右，窄屏换行 */
 .page-head {
     display: flex; align-items: flex-start; justify-content: space-between;
@@ -297,23 +292,7 @@ body.dark .empty { background: var(--surface-2); }
 }
 .search-btn:hover { filter: brightness(1.1); }
 
-/* ===== 7. 通用按钮 ===== */
-.btn {
-    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-    border: none; border-radius: var(--radius-sm); padding: 8px 18px;
-    font-size: 13.5px; font-family: inherit; cursor: pointer; text-decoration: none;
-    transition: var(--t); line-height: 1.4;
-}
-.btn-primary { background: var(--grad); color: #fff; box-shadow: 0 3px 10px rgba(99, 102, 241, .3); }
-.btn-primary:hover { filter: brightness(1.08); }
-.btn-primary:active { transform: translateY(1px); }
-.btn-ghost { background: var(--surface); color: var(--primary); border: 1px solid var(--border-strong); }
-.btn-ghost:hover { border-color: var(--primary); background: var(--accent-soft); }
-.btn-danger { background: var(--danger); color: #fff; }
-.btn-danger:hover { background: #cf3a3f; }
-.btn:disabled { opacity: .6; cursor: not-allowed; }
-
-/* ===== 8. 通用弹窗 / 提示 ===== */
+/* ===== 7. 通用弹窗 / 提示 ===== */
 .modal-mask {
     position: fixed; inset: 0; z-index: 1000; display: flex;
     align-items: center; justify-content: center;
