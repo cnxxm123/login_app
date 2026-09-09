@@ -1,5 +1,5 @@
 {
-  "next_id": 52,
+  "next_id": 57,
   "logs": [
     {
       "id": 3,
@@ -159,6 +159,38 @@
       "category": "上架游戏",
       "content": "阿宅的我被二次元女同事搭讪了【试玩版】",
       "created_at": "2026-09-08 22:06:48",
+      "updated_at": null
+    },
+    {
+      "id": 52,
+      "log_date": "2026-09-09",
+      "category": "上架游戏",
+      "content": "模拟山羊模组",
+      "created_at": "2026-09-09 10:23:39",
+      "updated_at": null
+    },
+    {
+      "id": 53,
+      "log_date": "2026-09-09",
+      "category": "更新游戏",
+      "content": "zzz",
+      "created_at": "2026-09-09 17:22:15",
+      "updated_at": null
+    },
+    {
+      "id": 55,
+      "log_date": "2026-09-09",
+      "category": "更新游戏",
+      "content": "wegame流浪之路降临更新(已挂维护)",
+      "created_at": "2026-09-09 19:23:34",
+      "updated_at": null
+    },
+    {
+      "id": 56,
+      "log_date": "2026-09-09",
+      "category": "问题处理",
+      "content": "查出模拟人生4问题，",
+      "created_at": "2026-09-09 19:32:41",
       "updated_at": null
     }
   ]

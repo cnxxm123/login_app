@@ -1,23 +1,4 @@
 {
   "next_id": 25,
-  "todos": [
-    {
-      "id": 13,
-      "todo_date": "2026-09-07",
-      "category": "更新游戏",
-      "content": "wegame流浪之路降临更新(已挂维护)",
-      "done": false,
-      "created_at": "2026-09-07 22:09:06",
-      "updated_at": null
-    },
-    {
-      "id": 24,
-      "todo_date": "2026-09-09",
-      "category": "上架游戏",
-      "content": "配置老头环其他机房的着色器",
-      "done": false,
-      "created_at": "2026-09-08 11:45:51",
-      "updated_at": null
-    }
-  ]
+  "todos": []
 }
