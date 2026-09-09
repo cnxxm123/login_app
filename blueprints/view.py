@@ -20,6 +20,7 @@ from flask import Blueprint, abort, redirect, render_template, url_for
 from config import (
     AUDIO_EXTENSIONS,
     CODE_LANGUAGES,
+    EPUB_EXTENSIONS,
     IMAGE_EXTENSIONS,
     OFFICE_EXTENSIONS,
     PDF_EXTENSIONS,
@@ -44,6 +45,11 @@ def view_file(subpath: str):
         abort(404)
 
     ext = os.path.splitext(target)[1].lower()  # 取扩展名（如 .md），并转小写
+
+    # EPUB 文件重定向到专用的 EPUB 阅读器
+    if ext in EPUB_EXTENSIONS:
+        return redirect(url_for("epub.epub_reader", subpath=subpath))
+
     content, encoding = None, None             # 文件内容与编码（文本预览用）
     content_html = None                        # 渲染后的 HTML（文本预览用）
     office_html = None                         # Office 文档解析出的 HTML（docx/xlsx/xls 预览用）

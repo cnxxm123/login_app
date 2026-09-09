@@ -15,6 +15,7 @@ from flask import Blueprint, abort, jsonify, redirect, render_template, request,
 from config import (
     AUDIO_EXTENSIONS,
     CODE_LANGUAGES,
+    EPUB_EXTENSIONS,
     IMAGE_EXTENSIONS,
     MAX_FORM_PARTS,
     MAX_UPLOAD_BYTES,
@@ -196,6 +197,10 @@ def build_file_items(files, rel):
             # 音频：直接指向 /media 二进制流，交给浏览器自带播放器播放。
             kind, thumb = "audio", None
             url, external = url_for("media.media", subpath=rel(f)), True
+        elif fext in EPUB_EXTENSIONS:
+            # EPUB 电子书：跳到浏览器内阅读器，支持章节导航
+            kind, thumb = "epub", None
+            url, external = url_for("epub.epub_reader", subpath=rel(f)), True
         elif fext in IMAGE_EXTENSIONS:
             kind, thumb = "image", image_thumb_url(rel(f))
             url, external = url_for("view.view_file", subpath=rel(f)), True
@@ -281,6 +286,33 @@ def search():
         mode=mode if mode in ("name", "content") else "name",
         results=results,
     )
+
+
+@browser_bp.route("/tree")
+def tree():
+    """返回目录树 JSON（仅目录，不含文件），供前端树形侧栏懒加载。
+    
+    请求参数 ?path= 指定起始路径（空字符串=根目录）。
+    返回格式：{name, path, is_dir: true, children: [...]}。
+    前端首次展开节点时按需请求子节点，避免一次性返回全量数据。
+    """
+    subpath = request.args.get("path", "").strip()
+    target = safe_path(subpath)
+    if target is None or not os.path.isdir(target):
+        return jsonify({"name": "", "path": "", "is_dir": True, "children": []})
+
+    dirs, _ = list_entries(subpath)
+    if dirs is None:
+        return jsonify({"name": "", "path": "", "is_dir": True, "children": []})
+
+    children = []
+    for d in dirs:
+        child_path = os.path.join(subpath, d).replace("\\", "/")
+        children.append({"name": d, "path": child_path, "is_dir": True, "children": []})
+
+    # 根节点名：根目录用空字符串，显示为"云书库"
+    name = os.path.basename(subpath.rstrip("/\\")) if subpath else ""
+    return jsonify({"name": name, "path": subpath, "is_dir": True, "children": children})
 
 
 @browser_bp.route("/duration/<path:subpath>")

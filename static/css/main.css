@@ -77,6 +77,7 @@
         .file-card .fc-icon.ic-video  { background: #8b5cf6; }
         .file-card .fc-icon.ic-audio  { background: #0ea5e9; }
         .file-card .fc-icon.ic-doc    { background: #6366f1; }
+        .file-card .fc-icon.ic-epub   { background: #f59e0b; }
         /* 视频时长角标：缩略图右下角深色小胶囊，时长由 JS 拉取后淡入 */
         .fc-dur {
             position: absolute; right: 6px; bottom: 6px; z-index: 3;
@@ -96,17 +97,68 @@
             border-radius: 12px; overflow: hidden; z-index: 1;
         }
         .file-card.folder-card .fc-thumb img { width: 100%; height: 100%; object-fit: cover; }
-        /* 无封面文件夹：品牌渐变底 + 顶部柔光 */
+        /* 无封面文件夹：纸质书封面质感（白天浅色纸纹，黑夜深色皮质） */
         .file-card.folder-card.folder-plain .fc-thumb {
-            background: linear-gradient(160deg, #3a3a41 0%, #26262c 45%, #191920 100%);
+            /* 暖白纸底色：书页般的米白 → 象牙 → 浅亚麻渐变 */
+            background: linear-gradient(160deg, #f8f3ea 0%, #efe6d5 35%, #e3d7c0 70%, #d9ccb2 100%);
         }
+        /* 纸张纹理叠加层：多层光照 + 多尺度颗粒 + 纤维纹理 */
         .file-card.folder-card.folder-plain .fc-thumb::before {
             content: ""; position: absolute; inset: 0;
             background:
-                radial-gradient(120% 90% at 50% 0%, rgba(255, 255, 255, .13), transparent 60%),
-                radial-gradient(55% 42% at 12% 88%, rgba(255, 255, 255, .07), transparent 70%),
-                radial-gradient(55% 42% at 90% 84%, rgba(0, 0, 0, .22), transparent 70%);
+                /* ① 顶部自然光照射（模拟书页受光面） */
+                radial-gradient(140% 100% at 50% 0%, rgba(255,255,255,.65), transparent 55%),
+                /* ② 左下角暗角（翻页自然阴影） */
+                radial-gradient(50% 38% at 10% 92%, rgba(160,140,110,.12), transparent 70%),
+                /* ③ 右下角暗角 */
+                radial-gradient(50% 38% at 92% 90%, rgba(160,140,110,.10), transparent 70%),
+                /* ④ 细颗粒噪点（3px 网格，模拟纸张最细的纤维感） */
+                radial-gradient(rgba(180,160,130,.045) 0.3px, transparent 0.5px),
+                /* ⑤ 中颗粒纹理（7px 网格，模拟纸张表面不规则凹凸） */
+                radial-gradient(rgba(170,150,120,.035) 0.5px, transparent 0.8px),
+                /* ⑥ 水平纤维纹理（纸张纤维在造纸过程中自然横向排列） */
+                repeating-linear-gradient(
+                    to bottom,
+                    transparent,
+                    transparent 1.5px,
+                    rgba(160,140,110,.015) 1.5px,
+                    rgba(160,140,110,.015) 2px
+                );
+            background-size:
+                auto,               /* ① 自然光 */
+                auto,               /* ② 暗角 */
+                auto,               /* ③ 暗角 */
+                3px 3px,            /* ④ 细颗粒 */
+                7px 7px,            /* ⑤ 中颗粒 */
+                auto;               /* ⑥ 纤维纹理 */
             animation: plainAmbient 5s ease-in-out infinite;
+        }
+        /* 纸张结构层：书脊 + 边缘暗化 + 中心光晕 + 粗颗粒 + 色斑 */
+        .file-card.folder-card.folder-plain .fc-thumb::after {
+            content: ""; position: absolute; inset: 0;
+            background:
+                /* ① 左侧书脊阴影（装订线压痕） */
+                linear-gradient(to right, rgba(0,0,0,.10) 0%, rgba(0,0,0,.04) 5px, transparent 12px),
+                /* ② 顶部边缘暗化（书页上方自然阴影） */
+                linear-gradient(to bottom, rgba(0,0,0,.05) 0%, transparent 14px),
+                /* ③ 底部边缘暗化 */
+                linear-gradient(to top, rgba(0,0,0,.04) 0%, transparent 10px),
+                /* ④ 中心微弱光晕（封面视觉焦点） */
+                radial-gradient(55% 50% at 50% 48%, rgba(0,0,0,.035), transparent 70%),
+                /* ⑤ 粗颗粒纹理（14px 网格，模拟纸张大面积不规则斑点） */
+                radial-gradient(rgba(160,140,110,.07) 0.7px, transparent 1.1px),
+                /* ⑥ 纸张色斑：不定位置的微暖色块（旧纸张的自然泛黄不均） */
+                radial-gradient(30% 25% at 22% 35%, rgba(200,180,150,.04), transparent),
+                radial-gradient(25% 20% at 72% 55%, rgba(180,160,140,.03), transparent);
+            background-size:
+                100% 100%,    /* ① 书脊 */
+                100% 100%,    /* ② 顶边 */
+                100% 100%,    /* ③ 底边 */
+                auto,         /* ④ 光晕 */
+                14px 14px,    /* ⑤ 粗颗粒 */
+                auto,         /* ⑥ 色斑 */
+                auto;         /* ⑥ 色斑 */
+            pointer-events: none;
         }
         /* 顶部徽标：📁 N 张，半透明毛玻璃小胶囊 */
         .fc-folder-badge {
@@ -131,21 +183,13 @@
             text-shadow: 0 1px 3px rgba(0, 0, 0, .6); pointer-events: auto;
         }
         .file-card.folder-card:hover .fc-name { color: #fff; }
-        /* ===== 无封面文件夹：名称精确居中 + 渐变文字 ===== */
-        /* 遮罩撑满整卡；名字绝对定位于卡片正中，操作用 margin-top:auto 沉底 */
-        .file-card.folder-card.folder-plain .fc-thumb::after {
-            content: ""; position: absolute; inset: 0;
-            background:
-                radial-gradient(60% 55% at 50% 45%, rgba(255, 255, 255, .09), transparent 70%),
-                radial-gradient(rgba(255, 255, 255, .13) 1px, transparent 1.5px);
-            background-size: auto, 16px 16px;
-            pointer-events: none;
-        }
+        /* 无封面文件夹：名称精确居中 + 渐变文字 ===== */
         .file-card.folder-card.folder-plain .fc-overlay {
             top: 0; bottom: 0;
             background: none;
             padding: 0 14px 10px;
         }
+        /* 白天：标题文字渐变（深棕，衬纸质底色） */
         .file-card.folder-card.folder-plain .fc-overlay .fc-name {
             position: absolute; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
@@ -154,26 +198,27 @@
             font-size: 18px; font-weight: 700; line-height: 1.35;
             text-align: center; padding: 0 6px; word-break: break-all;
             color: transparent; -webkit-text-fill-color: transparent;
-            background: linear-gradient(180deg, #fff 25%, #c9cdd8 100%);
+            background: linear-gradient(180deg, #4a3728 25%, #6b5040 100%);
             -webkit-background-clip: text; background-clip: text;
-            filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .45));
+            filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .10));
             text-shadow: none; pointer-events: auto;
         }
         .file-card.folder-card.folder-plain:hover .fc-name {
-            background: linear-gradient(180deg, #fff 25%, #d6dae3 100%);
+            background: linear-gradient(180deg, #3a2818 25%, #5a4030 100%);
             -webkit-background-clip: text; background-clip: text;
         }
-        /* 卡片级美术效果：悬浮发光描边 + 流光扫过 */
+        /* 卡片级美术效果：悬浮暖光描边 + 流光扫过 */
         .file-card.folder-card.folder-plain::before {
             content: ""; position: absolute; inset: -1px; border-radius: 12px; z-index: 6;
             pointer-events: none; opacity: 0; transition: opacity .25s;
-            box-shadow: inset 0 0 0 1px rgba(139, 150, 255, .55), 0 0 20px rgba(99, 102, 241, .35);
+            box-shadow: inset 0 0 0 1px rgba(180,150,120,.45), 0 0 20px rgba(160,130,100,.25);
         }
         .file-card.folder-card.folder-plain:hover::before { opacity: 1; }
+        /* 流光扫过：暖金色光泽掠过封面 */
         .file-card.folder-card.folder-plain::after {
             content: ""; position: absolute; inset: 0; border-radius: 12px; z-index: 6;
             pointer-events: none; opacity: 0;
-            background: linear-gradient(115deg, transparent 28%, rgba(255, 255, 255, .08) 46%, rgba(255, 255, 255, .14) 50%, rgba(255, 255, 255, .08) 54%, transparent 72%);
+            background: linear-gradient(115deg, transparent 28%, rgba(220,200,160,.10) 46%, rgba(220,200,160,.18) 50%, rgba(220,200,160,.10) 54%, transparent 72%);
             background-size: 250% 100%; background-position: 190% 0;
         }
         .file-card.folder-card.folder-plain:hover::after {
@@ -203,6 +248,73 @@
         /* 暗色模式：颜色已由 common.css 变量自动适配，此处仅保留特殊处理 */
         /* 只改底色层，保留上面的品牌光斑渐变 */
         body.dark .fc-thumb { background-color: #05070f; }
+
+        /* 暗色模式：无封面文件夹 → 皮质精装书封面质感（多层纹理） */
+        body.dark .file-card.folder-card.folder-plain .fc-thumb {
+            /* 深棕皮质底色：精装书封面的皮革质感 */
+            background: linear-gradient(160deg, #3a2f28 0%, #2c231d 35%, #1f1814 70%, #17110e 100%);
+        }
+        body.dark .file-card.folder-card.folder-plain .fc-thumb::before {
+            background:
+                /* ① 顶部暖光照射 */
+                radial-gradient(140% 100% at 50% 0%, rgba(200,170,130,.10), transparent 55%),
+                /* ② 左下角深暗角 */
+                radial-gradient(50% 38% at 10% 92%, rgba(0,0,0,.35), transparent 70%),
+                /* ③ 右下角暗角 */
+                radial-gradient(50% 38% at 92% 90%, rgba(0,0,0,.30), transparent 70%),
+                /* ④ 细颗粒（3px，皮质毛孔感） */
+                radial-gradient(rgba(200,170,130,.03) 0.3px, transparent 0.5px),
+                /* ⑤ 中颗粒（7px，皮革表面纹理） */
+                radial-gradient(rgba(180,150,120,.025) 0.5px, transparent 0.8px),
+                /* ⑥ 横向纹理（皮革压制纹路） */
+                repeating-linear-gradient(
+                    to bottom,
+                    transparent,
+                    transparent 1.5px,
+                    rgba(200,170,130,.012) 1.5px,
+                    rgba(200,170,130,.012) 2px
+                );
+            background-size:
+                auto, auto, auto,
+                3px 3px, 7px 7px, auto;
+        }
+        body.dark .file-card.folder-card.folder-plain .fc-thumb::after {
+            background:
+                /* ① 书脊阴影（装订线） */
+                linear-gradient(to right, rgba(255,255,255,.04) 0%, rgba(255,255,255,.01) 5px, transparent 12px),
+                /* ② 顶部边缘暗化 */
+                linear-gradient(to bottom, rgba(0,0,0,.20) 0%, transparent 14px),
+                /* ③ 底部边缘暗化 */
+                linear-gradient(to top, rgba(0,0,0,.15) 0%, transparent 10px),
+                /* ④ 中心光晕（封面视觉焦点） */
+                radial-gradient(55% 50% at 50% 48%, rgba(200,170,130,.05), transparent 70%),
+                /* ⑤ 粗颗粒（14px，皮质不规则斑纹） */
+                radial-gradient(rgba(200,170,130,.04) 0.7px, transparent 1.1px),
+                /* ⑥ 皮质色斑：不定位置微暖色块 */
+                radial-gradient(30% 25% at 22% 35%, rgba(200,170,130,.03), transparent),
+                radial-gradient(25% 20% at 72% 55%, rgba(180,150,120,.02), transparent);
+            background-size:
+                100% 100%, 100% 100%, 100% 100%,
+                auto, 14px 14px, auto, auto;
+        }
+        /* 暗色模式：标题文字 → 暖金色烫金效果 */
+        body.dark .file-card.folder-card.folder-plain .fc-overlay .fc-name {
+            background: linear-gradient(180deg, #e8dcc8 25%, #c4b594 100%);
+            -webkit-background-clip: text; background-clip: text;
+            filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .4));
+        }
+        body.dark .file-card.folder-card.folder-plain:hover .fc-name {
+            background: linear-gradient(180deg, #f0e6d4 25%, #d4c8a8 100%);
+            -webkit-background-clip: text; background-clip: text;
+        }
+        /* 暗色模式：流光扫过 → 暖金色 */
+        body.dark .file-card.folder-card.folder-plain::after {
+            background: linear-gradient(115deg, transparent 28%, rgba(220,200,160,.08) 46%, rgba(220,200,160,.14) 50%, rgba(220,200,160,.08) 54%, transparent 72%);
+        }
+        /* 暗色模式：悬浮描边 → 暖金色 */
+        body.dark .file-card.folder-card.folder-plain::before {
+            box-shadow: inset 0 0 0 1px rgba(200,170,130,.35), 0 0 20px rgba(180,150,110,.20);
+        }
 
         /* ===== 移动端 / 平板适配（≤1024px，公共导航栏见 common.css）===== */
         @media (max-width: 1024px) {

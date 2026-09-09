@@ -12,6 +12,8 @@
   - media.py     媒体蓝图：图片/PDF/视频 流式返回 + 视频封面缩略图
   - download.py  下载蓝图：单文件下载 / 目录打包 zip 下载
   - manage.py    管理蓝图：上传 / 新建文件夹 / 在线编辑
+  - logs.py      日志蓝图：工作日志增删改 / 转待办
+  - todos.py     待办蓝图：待办增删改 / 完成切换
 - services 包（纯业务逻辑层，不依赖 Flask，不处理 HTTP）
   - path_utils.py  路径安全校验（防目录穿越）
   - dir_utils.py   列目录 / 自然排序 / 递归搜索 / 目录图片列表
@@ -36,6 +38,7 @@ from flask import Flask  # Flask 框架核心：创建应用对象
 
 from blueprints.browser import browser_bp     # 浏览蓝图（/、/browse/...）
 from blueprints.download import download_bp   # 下载蓝图（/download/...）
+from blueprints.epub import epub_bp           # EPUB 蓝图（/epub/...）
 from blueprints.logs import logs_bp           # 日志蓝图（/logs、/log/add...）
 from blueprints.manage import manage_bp       # 管理蓝图（/upload/...、/mkdir、/edit/...）
 from blueprints.media import media_bp         # 媒体蓝图（/media/...、/thumb/...）
@@ -80,6 +83,7 @@ def create_app() -> Flask:
     app.register_blueprint(manage_bp)    # 注册管理蓝图 → 提供 /upload/...、/mkdir、/edit/...
     app.register_blueprint(logs_bp)      # 注册日志蓝图 → 提供 /logs、/log/add、/log/update、/log/delete
     app.register_blueprint(todos_bp)     # 注册待办蓝图 → 提供 /todos、/todo/add、/todo/toggle 等
+    app.register_blueprint(epub_bp)      # 注册 EPUB 蓝图 → 提供 /epub/...
     return app
 
 

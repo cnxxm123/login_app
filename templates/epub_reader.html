@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ book_title }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/epub_reader.css') }}">
+</head>
+<body>
+    {% include 'nav.html' %}
+
+    <!-- 顶部工具栏 -->
+    <div class="epub-topbar">
+        <a class="back-btn" href="{{ url_for('browser.browse', subpath=parent) if parent else url_for('browser.main') }}">← 返回目录</a>
+        <span class="book-title" id="topbar-book-title">{{ book_title }}</span>
+        <button class="toc-toggle-btn" id="toc-toggle-btn" type="button" title="显示/隐藏目录">📑 目录</button>
+        <button class="theme-toggle" type="button" onclick="toggleTheme()" title="切换深色/浅色">🌓</button>
+    </div>
+
+    <div class="epub-app">
+        <!-- 目录遮罩（移动端） -->
+        <div class="epub-toc-overlay" id="epub-toc-overlay"></div>
+
+        <!-- 左侧目录面板 -->
+        <aside class="epub-toc" id="epub-toc">
+            <div class="toc-header">
+                <span>📑 目录</span>
+                <button class="toc-close" id="toc-close-btn" type="button" aria-label="关闭目录">✕</button>
+            </div>
+            <div class="toc-list" id="toc-list">
+                <!-- JS 动态填充 -->
+            </div>
+        </aside>
+
+        <!-- 主阅读区 -->
+        <div class="epub-content">
+            <div class="epub-reading-area" id="epub-reading-area">
+                <!-- 加载状态 -->
+                <div class="epub-loading" id="epub-loading">
+                    <div class="spinner"></div>
+                    <span>正在加载…</span>
+                </div>
+                <!-- 错误 / 空状态 -->
+                <div class="epub-empty" id="epub-empty" hidden>
+                    <div class="empty-title"></div>
+                    <div class="empty-desc"></div>
+                </div>
+                <!-- 章节内容 -->
+                <div class="epub-chapter" id="chapter-content"></div>
+            </div>
+
+            <!-- 底部导航栏 -->
+            <div class="epub-bottombar">
+                <button class="nav-btn" id="prev-chapter" type="button" disabled>◀ 上一章</button>
+                <span class="chapter-title" id="chapter-title"></span>
+                <span class="progress" id="progress">- / -</span>
+                <button class="nav-btn" id="next-chapter" type="button" disabled>下一章 ▶</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+    <script>
+        // 页面配置：供 epub_reader.js 使用
+        window.EPUB_CONFIG = {
+            filePath: {{ path | tojson }}
+        };
+    </script>
+    <script src="{{ url_for('static', filename='js/epub_reader.js') }}"></script>
+</body>
+</html>

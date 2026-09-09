@@ -5,11 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ filename }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tree.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/player.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/view.css') }}">
 </head>
 <body{% if media_type == "image" %} class="no-sidebar"{% elif media_type == "video" %} class="no-sidebar video-page"{% endif %}>
     {% include 'nav.html' %}
+    {% include 'tree_sidebar.html' %}
     <div class="view-wrap">
         <div class="toolbar">
         <a class="back" href="{{ url_for('browser.browse', subpath=parent) if parent else url_for('browser.main') }}">← 返回目录</a>
@@ -168,7 +170,17 @@
             playlist: {{ playlist | tojson }},
             playlistIndex: {{ playlist_index }}
         };
+        // ===== 目录树配置：供 tree.js 使用 =====
+        window.TREE_CONFIG = {
+            urls: {
+                tree: "{{ url_for('browser.tree') }}",
+                browseRoot: "{{ url_for('browser.main') }}",
+                browseBase: "{{ url_for('browser.browse', subpath='') }}"
+            },
+            currentPath: {{ parent | tojson }}
+        };
     </script>
+    <script src="{{ url_for('static', filename='js/tree.js') }}"></script>
     <script src="{{ url_for('static', filename='js/view.js') }}"></script>
     <script src="{{ url_for('static', filename='js/confirm-download.js') }}"></script>
 </body>

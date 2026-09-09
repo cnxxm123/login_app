@@ -163,3 +163,7 @@ AUDIO_MIME = {
 # - .xls ：旧版 Excel，用 xlrd 解析（兼容历史文件）
 OFFICE_EXTENSIONS = {".docx", ".xlsx", ".xls"}
 
+# EPUB 电子书扩展名（在线浏览器内阅读器，支持章节导航）
+# 解析基于 zipfile + xml.etree.ElementTree，无需外部依赖
+EPUB_EXTENSIONS = {".epub"}
+

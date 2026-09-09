@@ -1,4 +1,4 @@
-        // ===== 通用下载确认：所有页面共用 =====
+// ===== 通用下载确认：所有页面共用 =====
         // main.html（.fc-dl）、search.html（.file-dl）、view.html（[data-download-confirm]）
         // 点击下载链接先弹自绘确认框（沙箱 iframe 禁用了原生 confirm），确认后才跳转下载。
         // 本脚本自包含弹窗 DOM，不依赖各页面是否引入 main.js（style 复用 common.css 的弹窗类）。

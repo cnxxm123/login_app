@@ -5,10 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>搜索结果 - {{ q }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tree.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}">
 </head>
 <body>
     {% include 'nav.html' %}
+    {% include 'tree_sidebar.html' %}
     <div class="content">
         <!-- 页面头部：面包屑在左，搜索框在右 -->
         <div class="page-head">
@@ -58,6 +60,18 @@
         {% endif %}
     </div>
     <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+    <script>
+        // ===== 目录树配置：供 tree.js 使用 =====
+        window.TREE_CONFIG = {
+            urls: {
+                tree: "{{ url_for('browser.tree') }}",
+                browseRoot: "{{ url_for('browser.main') }}",
+                browseBase: "{{ url_for('browser.browse', subpath='') }}"
+            },
+            currentPath: {{ base | tojson }}
+        };
+    </script>
+    <script src="{{ url_for('static', filename='js/tree.js') }}"></script>
     <script src="{{ url_for('static', filename='js/confirm-download.js') }}"></script>
 </body>
 </html>

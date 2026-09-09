@@ -5,10 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>主页</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tree.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
 </head>
 <body>
     {% include 'nav.html' %}
+    {% include 'tree_sidebar.html' %}
     <div class="content">
         <!-- 页面头部：标题 + 搜索框在左（搜索框紧贴欢迎标题），视图工具条在右 -->
         <div class="page-head">
@@ -63,6 +65,7 @@
                                 </a>
                                 <div class="fc-overlay">
                                     <a class="fc-name" href="{{ d.url }}" {% if d.new_tab %}target="_blank" rel="noopener"{% endif %}>{{ d.name }}</a>
+                                    
                                     <a class="fc-dl" href="{{ url_for('download.download_dir', subpath=d.path) }}" title="打包下载整本" aria-label="打包下载整本">⬇</a>
                                 </div>
                             </div>
@@ -76,6 +79,7 @@
                                 <a class="fc-thumb" href="{{ d.url }}" title="{{ d.name }}"></a>
                                 <div class="fc-overlay">
                                     <a class="fc-name" href="{{ d.url }}">{{ d.name }}</a>
+                                    
                                     <a class="fc-dl" href="{{ url_for('download.download_dir', subpath=d.path) }}" title="打包下载整本" aria-label="打包下载整本">⬇</a>
                                 </div>
                             </div>
@@ -97,12 +101,15 @@
                                 <span class="fc-icon ic-video">🎬</span>
                             {% elif f.kind == "audio" %}
                                 <span class="fc-icon ic-audio">🎵</span>
+                            {% elif f.kind == "epub" %}
+                                <span class="fc-icon ic-epub">📖</span>
                             {% else %}
                                 <span class="fc-icon ic-doc">📄</span>
                             {% endif %}
                             {% if f.kind == "video" %}<span class="fc-dur" data-path="{{ f.path }}"></span>{% endif %}
                         </a>
                         <a class="fc-name" href="{{ f.url }}" {% if f.external %}target="_blank" rel="noopener"{% endif %}>{{ f.name }}</a>
+                        
                         <a class="fc-dl" href="{{ url_for('download.download_dir', subpath=f.path) }}" title="下载" aria-label="下载">⬇</a>
                     </div>
                 {% endfor %}
@@ -149,7 +156,17 @@
             maxParts: {{ max_form_parts }},
             maxBytes: {{ max_upload_bytes }}
         };
+        // ===== 目录树配置：供 tree.js 使用 =====
+        window.TREE_CONFIG = {
+            urls: {
+                tree: "{{ url_for('browser.tree') }}",
+                browseRoot: "{{ url_for('browser.main') }}",
+                browseBase: "{{ url_for('browser.browse', subpath='') }}"
+            },
+            currentPath: {{ path | tojson }}
+        };
     </script>
+    <script src="{{ url_for('static', filename='js/tree.js') }}"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script src="{{ url_for('static', filename='js/confirm-download.js') }}"></script>
 </body>
