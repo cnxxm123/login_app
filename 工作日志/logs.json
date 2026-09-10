@@ -1,5 +1,5 @@
 {
-  "next_id": 57,
+  "next_id": 64,
   "logs": [
     {
       "id": 3,
@@ -191,6 +191,54 @@
       "category": "问题处理",
       "content": "查出模拟人生4问题，",
       "created_at": "2026-09-09 19:32:41",
+      "updated_at": null
+    },
+    {
+      "id": 57,
+      "log_date": "2026-09-10",
+      "category": "上架游戏",
+      "content": "爪哼",
+      "created_at": "2026-09-10 19:36:12",
+      "updated_at": null
+    },
+    {
+      "id": 58,
+      "log_date": "2026-09-10",
+      "category": "上架游戏",
+      "content": "王者荣耀万象其",
+      "created_at": "2026-09-10 19:36:35",
+      "updated_at": null
+    },
+    {
+      "id": 59,
+      "log_date": "2026-09-10",
+      "category": "更新游戏",
+      "content": "流放之路",
+      "created_at": "2026-09-10 19:38:46",
+      "updated_at": null
+    },
+    {
+      "id": 60,
+      "log_date": "2026-09-10",
+      "category": "问题处理",
+      "content": "瘟疫公司解锁不了病毒",
+      "created_at": "2026-09-10 19:39:03",
+      "updated_at": null
+    },
+    {
+      "id": 61,
+      "log_date": "2026-09-10",
+      "category": "更新游戏",
+      "content": "地平线6",
+      "created_at": "2026-09-10 19:51:12",
+      "updated_at": null
+    },
+    {
+      "id": 63,
+      "log_date": "2026-09-10",
+      "category": "更新游戏",
+      "content": "龙岛异兽",
+      "created_at": "2026-09-10 20:00:25",
       "updated_at": null
     }
   ]
