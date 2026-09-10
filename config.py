@@ -45,8 +45,8 @@ LOG_FILE = os.path.join(LOG_DIR, "logs.json")
 TODO_DIR = os.path.join(BASE_DIR, "待办事项")
 TODO_FILE = os.path.join(TODO_DIR, "todos.json")
 
-# 工作类别白名单：待办事项与工作日志共用，新增/编辑时只能从这三类中选择（对应页面上的彩色标签）
-WORK_CATEGORIES = ["上架游戏", "更新游戏", "问题处理"]
+# 工作类别白名单：待办事项与工作日志共用，新增/编辑时只能从这四类中选择（对应页面上的彩色标签）
+WORK_CATEGORIES = ["上架游戏", "更新游戏", "更新游戏工具", "问题处理"]
 
 
 # 视频封面缩略图缓存目录（生成后按文件指纹命名缓存，避免每次重复抽帧）

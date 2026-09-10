@@ -75,33 +75,14 @@ function saveLog() {
 }
 document.getElementById("edit-save").onclick = saveLog;
 
-// ===== 折叠状态记忆：刷新 / 编辑后保持各分组的展开 / 折叠状态 =====
-// 原理：用户手动展开的分组 key 记录到 localStorage，页面加载时据此恢复。
-// 默认状态是"全部折叠"，因此只需记录"被展开"的分组。
+// ===== 折叠状态记忆：手风琴模式，同一时间只展开一个日期分组、一个类别分组 =====
+// 原理：刷新/编辑后从 localStorage 恢复上次唯一展开的日期/类别分组。
+// 默认状态是"全部折叠"。
 var EXPAND_KEY = "logs_expanded";  // 每个页面独立命名空间，互不干扰
 
 function loadExpanded() {
     try { return JSON.parse(localStorage.getItem(EXPAND_KEY)) || {}; }
     catch (e) { return {}; }  // localStorage 不可用或数据损坏时按无记忆处理
-}
-
-// 记录日期分组的展开状态：展开则记 key，折叠则移除
-function rememberDateGroup(group) {
-    var expanded = loadExpanded();
-    var date = group.getAttribute("data-date");
-    if (group.classList.contains("collapsed")) delete expanded[date];
-    else expanded[date] = true;
-    localStorage.setItem(EXPAND_KEY, JSON.stringify(expanded));
-}
-
-// 记录类别分组的展开状态：key = "日期|类别"
-function rememberCatGroup(catGroup) {
-    var expanded = loadExpanded();
-    var key = catGroup.closest(".log-group").getAttribute("data-date") + "|" +
-              catGroup.getAttribute("data-cat");
-    if (catGroup.classList.contains("collapsed")) delete expanded[key];
-    else expanded[key] = true;
-    localStorage.setItem(EXPAND_KEY, JSON.stringify(expanded));
 }
 
 // 页面加载时恢复：把记录过"展开"的日期 / 类别分组取消折叠
@@ -118,6 +99,19 @@ function restoreExpanded() {
     });
 }
 restoreExpanded();  // 首次加载恢复记忆的展开状态
+
+// 手风琴模式：收起所有兄弟分组后，将当前展开状态写入 localStorage
+function saveAllExpanded() {
+    var expanded = {};
+    document.querySelectorAll(".log-group:not(.collapsed)").forEach(function (g) {
+        var date = g.getAttribute("data-date");
+        expanded[date] = true;
+        g.querySelectorAll(".log-cat-group:not(.collapsed)").forEach(function (cg) {
+            expanded[date + "|" + cg.getAttribute("data-cat")] = true;
+        });
+    });
+    localStorage.setItem(EXPAND_KEY, JSON.stringify(expanded));
+}
 
 // ===== 局部刷新：编辑 / 删除 / 转移后只更新列表区域，避免整页刷新闪烁 =====
 function refreshList() {
@@ -142,20 +136,34 @@ function refreshList() {
     }).catch(function () { toast("刷新列表失败，请手动刷新页面", true); });
 }
 
-// ===== 日期分组折叠（事件委托，列表局部刷新后依然有效）=====
+// ===== 日期/类别分组折叠 —— 手风琴模式（事件委托，列表局部刷新后依然有效）=====
+// 日期分组：同一时间只展开一个日期；类别分组：同一日期下只展开一个类别
 document.addEventListener("click", function (ev) {
     var head = ev.target.closest(".log-group-head");
     if (head) {
         var group = head.closest(".log-group");
-        group.classList.toggle("collapsed");
-        rememberDateGroup(group);  // 记忆当前展开状态
+        var wasCollapsed = group.classList.contains("collapsed");
+        // 手风琴：先折叠所有日期分组
+        document.querySelectorAll(".log-group").forEach(function (g) {
+            g.classList.add("collapsed");
+        });
+        // 如果原来是折叠的，则展开当前分组；否则保持折叠（点击已展开的 = 折叠）
+        if (wasCollapsed) group.classList.remove("collapsed");
+        saveAllExpanded();
         return;
     }
     var catHead = ev.target.closest(".log-cat-head");
     if (catHead) {
         var catGroup = catHead.closest(".log-cat-group");
-        catGroup.classList.toggle("collapsed");
-        rememberCatGroup(catGroup);  // 记忆当前展开状态
+        var wasCollapsed = catGroup.classList.contains("collapsed");
+        var dateGroup = catGroup.closest(".log-group");
+        // 手风琴：先折叠同一日期下的所有类别分组
+        dateGroup.querySelectorAll(".log-cat-group").forEach(function (cg) {
+            cg.classList.add("collapsed");
+        });
+        // 如果原来是折叠的，则展开当前分组；否则保持折叠
+        if (wasCollapsed) catGroup.classList.remove("collapsed");
+        saveAllExpanded();
     }
 });
 // 键盘支持：聚焦到分组标题时按 Enter / 空格切换（委托绑定）

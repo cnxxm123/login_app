@@ -51,6 +51,7 @@
         }
         .todo-item .todo-cat[data-category="上架游戏"] { background: #16a34a; }  /* 绿：上架 */
         .todo-item .todo-cat[data-category="更新游戏"] { background: #2563eb; }  /* 蓝：更新 */
+        .todo-item .todo-cat[data-category="更新游戏工具"] { background: #9333ea; }  /* 紫：工具更新 */
         .todo-item .todo-cat[data-category="问题处理"] { background: #ea580c; }  /* 橙红：问题 */
         /* 未知类别：灰色"未分类" */
         .todo-item .todo-cat.uncat { background: var(--text-3); opacity: .75; }
