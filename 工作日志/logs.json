@@ -1,5 +1,5 @@
 {
-  "next_id": 65,
+  "next_id": 72,
   "logs": [
     {
       "id": 3,
@@ -247,6 +247,62 @@
       "category": "上架游戏",
       "content": "瘟疫公司",
       "created_at": "2026-09-10 23:38:38",
+      "updated_at": null
+    },
+    {
+      "id": 65,
+      "log_date": "2026-09-11",
+      "category": "上架游戏",
+      "content": "人类一败涂地",
+      "created_at": "2026-09-11 20:18:53",
+      "updated_at": null
+    },
+    {
+      "id": 66,
+      "log_date": "2026-09-11",
+      "category": "上架游戏",
+      "content": "瘟疫公司",
+      "created_at": "2026-09-11 20:19:11",
+      "updated_at": null
+    },
+    {
+      "id": 67,
+      "log_date": "2026-09-11",
+      "category": "更新游戏",
+      "content": "异环",
+      "created_at": "2026-09-11 20:19:24",
+      "updated_at": "2026-09-11 20:19:33"
+    },
+    {
+      "id": 68,
+      "log_date": "2026-09-11",
+      "category": "更新游戏",
+      "content": "悟空神辅",
+      "created_at": "2026-09-11 20:19:45",
+      "updated_at": null
+    },
+    {
+      "id": 69,
+      "log_date": "2026-09-11",
+      "category": "更新游戏",
+      "content": "战舰世界",
+      "created_at": "2026-09-11 20:20:11",
+      "updated_at": null
+    },
+    {
+      "id": 70,
+      "log_date": "2026-09-11",
+      "category": "上架游戏",
+      "content": "王者万象琪",
+      "created_at": "2026-09-11 20:29:35",
+      "updated_at": null
+    },
+    {
+      "id": 71,
+      "log_date": "2026-09-11",
+      "category": "上架游戏",
+      "content": "无主之地",
+      "created_at": "2026-09-11 21:10:45",
       "updated_at": null
     }
   ]
