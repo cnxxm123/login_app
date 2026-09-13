@@ -288,33 +288,6 @@ def search():
     )
 
 
-@browser_bp.route("/tree")
-def tree():
-    """返回目录树 JSON（仅目录，不含文件），供前端树形侧栏懒加载。
-    
-    请求参数 ?path= 指定起始路径（空字符串=根目录）。
-    返回格式：{name, path, is_dir: true, children: [...]}。
-    前端首次展开节点时按需请求子节点，避免一次性返回全量数据。
-    """
-    subpath = request.args.get("path", "").strip()
-    target = safe_path(subpath)
-    if target is None or not os.path.isdir(target):
-        return jsonify({"name": "", "path": "", "is_dir": True, "children": []})
-
-    dirs, _ = list_entries(subpath)
-    if dirs is None:
-        return jsonify({"name": "", "path": "", "is_dir": True, "children": []})
-
-    children = []
-    for d in dirs:
-        child_path = os.path.join(subpath, d).replace("\\", "/")
-        children.append({"name": d, "path": child_path, "is_dir": True, "children": []})
-
-    # 根节点名：根目录用空字符串，显示为"云书库"
-    name = os.path.basename(subpath.rstrip("/\\")) if subpath else ""
-    return jsonify({"name": name, "path": subpath, "is_dir": True, "children": children})
-
-
 @browser_bp.route("/duration/<path:subpath>")
 def duration(subpath: str):
     """返回视频时长（秒）的 JSON：{"duration": 123.45 | null}。

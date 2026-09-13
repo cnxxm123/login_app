@@ -28,6 +28,7 @@ login_app/
 │   ├── manage.py          # 管理蓝图：上传 / 新建文件夹 / 在线编辑
 │   ├── logs.py            # 日志蓝图：工作日志列表 / 新增 / 编辑 / 删除 / 转待办
 │   ├── todos.py           # 待办蓝图：待办列表 / 新增 / 编辑 / 完成切换 / 删除
+│   ├── epub.py             # EPUB 蓝图：电子书阅读器 / 元数据 / 章节内容 / 内嵌资源
 ├── services/              # 纯业务逻辑层（不依赖 Flask，不处理 HTTP）
 │   ├── path_utils.py      # 路径安全校验（防目录穿越）
 │   ├── dir_utils.py       # 列目录 / 自然排序 / 递归搜索（文件名+内容）/ 目录图片列表
@@ -35,15 +36,32 @@ login_app/
 │   ├── media_utils.py     # 视频封面抽帧 + 视频时长探测 + 视频兼容转码 + 图片缩略图（ffmpeg/Pillow + 缓存）
 │   ├── office_utils.py    # Office 文档解析纯逻辑：docx/xlsx/xls → HTML（在线预览）
 │   ├── log_store.py       # 工作日志读写（JSON 文件存储）
-│   └── todo_store.py      # 待办事项读写（JSON 文件存储）
+│   ├── todo_store.py      # 待办事项读写（JSON 文件存储）
+│   └── epub_utils.py      # EPUB 解析：元数据 / 章节目录 / 章节 HTML / 内嵌资源提取
 ├── static/                # 静态资源
-│   ├── css/common.css     # 公共设计系统（设计令牌/重置/导航栏/玻璃拟态容器/搜索框/弹窗/暗色基础/移动端适配）
-│   ├── css/gallery.css    # 图集/漫画阅读器专用样式（深色全屏播放器，不依赖 common.css）
-│   ├── css/player.css     # 视频播放器专用样式（控制栏/进度条/倍速菜单/画中画/全屏，深色主题，含移动端适配）
-│   ├── js/theme.js        # 公共主题切换脚本（深色/浅色，localStorage 记住偏好）
-│   ├── js/player.js       # 视频播放器交互逻辑（播放/暂停/进度拖动/音量/倍速/快捷键/自动隐藏控制栏/偏好记忆）
-│   ├── js/confirm-download.js  # 通用下载确认弹窗（所有下载入口共用，防误触）
-│   └── js/gallery.js      # 图集/漫画阅读器全部交互逻辑（两种模式/缩放平移/缩略图栏/进度记忆）
+│   ├── css/               # 样式表（各页面独立 CSS，不交叉引用）
+│   │   ├── common.css     # 公共设计系统（设计令牌/重置/导航栏/玻璃拟态容器/搜索框/弹窗/暗色基础/移动端适配）
+│   │   ├── main.css       # 主页 / 目录浏览页样式（卡片网格/列表/面包屑/FAB 按钮）
+│   │   ├── view.css       # 内容查看页样式（文档渲染/图片阅读器/视频播放器容器）
+│   │   ├── search.css     # 搜索结果页样式
+│   │   ├── editor.css     # 在线文本编辑器样式
+│   │   ├── gallery.css    # 图集/漫画阅读器专用样式（深色全屏播放器，不依赖 common.css）
+│   │   ├── player.css     # 视频播放器专用样式（控制栏/进度条/倍速菜单/画中画/全屏，深色主题，含移动端适配）
+│   │   ├── epub_reader.css # EPUB 阅读器专用样式（侧栏章节导航+阅读区、深浅色主题适配）
+│   │   ├── logs.css       # 工作日志页样式
+│   │   └── todos.css      # 待办事项页样式
+│   ├── js/                # 脚本（各页面独立 JS，功能自包含）
+│   │   ├── theme.js       # 公共主题切换脚本（深色/浅色，localStorage 记住偏好）
+│   │   ├── main.js        # 主页/浏览页交互（网格/列表切换、上传、新建文件夹等）
+│   │   ├── view.js        # 查看页交互（图片翻页/缩放、音频播放列表）
+│   │   ├── search.js      # 搜索结果页交互
+│   │   ├── editor.js      # 在线编辑器交互（Ctrl+S 保存、编码提示）
+│   │   ├── player.js      # 视频播放器交互逻辑（播放/暂停/进度拖动/音量/倍速/快捷键/自动隐藏控制栏/偏好记忆）
+│   │   ├── confirm-download.js  # 通用下载确认弹窗（所有下载入口共用，防误触）
+│   │   ├── gallery.js     # 图集/漫画阅读器全部交互逻辑（两种模式/缩放平移/缩略图栏/进度记忆）
+│   │   ├── epub_reader.js # EPUB 阅读器交互逻辑（章节切换/导航折叠/主题切换/进度记忆）
+│   │   ├── logs.js        # 工作日志页交互（搜索、分类折叠、转待办）
+│   │   └── todos.js       # 待办事项页交互（搜索、完成切换）
 ├── templates/             # Jinja2 模板（HTML）
 │   ├── nav.html           # 共享侧边栏导航（所有页面 include 使用，移动端折叠为顶部图标栏）
 │   ├── main.html          # 主页 / 目录浏览页（文件夹卡片 + 文件卡片网格 + 视频时长角标）
@@ -52,7 +70,8 @@ login_app/
 │   ├── view.html          # 内容查看页（文本渲染 + Markdown 大纲 TOC / 图片分页阅读器 / PDF 原生查看 / Office 预览 / 视频自定义播放器+连播 / 音频原生播放+连播）
 │   ├── gallery.html       # 图集/漫画全屏阅读器（两种模式/缩放平移/缩略图栏/跳页/进度与偏好记忆）
 │   ├── logs.html          # 工作日志页（按日期分组 / 类别折叠 / 搜索 / 转待办）
-│   └── todos.html         # 待办事项页（按日期分组 / 完成状态 / 搜索）
+│   ├── todos.html         # 待办事项页（按日期分组 / 完成状态 / 搜索）
+│   └── epub_reader.html   # EPUB 电子书阅读器（分章节左侧导航 + 右侧阅读区，深浅色主题适配）
 ├── _thumbs/               # 视频封面缩略图缓存（运行时自动生成，按文件指纹命名，可随时清空）
 ├── _imgthumbs/            # 图片压缩缩略图缓存（运行时自动生成，按文件指纹命名，可随时清空）
 ├── _transcodes/           # 视频兼容转码缓存（HEVC→H.264 / moov 前置，运行时自动生成，可随时清空）
@@ -62,7 +81,7 @@ login_app/
 
 > 模块划分原则：**三层分层，不同功能分到不同模块，一个模块只做一件事**。
 > - `blueprints/`（路由层）：每个功能一个蓝图——浏览、查看、媒体、下载、管理各自独立，只处理 HTTP 交互；
-> - `services/`（纯逻辑层）：不依赖 Flask，按职责拆成单用途模块——`path_utils`（路径安全）、`dir_utils`（目录操作）、`text_utils`（文本/文档）、`media_utils`（视频抽帧/转码/时长、图片缩略图）、`office_utils`（Office 解析）；
+> - `services/`（纯逻辑层）：不依赖 Flask，按职责拆成单用途模块——`path_utils`（路径安全）、`dir_utils`（目录操作）、`text_utils`（文本/文档）、`media_utils`（视频抽帧/转码/时长、图片缩略图）、`office_utils`（Office 解析）、`epub_utils`（EPUB 解析）；
 > - `static/`（前端资源）：公共 CSS 与主题 JS 抽取为 `common.css` / `theme.js`，各模板只保留页面特有样式，避免重复粘贴。
 
 ## 功能说明
@@ -94,6 +113,7 @@ login_app/
 | 局域网访问 | 监听 `0.0.0.0`，同一局域网内其他设备可通过 `http://<本机IP>:5000` 访问 |
 | 导航 | 面包屑 + "上一级"链接，方便返回 |
 | 路径安全 | 所有路径校验在 `text/` 目录内，越界路径返回 404 |
+| EPUB 阅读 | 支持 `.epub` 电子书在线阅读：左侧可折叠章节导航栏，右侧阅读区渲染章节 HTML 内容（含图片/CSS），深浅色主题适配，阅读进度记忆（localStorage）；通过 `/epub/<path>` 进入阅读器 |
 
 ## 运行步骤
 
@@ -172,6 +192,10 @@ python app.py
 | `/todos` | GET | 待办事项页 |
 | `/todo/add`、`/todo/update`、`/todo/delete` | POST | 新增 / 修改 / 删除待办 |
 | `/todo/toggle` | POST | 勾选完成：自动转移到今天的工作日志（表单字段 `id`） |
+| `/epub/<path>` | GET | EPUB 电子书阅读器页面（左侧章节导航 + 右侧阅读区） |
+| `/epub/api/info/<path>` | GET | 返回 EPUB 书籍元数据 JSON（书名/作者/章节目录） |
+| `/epub/api/chapter/<path>/<chapter_id>` | GET | 返回指定章节的 HTML 内容 JSON |
+| `/epub/api/resource/<path>/<resource_path>` | GET | 返回 EPUB 内嵌资源（图片/CSS 等二进制流） |
 
 ## 后续可扩展方向
 

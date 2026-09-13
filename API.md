@@ -227,7 +227,72 @@
 
 ---
 
-## 6. 管理接口（`blueprints/manage.py`）
+## 6. EPUB 电子书接口（`blueprints/epub.py`）
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/epub/<path:subpath>` | EPUB 阅读器页面（左侧章节导航 + 右侧阅读区） |
+| GET | `/epub/api/info/<path:subpath>` | 返回书籍元数据 JSON（书名/作者/封面/章节目录） |
+| GET | `/epub/api/chapter/<path:subpath>/<chapter_id>` | 返回指定章节的 HTML 内容 JSON |
+| GET | `/epub/api/resource/<path:subpath>/<resource_path>` | 返回 EPUB 内嵌资源二进制流（图片/CSS 等） |
+
+### 6.1 GET /epub/<path:subpath>
+
+- 目标必须是 `.epub` 文件，否则 `404`。
+- 渲染 `templates/epub_reader.html`：左侧可折叠章节导航栏，右侧阅读区通过 AJAX 加载章节 HTML 内容。
+- 页面上下文：`filename`、`book_title`、`path`、`parent`。
+- 书籍元数据（书名/作者/章节目录）由前端通过 `/epub/api/info/<path>` 异步获取。
+
+### 6.2 GET /epub/api/info/<path:subpath>
+
+- 返回 JSON：
+```json
+{
+  "title": "书名",
+  "author": "作者",
+  "cover_href": "封面图片路径（在 EPUB 内的路径，可为空字符串）",
+  "chapters": [
+    {"id": "chapter_001", "title": "第一章 标题", "href": "Text/chapter1.xhtml", "level": 1},
+    ...
+  ],
+  "spine": [
+    {"idref": "chapter_001", "href": "Text/chapter1.xhtml"},
+    ...
+  ]
+}
+```
+- `chapters` 来自 EPUB 的 NCX/NAV 目录，含多级嵌套（`level` 表示层级深度，1 为顶级章节）。
+- `spine` 来自 EPUB 的 `<spine>` 阅读顺序，用于在目录信息不完整时补全章节映射。
+- 解析失败 → `400` + `{"error": "无法解析 EPUB 文件"}`。
+
+### 6.3 GET /epub/api/chapter/<path:subpath>/<chapter_id>
+
+- `chapter_id` 为 `/epub/api/info` 返回的 `chapters[].id` 或 `spine[].idref`。
+- 后端先根据 `chapter_id` 查找对应的 `href`，再读取 EPUB 内该文件的 HTML 内容。
+- 返回 JSON：
+```json
+{
+  "content": "<html 片段>",
+  "href": "Text/chapter1.xhtml"
+}
+```
+- 章节未找到 → `404` + `{"error": "章节未找到"}`。
+- 内容读取失败 → `500` + `{"error": "无法读取章节内容"}`。
+
+### 6.4 GET /epub/api/resource/<path:subpath>/<resource_path>
+
+- `resource_path` 为 EPUB 内部资源路径（如图片 `images/cover.jpg`、CSS `Styles/main.css`）。
+- 以二进制流返回资源内容，自动根据扩展名设置正确的 `Content-Type`（如图片 MIME、CSS `text/css`）。
+- 资源不存在 → `404`。
+
+### 6.5 EPUB 目录页入口
+
+- 目录浏览页中，`.epub` 文件在 `files` 列表里识别为 `kind: "text"`，点击即跳转 `/epub/<path>` 打开阅读器（而非 `/view/<path>` 的普通查看页）。
+- `.epub` 文件的**下载图标**正常工作：点击先弹确认框，确认后走 `/download/<path>` 下载原文件。
+
+---
+
+## 7. 管理接口（`blueprints/manage.py`）
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
@@ -271,7 +336,7 @@
 
 ---
 
-## 7. 模块依赖速查
+## 8. 模块依赖速查
 
 | 接口 | 依赖的纯逻辑层（`services/`） | 依赖的配置（`config.py`） |
 | --- | --- | --- |
@@ -286,10 +351,11 @@
 | 下载 `/download` | `path_utils.safe_path` | — |
 | 管理 `/upload`、`/mkdir` | `path_utils.safe_path` | — |
 | 管理 `/edit`、`/save` | `path_utils.safe_path`、`text_utils.read_text_file` | `TEXT_EXTENSIONS` |
+| EPUB `/epub`、`/epub/api/*` | `path_utils.safe_path`、`epub_utils.parse_epub`、`get_epub_chapter_content`、`get_epub_resource` | — |
 
 ---
 
-## 8. 二次开发指引
+## 9. 二次开发指引
 
 - **新增文件类型预览**：只需改 `config.py` 的扩展名表（如把新扩展名加进 `TEXT_EXTENSIONS`），并在 `blueprints/view.py` 的分派处补充渲染逻辑。
 - **新增接口**：在对应的 `blueprints/*.py` 中加路由；若涉及磁盘路径，一律经 `services/path_utils.safe_path()` 校验。
