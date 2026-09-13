@@ -1,5 +1,5 @@
 {
-  "next_id": 72,
+  "next_id": 77,
   "logs": [
     {
       "id": 3,
@@ -301,8 +301,48 @@
       "id": 71,
       "log_date": "2026-09-11",
       "category": "上架游戏",
-      "content": "无主之地",
+      "content": "无主之地2模组",
       "created_at": "2026-09-11 21:10:45",
+      "updated_at": "2026-09-13 19:06:05"
+    },
+    {
+      "id": 72,
+      "log_date": "2026-09-13",
+      "category": "上架游戏",
+      "content": "怪物来袭 摇滚狂飙",
+      "created_at": "2026-09-13 14:45:43",
+      "updated_at": null
+    },
+    {
+      "id": 73,
+      "log_date": "2026-09-13",
+      "category": "更新游戏",
+      "content": "地平线6",
+      "created_at": "2026-09-13 14:45:50",
+      "updated_at": null
+    },
+    {
+      "id": 74,
+      "log_date": "2026-09-13",
+      "category": "更新游戏",
+      "content": "二重螺旋",
+      "created_at": "2026-09-13 14:46:06",
+      "updated_at": null
+    },
+    {
+      "id": 75,
+      "log_date": "2026-09-13",
+      "category": "上架游戏",
+      "content": "长夜之歌",
+      "created_at": "2026-09-13 18:23:18",
+      "updated_at": null
+    },
+    {
+      "id": 76,
+      "log_date": "2026-09-13",
+      "category": "问题处理",
+      "content": "处理3个工单",
+      "created_at": "2026-09-13 19:17:56",
       "updated_at": null
     }
   ]

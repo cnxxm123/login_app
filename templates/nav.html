@@ -24,6 +24,10 @@
            href="{{ url_for('todos.index') }}" title="待办事项：上架 / 更新 / 问题处理">
             <span class="sb-ico">📋</span><span class="sb-txt">待办事项</span>
         </a>
+        <a class="sb-link{% if request.endpoint == 'memos.index' %} active{% endif %}"
+           href="{{ url_for('memos.index') }}" title="备忘录：随手记录想法与资料">
+            <span class="sb-ico">🗒</span><span class="sb-txt">备忘录</span>
+        </a>
     </nav>
 
     <!-- 底部操作区：主题切换（桌面端显示） -->

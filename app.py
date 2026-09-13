@@ -14,6 +14,7 @@
   - manage.py    管理蓝图：上传 / 新建文件夹 / 在线编辑
   - logs.py      日志蓝图：工作日志增删改 / 转待办
   - todos.py     待办蓝图：待办增删改 / 完成切换
+  - memos.py     备忘蓝图：备忘增删改（标题 + 正文卡片）
 - services 包（纯业务逻辑层，不依赖 Flask，不处理 HTTP）
   - path_utils.py  路径安全校验（防目录穿越）
   - dir_utils.py   列目录 / 自然排序 / 递归搜索 / 目录图片列表
@@ -42,6 +43,7 @@ from blueprints.epub import epub_bp           # EPUB 蓝图（/epub/...）
 from blueprints.logs import logs_bp           # 日志蓝图（/logs、/log/add...）
 from blueprints.manage import manage_bp       # 管理蓝图（/upload/...、/mkdir、/edit/...）
 from blueprints.media import media_bp         # 媒体蓝图（/media/...、/thumb/...）
+from blueprints.memos import memos_bp         # 备忘蓝图（/memos、/memo/add...）
 from blueprints.todos import todos_bp         # 待办蓝图（/todos、/todo/add、/todo/toggle...）
 from blueprints.view import view_bp           # 查看蓝图（/view/...）
 from config import MAX_FORM_PARTS, MAX_UPLOAD_BYTES  # 上传上限
@@ -83,6 +85,7 @@ def create_app() -> Flask:
     app.register_blueprint(manage_bp)    # 注册管理蓝图 → 提供 /upload/...、/mkdir、/edit/...
     app.register_blueprint(logs_bp)      # 注册日志蓝图 → 提供 /logs、/log/add、/log/update、/log/delete
     app.register_blueprint(todos_bp)     # 注册待办蓝图 → 提供 /todos、/todo/add、/todo/toggle 等
+    app.register_blueprint(memos_bp)     # 注册备忘蓝图 → 提供 /memos、/memo/add、/memo/update、/memo/delete
     app.register_blueprint(epub_bp)      # 注册 EPUB 蓝图 → 提供 /epub/...
     return app
 

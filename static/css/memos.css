@@ -1,0 +1,91 @@
+        /* ===== 顶部统计条 ===== */
+        .memo-stats { display: flex; gap: 10px; flex-wrap: wrap; }
+        .memo-stats .stat {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 10px; padding: 8px 16px; font-size: 13px; color: var(--text-2);
+        }
+        .memo-stats .stat b { color: var(--primary); font-size: 15px; margin-left: 2px; }
+
+        /* 搜索框：胶囊样式，与待办页搜索一致 */
+        .memo-search {
+            display: flex; align-items: center; gap: 6px;
+            background: var(--surface); border: 1px solid var(--border-strong);
+            border-radius: 999px; padding: 6px 8px 6px 14px; transition: var(--t);
+        }
+        .memo-search:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 94, 232, .12); }
+        .memo-search input {
+            border: none; background: transparent; color: var(--text); outline: none;
+            font-size: 13.5px; width: 170px; font-family: inherit;
+        }
+        .memo-search input::placeholder { color: var(--text-3); }
+
+        /* ===== 卡片网格 ===== */
+        .memo-grid {
+            display: grid; gap: 14px; margin-top: 18px;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        }
+        .memo-card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 12px; padding: 14px 16px; cursor: pointer;
+            display: flex; flex-direction: column; gap: 8px;
+            transition: var(--t); min-height: 120px;
+        }
+        .memo-card:hover {
+            border-color: var(--primary); transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, .08);
+        }
+        .memo-head { display: flex; align-items: center; gap: 6px; }
+        .memo-title {
+            font-size: 14.5px; font-weight: 700; color: var(--text);
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;
+        }
+        /* 已编辑小圆点（与待办页一致） */
+        .edited-dot {
+            flex: none; width: 7px; height: 7px; border-radius: 50%;
+            background: var(--primary); opacity: .75;
+        }
+        .memo-content {
+            font-size: 13px; color: var(--text-2); line-height: 1.6; flex: 1;
+            /* 卡片内最多显示 6 行，超出省略 */
+            display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical;
+            overflow: hidden; word-break: break-word;
+        }
+        .memo-foot {
+            display: flex; align-items: center; justify-content: space-between;
+            border-top: 1px dashed var(--border); padding-top: 8px;
+        }
+        .memo-time { font-size: 12px; color: var(--text-3); }
+        .memo-ops { display: flex; gap: 4px; opacity: 0; transition: var(--t); }
+        .memo-card:hover .memo-ops { opacity: 1; }
+        .memo-ops .op-btn {
+            width: 30px; height: 30px; border: none; border-radius: 8px; cursor: pointer;
+            background: var(--surface-2); font-size: 13px; line-height: 1;
+            display: inline-flex; align-items: center; justify-content: center; transition: var(--t);
+        }
+        .memo-ops .op-btn:hover { background: var(--accent-soft); }
+        .memo-ops .op-btn.danger:hover { background: rgba(220, 38, 38, .12); }
+
+        /* 弹窗正文输入框加高 */
+        .memo-textarea { min-height: 140px; resize: vertical; }
+
+        /* ===== 加号悬浮按钮（FAB）===== */
+        .fab {
+            position: fixed; right: 26px; bottom: 26px; z-index: 80;
+            width: 56px; height: 56px; border-radius: 50%; border: none; cursor: pointer;
+            background: var(--primary); color: #fff; font-size: 30px; line-height: 1;
+            box-shadow: 0 6px 18px rgba(79, 94, 232, .38); transition: var(--t);
+            display: flex; align-items: center; justify-content: center; font-family: inherit;
+        }
+        .fab:hover { background: var(--primary-2); transform: translateY(-2px) scale(1.04); box-shadow: 0 10px 24px rgba(79, 94, 232, .5); }
+        .fab:active { transform: translateY(0) scale(.96); }
+
+        /* ===== 移动端 / 平板（≤1024px）===== */
+        @media (max-width: 1024px) {
+            /* FAB：上移，避开底部导航栏 */
+            .fab { right: 16px; bottom: calc(76px + env(safe-area-inset-bottom)); width: 52px; height: 52px; font-size: 28px; }
+            .memo-ops { opacity: 1; }                       /* 手机无 hover：操作常显 */
+            .memo-ops .op-btn { width: 36px; height: 36px; font-size: 15px; }  /* 加大触控面积 */
+            .memo-search { flex: 1; min-width: 100%; order: 2; }                /* 搜索占满一行 */
+            .memo-search input { width: 100%; }
+            .memo-grid { grid-template-columns: 1fr; }     /* 手机端单列 */
+        }
