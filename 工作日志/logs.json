@@ -1,5 +1,5 @@
 {
-  "next_id": 77,
+  "next_id": 79,
   "logs": [
     {
       "id": 3,
@@ -343,6 +343,22 @@
       "category": "问题处理",
       "content": "处理3个工单",
       "created_at": "2026-09-13 19:17:56",
+      "updated_at": null
+    },
+    {
+      "id": 77,
+      "log_date": "2026-09-13",
+      "category": "问题处理",
+      "content": "西瓜本局ID：这个游戏好像卡了，是在 9月13日4:51的时候。 问题描述：我玩骑马与砍杀的时候，卡顿了，就是停在那不动了。",
+      "created_at": "2026-09-13 19:22:43",
+      "updated_at": null
+    },
+    {
+      "id": 78,
+      "log_date": "2026-09-13",
+      "category": "问题处理",
+      "content": "西瓜游玩问题】 本局ID：ue24a58ec1818c6e 问题描述：有点卡，但是很好，安的线x线时候有点不好按",
+      "created_at": "2026-09-13 19:23:57",
       "updated_at": null
     }
   ]
