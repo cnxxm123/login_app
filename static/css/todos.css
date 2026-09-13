@@ -89,6 +89,7 @@
         .todo-item .todo-body { flex: 1; min-width: 0; }
         .todo-item .todo-line {
             display: flex; align-items: center; gap: 8px; margin-bottom: 5px; flex-wrap: wrap;
+            padding-left: 2px;
         }
         .todo-item .todo-time {
             font-size: 12px; color: var(--text-3);

@@ -130,22 +130,6 @@
       "updated_at": null
     },
     {
-      "id": 48,
-      "log_date": "2026-09-08",
-      "category": "问题处理",
-      "content": "配置月光光心慌慌其他机房的着色器",
-      "created_at": "2026-09-08 11:20:51",
-      "updated_at": null
-    },
-    {
-      "id": 49,
-      "log_date": "2026-09-08",
-      "category": "问题处理",
-      "content": "测试埃尔登法环模组",
-      "created_at": "2026-09-08 11:35:42",
-      "updated_at": null
-    },
-    {
       "id": 50,
       "log_date": "2026-09-08",
       "category": "上架游戏",
