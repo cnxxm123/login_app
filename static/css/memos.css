@@ -50,6 +50,12 @@
             display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical;
             overflow: hidden; word-break: break-word;
         }
+        /* 卡片缩略图：横向排列，最多显示一层 */
+        .memo-thumbs { display: flex; gap: 6px; flex-wrap: wrap; }
+        .memo-thumbs img {
+            width: 64px; height: 64px; object-fit: cover; border-radius: 8px;
+            border: 1px solid var(--border); background: var(--surface-2);
+        }
         .memo-foot {
             display: flex; align-items: center; justify-content: space-between;
             border-top: 1px dashed var(--border); padding-top: 8px;
@@ -67,6 +73,57 @@
 
         /* 弹窗正文输入框加高 */
         .memo-textarea { min-height: 140px; resize: vertical; }
+
+        /* ===== 编辑弹窗图片区 ===== */
+        .memo-img-area { display: flex; flex-direction: column; gap: 8px; }
+        .memo-img-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+        .memo-img-grid:empty { display: none; }
+        .memo-img-item { position: relative; width: 72px; height: 72px; }
+        .memo-img-item img {
+            width: 100%; height: 100%; object-fit: cover; border-radius: 8px;
+            border: 1px solid var(--border); background: var(--surface-2);
+        }
+        .memo-img-del {
+            position: absolute; top: -6px; right: -6px; width: 20px; height: 20px;
+            border: none; border-radius: 50%; cursor: pointer; color: #fff;
+            background: rgba(220, 38, 38, .9); font-size: 14px; line-height: 1;
+            display: inline-flex; align-items: center; justify-content: center;
+        }
+        .memo-img-add {
+            display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+            border: 1px dashed var(--border-strong); border-radius: 8px; cursor: pointer;
+            padding: 8px 12px; font-size: 13px; color: var(--primary);
+            background: var(--surface-2); transition: var(--t); align-self: flex-start;
+        }
+        .memo-img-add:hover { border-color: var(--primary); background: var(--accent-soft); }
+
+        /* ===== 图片放大查看遮罩（lightbox）===== */
+        .img-lightbox {
+            position: fixed; inset: 0; z-index: 1200;
+            background: rgba(0, 0, 0, .85);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .img-lightbox[hidden] { display: none; }
+        .img-lightbox .lb-img {
+            max-width: 92vw; max-height: 88vh; object-fit: contain;
+            border-radius: 6px; box-shadow: 0 12px 40px rgba(0, 0, 0, .5);
+        }
+        .img-lightbox .lb-close {
+            position: absolute; top: 18px; right: 22px; width: 44px; height: 44px;
+            border: none; border-radius: 50%; cursor: pointer; font-size: 26px; line-height: 1;
+            color: #fff; background: rgba(255, 255, 255, .15); transition: var(--t);
+            display: flex; align-items: center; justify-content: center; z-index: 2;
+        }
+        .img-lightbox .lb-close:hover { background: rgba(255, 255, 255, .3); }
+        .img-lightbox .lb-nav {
+            position: absolute; top: 50%; transform: translateY(-50%); width: 46px; height: 46px;
+            border: none; border-radius: 50%; cursor: pointer; font-size: 30px; line-height: 1;
+            color: #fff; background: rgba(255, 255, 255, .12); transition: var(--t); z-index: 2;
+            display: flex; align-items: center; justify-content: center; padding: 0;
+        }
+        .img-lightbox .lb-nav:hover { background: rgba(255, 255, 255, .3); }
+        .img-lightbox .lb-prev { left: 18px; }
+        .img-lightbox .lb-next { right: 18px; }
 
         /* ===== 加号悬浮按钮（FAB）===== */
         .fab {

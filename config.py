@@ -50,6 +50,11 @@ TODO_FILE = os.path.join(TODO_DIR, "todos.json")
 MEMO_DIR = os.path.join(BASE_DIR, "备忘录")
 MEMO_FILE = os.path.join(MEMO_DIR, "memos.json")
 
+# 备忘录图片存放目录：图片以文件形式保存在 Memo_DIR/images/ 下，
+# memos.json 每条备忘只记录图片文件名列表（不是 base64），避免 JSON 膨胀。
+# 首次上传图片时自动创建。
+MEMO_IMAGE_DIR = os.path.join(MEMO_DIR, "images")
+
 # 工作类别白名单：待办事项与工作日志共用，新增/编辑时只能从这四类中选择（对应页面上的彩色标签）
 WORK_CATEGORIES = ["上架游戏", "更新游戏", "更新游戏工具", "问题处理"]
 

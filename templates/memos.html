@@ -36,6 +36,13 @@
                     <div class="memo-content">
                         {{- item.content_html -}}
                     </div>
+                    {% if item.images %}
+                    <div class="memo-thumbs">
+                        {% for img in item.images %}
+                            <img src="{{ url_for('memos.memo_image', filename=img) }}" alt="" loading="lazy">
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                     <div class="memo-foot">
                         <span class="memo-time">{{ item.time }}</span>
                         <div class="memo-ops">
@@ -61,6 +68,11 @@
             <div class="modal-title" id="edit-title">🗒 新增备忘</div>
             <input class="modal-input" type="text" id="edit-memo-title" placeholder="标题（可留空）" maxlength="100">
             <textarea class="modal-input memo-textarea" id="edit-content" placeholder="记点什么？…"></textarea>
+            <div class="memo-img-area">
+                <div class="memo-img-grid" id="memo-img-grid"></div>
+                <label class="memo-img-add" for="memo-img-input">＋ 添加图片</label>
+                <input type="file" id="memo-img-input" accept="image/*" multiple hidden>
+            </div>
             <div class="modal-ops">
                 <button class="modal-ok modal-cancel" type="button" id="edit-cancel">取消</button>
                 <button class="modal-ok" type="button" id="edit-save">保存</button>
@@ -80,15 +92,25 @@
         </div>
     </div>
 
+    <!-- 图片放大查看遮罩：点击缩略图看大图，支持上一张/下一张切换 -->
+    <div class="img-lightbox" id="img-lightbox" hidden>
+        <button class="lb-close" type="button" id="lb-close" title="关闭" aria-label="关闭">×</button>
+        <button class="lb-nav lb-prev" type="button" id="lb-prev" title="上一张" aria-label="上一张">‹</button>
+        <img class="lb-img" id="lb-img" src="" alt="">
+        <button class="lb-nav lb-next" type="button" id="lb-next" title="下一张" aria-label="下一张">›</button>
+    </div>
+
     <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
     <script>
         // ===== 页面配置：后端注入，供 memos.js 使用 =====
         window.MEMOS_CONFIG = {
     memoData: {{ memos_json | safe }},
+    imageUrl: {{ image_url | tojson }},  // 形如 "/memo/image/__NAME__"，前端把 __NAME__ 替换成实际文件名
     urls: {
         add: "{{ url_for('memos.memo_add') }}",
         update: "{{ url_for('memos.memo_update') }}",
-        delete: "{{ url_for('memos.memo_delete') }}"
+        delete: "{{ url_for('memos.memo_delete') }}",
+        uploadImage: "{{ url_for('memos.memo_upload_image') }}"
     }
 };
     </script>

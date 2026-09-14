@@ -1,5 +1,5 @@
 // ===== 备忘录页交互（仿 todos.js，去掉日期/类别/完成状态）=====
-// 后端注入的配置：window.MEMOS_CONFIG = {memoData: {id: {title, content}}, urls: {...}}
+// 后端注入的配置：window.MEMOS_CONFIG = {memoData: {id: {title, content, images}}, imageUrl, urls: {...}}
 var MEMO_DATA = window.MEMOS_CONFIG.memoData;
 
 var editMask = document.getElementById("edit-mask");
@@ -7,23 +7,132 @@ var delMask = document.getElementById("del-mask");
 var editTitle = document.getElementById("edit-title");
 var editMemoTitle = document.getElementById("edit-memo-title");
 var editContent = document.getElementById("edit-content");
+var editImgGrid = document.getElementById("memo-img-grid");
+var editImgInput = document.getElementById("memo-img-input");
 var editingId = null;   // null=新增；数字=正在编辑的备忘 id
 var pendingDel = null;  // 待删除的备忘 id
+var currentImages = []; // 当前编辑弹窗的图片文件名列表（新增为空，编辑从 MEMO_DATA 恢复）
+
+// 图片访问 URL：把模板里的 __NAME__ 占位符替换成实际文件名
+function imageUrl(name) {
+    return window.MEMOS_CONFIG.imageUrl.replace("__NAME__", name);
+}
+
+// ===== 图片放大查看（lightbox）：点缩略图看大图，支持前后切换 =====
+var lbMask = document.getElementById("img-lightbox");
+var lbImg = document.getElementById("lb-img");
+var lbImages = [];  // 当前可浏览的图片 URL 列表
+var lbIndex = 0;    // 当前显示到第几张
+
+function showLightbox() {
+    if (!lbImages.length) return;
+    lbImg.src = lbImages[lbIndex];
+    lbMask.hidden = false;
+    // 只有一张图时隐藏前后切换按钮
+    document.getElementById("lb-prev").style.display = lbImages.length > 1 ? "" : "none";
+    document.getElementById("lb-next").style.display = lbImages.length > 1 ? "" : "none";
+}
+function openLightbox(urls, index) {
+    if (!urls || !urls.length) return;
+    lbImages = urls.slice();
+    lbIndex = Math.max(0, Math.min(index || 0, urls.length - 1));
+    showLightbox();
+}
+function closeLightbox() { lbMask.hidden = true; }
+function stepLightbox(delta) {
+    if (lbImages.length < 2) return;
+    lbIndex = (lbIndex + delta + lbImages.length) % lbImages.length;
+    showLightbox();
+}
+if (lbMask) {
+    document.getElementById("lb-close").onclick = closeLightbox;
+    document.getElementById("lb-prev").onclick = function () { stepLightbox(-1); };
+    document.getElementById("lb-next").onclick = function () { stepLightbox(1); };
+    // 点遮罩空白处关闭
+    lbMask.addEventListener("click", function (ev) { if (ev.target === lbMask) closeLightbox(); });
+    // 键盘：Esc 关闭，左右方向键切换
+    document.addEventListener("keydown", function (ev) {
+        if (lbMask.hidden) return;
+        if (ev.key === "Escape") closeLightbox();
+        else if (ev.key === "ArrowLeft") stepLightbox(-1);
+        else if (ev.key === "ArrowRight") stepLightbox(1);
+    });
+}
+
+// ===== 渲染编辑弹窗内的图片预览网格 =====
+function renderImages() {
+    if (!editImgGrid) return;
+    editImgGrid.innerHTML = "";
+    currentImages.forEach(function (name) {
+        var item = document.createElement("div");
+        item.className = "memo-img-item";
+        var img = document.createElement("img");
+        img.src = imageUrl(name);
+        img.alt = "";
+        // 点击编辑弹窗内的预览图也放大查看
+        img.onclick = function () {
+            openLightbox(currentImages.map(imageUrl), currentImages.indexOf(name));
+        };
+        var del = document.createElement("button");
+        del.type = "button";
+        del.className = "memo-img-del";
+        del.title = "移除这张图片";
+        del.textContent = "×";
+        del.onclick = function () {
+            // 只从预览移除，保存时才真正删除服务器上的文件
+            currentImages = currentImages.filter(function (n) { return n !== name; });
+            renderImages();
+        };
+        item.appendChild(img);
+        item.appendChild(del);
+        editImgGrid.appendChild(item);
+    });
+    // input 复用：清空 value，让再次选择同一张图片时也能触发 change
+    if (editImgInput) editImgInput.value = "";
+}
+
+// ===== 选择图片后逐个上传 =====
+function uploadImages(files) {
+    Array.prototype.forEach.call(files, function (file) {
+        if (!file.type || file.type.indexOf("image/") !== 0) {
+            toast("「" + file.name + "」不是图片，已跳过", true);
+            return;
+        }
+        var fd = new FormData();
+        fd.append("image", file);
+        fetch(window.MEMOS_CONFIG.urls.uploadImage, { method: "POST", body: fd })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data.ok) { toast(data.error || "图片上传失败", true); return; }
+                currentImages.push(data.filename);  // 记录后端返回的文件名
+                renderImages();
+            })
+            .catch(function () { toast("图片上传失败，请重试", true); });
+    });
+}
+if (editImgInput) {
+    editImgInput.addEventListener("change", function () {
+        if (this.files && this.files.length) uploadImages(this.files);
+    });
+}
 
 // ===== 打开 / 关闭弹窗 =====
 function openEdit(id) {
     editingId = id || null;
     if (editingId) {
         editTitle.textContent = "✏️ 编辑备忘";
-        // 编辑预填：标题 + 内容
+        // 编辑预填：标题 + 内容 + 图片
         var rec = MEMO_DATA[String(editingId)] || {};
         editMemoTitle.value = rec.title || "";
         editContent.value = rec.content || "";
+        currentImages = (rec.images || []).slice();
     } else {
         editTitle.textContent = "🗒 新增备忘";
         editMemoTitle.value = "";
         editContent.value = "";
+        currentImages = [];
     }
+    renderImages();
     editMask.hidden = false;
     editMemoTitle.focus();
 }
@@ -46,6 +155,8 @@ function saveMemo() {
     var btn = document.getElementById("edit-save");
     btn.disabled = true;
     var body = new URLSearchParams({ title: title, content: content });
+    // 把当前图片文件名列表作为可重复的 images 字段一并提交
+    currentImages.forEach(function (name) { body.append("images", name); });
     var url = editingId
         ? window.MEMOS_CONFIG.urls.update
         : window.MEMOS_CONFIG.urls.add;
@@ -55,10 +166,11 @@ function saveMemo() {
         .then(function (data) {
             if (!data.ok) { toast(data.error || "保存失败", true); btn.disabled = false; return; }
             // 维护编辑预填缓存：编辑覆盖原记录；新增记录后端返回的新 id
+            var rec = { title: title, content: content, images: currentImages.slice() };
             if (editingId) {
-                MEMO_DATA[String(editingId)] = { title: title, content: content };
+                MEMO_DATA[String(editingId)] = rec;
             } else if (data.id) {
-                MEMO_DATA[String(data.id)] = { title: title, content: content };
+                MEMO_DATA[String(data.id)] = rec;
             }
             closeEdit();
             btn.disabled = false;
@@ -95,6 +207,17 @@ function refreshList() {
 
 // ===== 卡片点击编辑 / 删除（事件委托，列表局部刷新后依然有效）=====
 document.addEventListener("click", function (ev) {
+    // 点击卡片缩略图 = 放大查看（不触发卡片编辑）
+    var thumb = ev.target.closest(".memo-thumbs img");
+    if (thumb) {
+        ev.stopPropagation();
+        var thumbs = thumb.closest(".memo-thumbs");
+        var imgs = thumbs.querySelectorAll("img");
+        var urls = Array.prototype.map.call(imgs, function (i) { return i.getAttribute("src"); });
+        var idx = Array.prototype.indexOf.call(imgs, thumb);
+        openLightbox(urls, idx);
+        return;
+    }
     // 删除按钮：弹确认框
     var delBtn = ev.target.closest(".memo-ops .op-btn.danger");
     if (delBtn) {
