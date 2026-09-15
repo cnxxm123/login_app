@@ -33,13 +33,22 @@ def _resolve_ns(tag: str) -> str:
     """将命名空间前缀转换为完整 Clark 表示法。
 
     例如 "opf:item" → "{http://www.idpf.org/2007/opf}item"
+    支持 XPath 路径，如 "container:rootfiles/container:rootfile"
     """
-    if ":" in tag:
-        prefix, local = tag.split(":", 1)
-        ns = NS.get(prefix)
-        if ns:
-            return f"{{{ns}}}{local}"
-    return tag
+    # 按 "/" 分段，逐段解析命名空间前缀
+    parts = tag.split("/")
+    resolved = []
+    for part in parts:
+        if ":" in part:
+            prefix, local = part.split(":", 1)
+            ns = NS.get(prefix)
+            if ns:
+                resolved.append(f"{{{ns}}}{local}")
+            else:
+                resolved.append(part)
+        else:
+            resolved.append(part)
+    return "/".join(resolved)
 
 
 def _find_elem(parent, tag: str):
@@ -233,6 +242,8 @@ def _parse_toc(zf: zipfile.ZipFile, opf_data: dict) -> list[dict]:
     """解析目录：优先 NCX（EPUB 2），其次 NAV（EPUB 3）。"""
     chapters: list[dict] = []
 
+    spine_count = len(opf_data["spine"])
+
     # ── 尝试 NCX 目录 ──────────────────────────────────────
     # NCX 文件的 ID 通常在 spine 的 toc 属性中指定
     ncx_href = ""
@@ -246,7 +257,8 @@ def _parse_toc(zf: zipfile.ZipFile, opf_data: dict) -> list[dict]:
             ncx_xml = zf.read(ncx_href)
             ncx_root = ET.fromstring(ncx_xml)
             chapters = _parse_ncx(ncx_root, ncx_href)
-            if chapters:
+            # 如果 NCX 章节数 >= spine 数量，说明目录较完整，直接使用
+            if chapters and len(chapters) >= spine_count:
                 return chapters
         except (KeyError, ET.ParseError):
             pass
@@ -258,13 +270,15 @@ def _parse_toc(zf: zipfile.ZipFile, opf_data: dict) -> list[dict]:
                 nav_xml = zf.read(href)
                 nav_root = ET.fromstring(nav_xml)
                 chapters = _parse_nav(nav_root, href)
-                if chapters:
+                if chapters and len(chapters) >= spine_count:
                     return chapters
             except (KeyError, ET.ParseError):
                 pass
 
     # ── 兜底：用 spine 生成章节列表 ─────────────────────────
+    # （NCX/NAV 缺失或章节数过少时触发）
     # 把 spine 里的每一项都当作一个章节，标题取文件名
+    chapters = []
     for i, item in enumerate(opf_data["spine"], 1):
         href = item["href"]
         name = os.path.basename(href)
