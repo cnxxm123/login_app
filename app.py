@@ -5,7 +5,7 @@
 - 入口/配置层（项目根目录）
   - app.py       项目入口：把各部分组装起来并启动
   - config.py    全局配置：路径、扩展名表等
-  - db.py        数据库：连接、建表
+  - db.py        数据库：连接、建库
 - blueprints 包（路由处理层，只处理 HTTP 交互）
   - browser.py   浏览蓝图：主页 / 目录浏览 / 搜索
   - view.py      查看蓝图：文档/图片/PDF/视频 查看页
@@ -14,26 +14,18 @@
   - manage.py    管理蓝图：上传 / 新建文件夹 / 在线编辑
   - logs.py      日志蓝图：工作日志增删改 / 转待办
   - todos.py     待办蓝图：待办增删改 / 完成切换
-  - memos.py     备忘蓝图：备忘增删改（标题 + 正文卡片）
+  - memos.py     备忘蓝图：备忘增删改 / 图片上传与展示
+  - epub.py      EPUB 蓝图：电子书阅读器 / 元数据 / 章节 / 内嵌资源
 - services 包（纯业务逻辑层，不依赖 Flask，不处理 HTTP）
   - path_utils.py  路径安全校验（防目录穿越）
   - dir_utils.py   列目录 / 自然排序 / 递归搜索 / 目录图片列表
   - text_utils.py  多编码读文本 / Markdown 渲染
   - media_utils.py 视频封面抽帧（ffmpeg + 缓存）
-
-路由分布在各蓝图中：
-- browser 蓝图：/、/browse/<path>、/search（见 blueprints/browser.py）
-- view 蓝图：/view/<path>（见 blueprints/view.py）
-- media 蓝图：/media/<path>、/thumb/<path>（见 blueprints/media.py）
-- download 蓝图：/download/<path>（见 blueprints/download.py）
-- manage 蓝图：/upload/<path>、/mkdir、/edit、/save（见 blueprints/manage.py）
-
-【什么是蓝图 Blueprint？】
-蓝图是 Flask 用来"按功能拆分路由"的机制。
-把浏览相关路由放进 browser 蓝图、查看/媒体/下载各自独立成蓝图，
-最后在 create_app() 里统一注册，代码就不必都堆在入口文件里，
-每个模块职责单一、互不重叠。
-"""
+  - office_utils.py Office 文档解析（docx/xlsx/xls → HTML）
+  - log_store.py   工作日志 JSON 存储
+  - todo_store.py  待办事项 JSON 存储
+  - memo_store.py  备忘录 JSON 存储 + 图片文件存取
+  - epub_utils.py  EPUB 解析（元数据/章节/资源提取）"""
 
 from flask import Flask  # Flask 框架核心：创建应用对象
 

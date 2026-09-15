@@ -292,7 +292,64 @@
 
 ---
 
-## 7. 管理接口（`blueprints/manage.py`）
+## 7. 备忘录接口（`blueprints/memos.py`）
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/memos` | 备忘录页（卡片网格，最新在前） |
+| POST | `/memo/add` | 新增备忘 |
+| POST | `/memo/update` | 修改备忘 |
+| POST | `/memo/delete` | 删除备忘（连带图片文件） |
+| POST | `/memo/upload_image` | 上传一张图片，返回访问 URL |
+| GET | `/memo/image/<filename>` | 以二进制返回备忘图片 |
+
+### 7.1 GET /memos
+
+- 渲染 `templates/memos.html`：卡片网格展示全部备忘（最新在前），支持前端搜索过滤。
+- 每张卡片：标题（可空）+ 正文预览（最多 6 行省略）+ 图片缩略图 + 创建时间 + 编辑标记。
+- 页面上下文：`items`（备忘列表）、`total`（总数）、`memos_json`（编辑预填用 JSON）、`image_url`（图片访问模板 URL）。
+
+### 7.2 POST /memo/add
+
+- **表单字段**：
+
+| 字段 | 必填 | 说明 |
+| --- | --- | --- |
+| `title` | 否 | 标题（去首尾空格，可空） |
+| `content` | 是 | 正文（非空，否则 400） |
+| `images` | 否 | 图片文件名列表（可重复字段，来自上传 `/memo/upload_image` 的返回值） |
+
+- 返回 JSON：`{"ok": true, "id": 新记录id}`。
+
+### 7.3 POST /memo/update
+
+- **表单字段**：同 `/memo/add`，额外 `id`（必填）。
+- 编辑时被移除的旧图片文件会一并删除，避免留下孤儿文件。
+- 返回 JSON：`{"ok": true}` 或 `{"ok": false, "error": "..."}`（404 备忘不存在 / 400 内容为空）。
+
+### 7.4 POST /memo/delete
+
+- **表单字段**：`id`（必填）。
+- 删除备忘时关联的图片文件一并删除。
+- 返回 JSON：`{"ok": true}` 或 `{"ok": false, "error": "..."}`（404 备忘不存在）。
+
+### 7.5 POST /memo/upload_image
+
+- **表单字段**：`image`（文件字段，单张）。
+- 校验：扩展名必须在 `IMAGE_EXTENSIONS` 白名单内，单张 ≤ 10MB。
+- 文件以 uuid 文件名存入 `MEMO_IMAGE_DIR`（`备忘录/images/`），返回 JSON：
+  `{"ok": true, "filename": "abc123.jpg", "url": "/memo/image/abc123.jpg"}`。
+- 前端在编辑弹窗内选择图片后立即调用此接口上传，得到 `filename` 后在保存时一并提交到 `/memo/add` 或 `/memo/update`。
+
+### 7.6 GET /memo/image/<filename>
+
+- 以二进制返回备忘图片（卡片缩略图 / 编辑弹窗预览 / lightbox 放大查看均用此接口）。
+- 仅接受 `memo_store.valid_image_name()` 校验通过的合法文件名（`uuid.hex + 图片扩展名`），防路径穿越。
+- 文件不存在 → `404`。
+
+---
+
+## 8. 管理接口（`blueprints/manage.py`）
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
@@ -305,7 +362,7 @@
 
 > 操作成功后统一 `302` 跳回**上级目录**（上级为空则跳 `/`），避免停留在失效路径。
 
-### 6.1 POST /upload/ 与 /upload/<path:subpath>
+### 8.1 POST /upload/ 与 /upload/<path:subpath>
 
 - **Content-Type**: `multipart/form-data`，字段名 **`files`**（可一次传多个文件）。
 - 支持**文件夹上传**：前端把 `webkitRelativePath`（如 `漫画/第1话/001.jpg`）作为文件名提交，
@@ -314,20 +371,20 @@
   再用 `realpath` + `commonpath` 确认最终路径仍落在目标目录内，否则丢弃该文件。
 - 目标目录不存在 → `404`。
 
-### 6.2 POST /mkdir/ 与 /mkdir/<path:subpath>
+### 8.2 POST /mkdir/ 与 /mkdir/<path:subpath>
 
 - **参数**（表单）: `new_folder`（新文件夹名，去首尾空格）。
 - `new_folder` 为空、为 `.`/`..` 或含 `/`、`\` → `400`（防目录穿越）。
 - 新路径已存在 → `409`；目标目录不存在 → `404`。
 
-### 6.3 GET /edit/<path:subpath>
+### 8.3 GET /edit/<path:subpath>
 
 - 打开在线文本编辑器（渲染 `templates/editor.html`），仅**文本类扩展名**（`config.TEXT_EXTENSIONS`）可编辑，否则 `400`。
 - 用 `services/text_utils.read_text_file` 自动识别编码（utf-8 / gbk 等）读取内容。
 - 目标不存在或越界 → `404`；读取失败 → `400`。
 - 页面通过 `url_for('manage.save', subpath=path)` 拿到保存接口地址。
 
-### 6.4 POST /save/<path:subpath>
+### 8.4 POST /save/<path:subpath>
 
 - **参数**（表单）: `content`（编辑后的全文）。
 - 目标必须存在且为文本类文件，否则 `400`。
@@ -336,7 +393,7 @@
 
 ---
 
-## 8. 模块依赖速查
+## 9. 模块依赖速查
 
 | 接口 | 依赖的纯逻辑层（`services/`） | 依赖的配置（`config.py`） |
 | --- | --- | --- |
@@ -352,10 +409,11 @@
 | 管理 `/upload`、`/mkdir` | `path_utils.safe_path` | — |
 | 管理 `/edit`、`/save` | `path_utils.safe_path`、`text_utils.read_text_file` | `TEXT_EXTENSIONS` |
 | EPUB `/epub`、`/epub/api/*` | `path_utils.safe_path`、`epub_utils.parse_epub`、`get_epub_chapter_content`、`get_epub_resource` | — |
+| 备忘 `/memos`、`/memo/*` | `memo_store`（增删改查 + 图片存取 + 文件名校验） | `MEMO_DIR`、`MEMO_IMAGE_DIR` |
 
 ---
 
-## 9. 二次开发指引
+## 10. 二次开发指引
 
 - **新增文件类型预览**：只需改 `config.py` 的扩展名表（如把新扩展名加进 `TEXT_EXTENSIONS`），并在 `blueprints/view.py` 的分派处补充渲染逻辑。
 - **新增接口**：在对应的 `blueprints/*.py` 中加路由；若涉及磁盘路径，一律经 `services/path_utils.safe_path()` 校验。

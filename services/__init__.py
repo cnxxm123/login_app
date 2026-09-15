@@ -8,4 +8,6 @@
 - office_utils.py Office 文档解析：docx/xlsx/xls → HTML（在线预览）
 - log_store.py    工作日志读写（JSON 文件存储）
 - todo_store.py   待办事项读写（JSON 文件存储）
+- memo_store.py   备忘录读写（JSON 文件存储）+ 图片文件存取
+- epub_utils.py   EPUB 解析：元数据 / 章节目录 / 章节 HTML / 内嵌资源提取
 """

@@ -23,12 +23,11 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # 说明：
 #   - 用 r"..." 原始字符串，反斜杠无需转义，路径用 \ 或 / 都可以；
 #   - 留空 ""（或注释掉本行）时，依次回退到环境变量 TEXT_DIR，再回退到项目内 text/。
-# 当前浏览根目录设为 F:\sex（本机 F 盘存在时生效）；
-# 如需浏览其他文件夹，把下面路径字符串替换成目标目录即可（例如 CONTENT_PATH = r"D:\我的资料"）。
-CONTENT_PATH = r"F:\sex"
+# 当前浏览根目录：使用示例见注释第一个模式；留空 "" 时回退到环境变量 TEXT_DIR 再回退到项目内 text/。
+# 如需浏览本机其他文件夹，修改 CONTENT_PATH 即可（例如 CONTENT_PATH = r"D:\我的资料"）。
+CONTENT_PATH = ""
 
 # 内容目录最终取值：CONTENT_PATH（存在时）> 环境变量 TEXT_DIR > 项目内 text/
-# 自动适配环境：F:\sex 不可用（如本机无 F 盘）时回退，避免指向无效路径
 TEXT_DIR = (
     (CONTENT_PATH if os.path.isdir(CONTENT_PATH) else "")
     or os.environ.get("TEXT_DIR")
