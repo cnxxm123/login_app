@@ -1,5 +1,5 @@
 {
-  "next_id": 88,
+  "next_id": 91,
   "logs": [
     {
       "id": 3,
@@ -415,6 +415,30 @@
       "category": "更新游戏",
       "content": "战舰世界",
       "created_at": "2026-09-15 19:28:33",
+      "updated_at": null
+    },
+    {
+      "id": 88,
+      "log_date": "2026-09-16",
+      "category": "上架游戏",
+      "content": "CS模组",
+      "created_at": "2026-09-17 00:22:12",
+      "updated_at": null
+    },
+    {
+      "id": 89,
+      "log_date": "2026-09-16",
+      "category": "上架游戏",
+      "content": "LUMI：桌面宠物【steam】",
+      "created_at": "2026-09-17 00:22:38",
+      "updated_at": null
+    },
+    {
+      "id": 90,
+      "log_date": "2026-09-16",
+      "category": "上架游戏",
+      "content": "集合啦！动物森友会",
+      "created_at": "2026-09-17 00:22:59",
       "updated_at": null
     }
   ]
