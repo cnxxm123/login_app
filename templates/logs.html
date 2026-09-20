@@ -15,14 +15,15 @@
                 <h2 class="page-title">工作日志</h2>
                 <div class="page-sub">记录每一天的工作 · 点击日期标题展开 / 折叠 · 点右下角 <b>＋</b> 快速添加</div>
             </div>
-            <div class="log-search">
+            <div class="page-search">
                 <input id="log-q" type="search" placeholder="搜索日志内容…" autocomplete="off">
             </div>
         </div>
 
-        <div class="log-stats">
+        <div class="page-stats">
             <div class="stat">共<b id="stat-total">{{ total }}</b>条</div>
             <div class="stat">今天<b>{{ today_count }}</b>条</div>
+            <a class="export-btn" href="{{ url_for('logs.log_export') }}" title="导出为 Markdown">📥 导出</a>
         </div>
 
         <div id="log-list">
@@ -114,7 +115,7 @@
     <div class="modal-mask" id="move-mask" hidden>
         <div class="modal-box" role="dialog" aria-modal="true">
             <div class="modal-title">📌 转为待办</div>
-            <div class="modal-msg">确定将这条日志转为待办吗？<br>将移入<b>今天</b>的待办事项（保留类别与内容），原日志会删除。</div>
+            <div class="modal-msg">确定将这条日志转为待办吗？<br>将移入<b>今天</b>的待办事项，原日志会删除。</div>
             <div class="modal-ops">
                 <button class="modal-ok modal-cancel" type="button" id="move-cancel">取消</button>
                 <button class="modal-ok" type="button" id="move-ok">确定转移</button>

@@ -67,10 +67,11 @@ def _to_row(rec: dict) -> dict:
     """把存储记录转成统一字典：时间为 datetime（与模板/蓝图约定一致）。"""
     return {
         "id": rec["id"],
-        "title": rec.get("title", ""),  # 标题（可空，空时页面显示正文前几行）
+        "title": rec.get("title", ""),
         "content": rec["content"],
-        "category": rec.get("category", ""),  # 分类（自由填写，可空）
-        "images": rec.get("images", []),  # 图片文件名列表（完整文件名，如 abc123.png）
+        "category": rec.get("category", ""),
+        "images": rec.get("images", []),
+        "pinned": bool(rec.get("pinned", False)),  # 是否置顶
         "created_at": datetime.strptime(rec["created_at"], _TIME_FMT),
         "updated_at": (
             datetime.strptime(rec["updated_at"], _TIME_FMT)
@@ -149,11 +150,11 @@ def add_memo(title: str, content: str, category: str = "", images=None) -> int:
 
 
 def all_memos() -> list:
-    """按 id 倒序返回全部备忘（最新在前）。"""
+    """按置顶优先、id 倒序返回全部备忘（置顶在前，同组内最新在前）。"""
     with _lock:
         data = _load()
     rows = [_to_row(r) for r in data["memos"]]
-    rows.sort(key=lambda r: r["id"], reverse=True)
+    rows.sort(key=lambda r: (not r["pinned"], -r["id"]))
     return rows
 
 
@@ -214,3 +215,16 @@ def delete_memo(memo_id: int) -> bool:
         _save(data)
     _delete_image_files(removed)  # 释放锁后再删文件，避免持有锁太久
     return True
+
+
+def toggle_pin(memo_id: int) -> bool:
+    """切换某条备忘的置顶状态；返回是否真的找到（id 不存在返回 False）。"""
+    with _lock:
+        data = _load()
+        for rec in data["memos"]:
+            if rec["id"] == memo_id:
+                rec["pinned"] = not rec.get("pinned", False)
+                rec["updated_at"] = datetime.now().strftime(_TIME_FMT)
+                _save(data)
+                return True
+    return False

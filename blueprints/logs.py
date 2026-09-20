@@ -17,7 +17,7 @@
 import datetime  # 日期解析
 import json  # 序列化日志内容给前端编辑弹窗预填
 
-from flask import Blueprint, jsonify, render_template, request
+from flask import Blueprint, jsonify, render_template, request, Response
 from markupsafe import Markup, escape  # 安全转义日志正文后插入 <br>
 
 from blueprints._common import group_label, safe_int_id, valid_category, valid_date  # 共享工具
@@ -142,6 +142,29 @@ def log_delete():
     return jsonify({"ok": True})
 
 
+@logs_bp.route("/log/export")
+def log_export():
+    """导出全部工作日志为 Markdown 文本（.md 下载）。"""
+    rows = log_store.all_logs()
+    today = datetime.date.today().isoformat()
+    lines = ["# 工作日志", "", f"导出时间：{today}", "", "---", ""]
+    cur_date = None
+    for r in rows:
+        if r["log_date"] != cur_date:
+            cur_date = r["log_date"]
+            lines.append(f"## {cur_date}")
+            lines.append("")
+        cat = f'【{r["category"]}】' if r.get("category") else ""
+        lines.append(f"- {cat} {r['content']}")
+    lines.append("")
+    content = "\n".join(lines)
+    return Response(
+        content.encode("utf-8"),
+        mimetype="text/markdown",
+        headers={"Content-Disposition": "attachment; filename=logs.md"},
+    )
+
+
 @logs_bp.route("/log/move_todo", methods=["POST"])
 def log_move_todo():
     """把一条日志转移到待办事项。
@@ -157,11 +180,8 @@ def log_move_todo():
     log = log_store.get_log(log_id)
     if log is None:
         return jsonify({"ok": False, "error": "日志不存在"}), 404
-    # 类别兼容：白名单内沿用原类别，否则置空（待办页显示"未分类"）
-    category = log["category"] if log["category"] in WORK_CATEGORIES else ""
     todo_store.add_todo(
         datetime.date.today().isoformat(),  # 转成待办后默认安排到今天
-        category,
         log["content"],
     )
     log_store.delete_log(log_id)  # 原日志已转移，删除

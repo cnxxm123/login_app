@@ -249,8 +249,16 @@ document.addEventListener("click", function (ev) {
         delMask.hidden = false;
         return;
     }
+    // 置顶按钮
+    var pinBtn = ev.target.closest(".memo-ops .pin-btn");
+    if (pinBtn) {
+        ev.stopPropagation();
+        var pid = pinBtn.getAttribute("data-id");
+        togglePin(pid, pinBtn.closest(".memo-card"));
+        return;
+    }
     // 编辑按钮
-    var editBtn = ev.target.closest(".memo-ops .op-btn:not(.danger)");
+    var editBtn = ev.target.closest(".memo-ops .op-btn:not(.danger):not(.pin-btn)");
     if (editBtn) {
         ev.stopPropagation();
         openEdit(Number(editBtn.getAttribute("data-id")));
@@ -316,3 +324,14 @@ function applyAllFilters() {
 }
 // 保留旧的 applySearch 引用，让 refreshList 回调兼容
 function applySearch(kw) { applyAllFilters(); }
+
+// ===== 置顶切换 =====
+function togglePin(id, card) {
+    fetch(window.MEMOS_CONFIG.urls.pin, {
+        method: "POST",
+        body: new URLSearchParams({ id: id })
+    }).then(function (r) { return r.json(); }).then(function (data) {
+        if (!data.ok) return;
+        refreshList();  // 刷新以重新排序
+    }).catch(function () { /* 静默失败 */ });
+}

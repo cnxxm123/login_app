@@ -13,33 +13,35 @@
         <div class="page-head">
             <div>
                 <h2 class="page-title">待办事项</h2>
-                <div class="page-sub">记录要完成的事 · 点击日期标题展开 / 折叠 · 勾选完成 · 点右下角 <b>＋</b> 快速添加</div>
+                <div class="page-sub">记录要完成的事 · 拖拽排序 · 勾选标记完成 · 点右下角 <b>＋</b> 快速添加</div>
             </div>
-            <div class="todo-search">
+            <div class="page-search">
                 <input id="todo-q" type="search" placeholder="搜索待办内容…" autocomplete="off">
             </div>
         </div>
 
-        <div class="todo-stats">
+        <div class="page-stats">
             <div class="stat">共<b id="stat-total">{{ total }}</b>条</div>
             <div class="stat">今天<b>{{ today_count }}</b>条</div>
             <div class="stat">未完成<b id="stat-undone">{{ undone_count }}</b>条</div>
+            <a class="export-btn" href="{{ url_for('todos.todo_export') }}" title="导出为 Markdown">📥 导出</a>
         </div>
 
         <div id="todo-list">
         {% if groups %}
             {% for g in groups %}
-                <div class="todo-group collapsed" data-date="{{ g.date }}">
-                    <div class="todo-group-head" role="button" tabindex="0" title="点击展开 / 折叠">
-                        <span class="todo-arrow">▾</span>
+                <div class="todo-group" data-date="{{ g.date }}">
+                    <div class="todo-group-head">
                         {{ g.label }}
                         <span class="todo-date">{{ g.date }}</span>
                         <span class="todo-count">{{ g.todos | length }}</span>
                     </div>
                     <div class="todo-items">
                     {% for item in g.todos %}
-                        <div class="todo-item{% if item.done %} done{% endif %}" data-id="{{ item.id }}">
-                            <!-- 完成状态复选框：勾选 = 已完成（内容划线置灰） -->
+                        <div class="todo-item{% if item.done %} done{% endif %}" data-id="{{ item.id }}" draggable="true">
+                            <!-- 拖拽手柄 -->
+                            <span class="todo-drag" title="拖动排序">⠿</span>
+                            <!-- 完成状态复选框 -->
                             <label class="todo-check" title="标记完成 / 未完成">
                                 <input type="checkbox"{% if item.done %} checked{% endif %}>
                                 <span class="todo-checkbox" aria-hidden="true"></span>
@@ -47,7 +49,9 @@
                             <div class="todo-body">
                                 <div class="todo-line">
                                     <span class="todo-time">{{ item.time }}</span>
-                                    <span class="todo-cat{% if item.category not in categories %} uncat{% endif %}" data-category="{{ item.category }}">{{ item.category }}</span>
+                                    {% if item.due_date %}
+                                    <span class="todo-due{% if item.due_overdue %} overdue{% endif %}">📅 {{ item.due_date }}</span>
+                                    {% endif %}
                                     {% if item.edited %}<span class="edited-dot" title="已编辑"></span>{% endif %}
                                 </div>
                                 <div class="todo-content">
@@ -78,11 +82,7 @@
             <div class="modal-title" id="edit-title">📋 新增待办</div>
             <div class="modal-row">
                 <input class="modal-input" type="date" id="edit-date" title="计划日期">
-                <select class="modal-input" id="edit-category" title="类别">
-                    {% for cat in categories %}
-                        <option value="{{ cat }}">{{ cat }}</option>
-                    {% endfor %}
-                </select>
+                <input class="modal-input" type="date" id="edit-due" title="截止日期（可选）" placeholder="截止日期（可选）">
             </div>
             <textarea class="modal-input todo-textarea" id="edit-content" placeholder="要做什么？…"></textarea>
             <div class="modal-ops">
@@ -104,18 +104,6 @@
         </div>
     </div>
 
-    <!-- 完成确认弹窗：勾选完成 = 转移到今天的工作日志 -->
-    <div class="modal-mask" id="move-mask" hidden>
-        <div class="modal-box" role="dialog" aria-modal="true">
-            <div class="modal-title">✅ 完成任务</div>
-            <div class="modal-msg">确定完成这条待办吗？<br>完成后将转移到<b>今天</b>的工作日志（保留类别与内容），并从未完成列表中移除。</div>
-            <div class="modal-ops">
-                <button class="modal-ok modal-cancel" type="button" id="move-cancel">取消</button>
-                <button class="modal-ok" type="button" id="move-ok">确定完成</button>
-            </div>
-        </div>
-    </div>
-
     <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
     <script>
         // ===== 页面配置：后端注入，供 todos.js 使用 =====
@@ -125,7 +113,8 @@
         add: "{{ url_for('todos.todo_add') }}",
         update: "{{ url_for('todos.todo_update') }}",
         toggle: "{{ url_for('todos.todo_toggle') }}",
-        delete: "{{ url_for('todos.todo_delete') }}"
+        delete: "{{ url_for('todos.todo_delete') }}",
+        reorder: "{{ url_for('todos.todo_reorder') }}"
     }
 };
     </script>

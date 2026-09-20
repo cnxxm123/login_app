@@ -1,25 +1,4 @@
 
-        /* ===== 顶部统计条 ===== */
-        .log-stats { display: flex; gap: 10px; flex-wrap: wrap; }
-        .log-stats .stat {
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: 10px; padding: 8px 16px; font-size: 13px; color: var(--text-2);
-        }
-        .log-stats .stat b { color: var(--primary); font-size: 15px; margin-left: 2px; }
-
-        /* 搜索框：胶囊样式，与 main 页搜索一致 */
-        .log-search {
-            display: flex; align-items: center; gap: 6px;
-            background: var(--surface); border: 1px solid var(--border-strong);
-            border-radius: 999px; padding: 6px 8px 6px 14px; transition: var(--t);
-        }
-        .log-search:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 94, 232, .12); }
-        .log-search input {
-            border: none; background: transparent; color: var(--text); outline: none;
-            font-size: 13.5px; width: 170px; font-family: inherit;
-        }
-        .log-search input::placeholder { color: var(--text-3); }
-
         /* ===== 日期分组 ===== */
         .log-group { margin: 20px 0 0; }
         .log-group-head {
@@ -120,26 +99,11 @@
         .modal-row { display: flex; gap: 8px; }
         .modal-row .modal-input { flex: 1; min-width: 0; }
 
-        /* ===== 加号悬浮按钮（FAB）===== */
-        .fab {
-            position: fixed; right: 26px; bottom: 26px; z-index: 80;
-            width: 56px; height: 56px; border-radius: 50%; border: none; cursor: pointer;
-            background: var(--primary); color: #fff; font-size: 30px; line-height: 1;
-            box-shadow: 0 6px 18px rgba(79, 94, 232, .38); transition: var(--t);
-            display: flex; align-items: center; justify-content: center; font-family: inherit;
-        }
-        .fab:hover { background: var(--primary-2); transform: translateY(-2px) scale(1.04); box-shadow: 0 10px 24px rgba(79, 94, 232, .5); }
-        .fab:active { transform: translateY(0) scale(.96); }
-
         /* ===== 移动端 / 平板（≤1024px）===== */
         @media (max-width: 1024px) {
-            /* FAB：上移，避开底部导航栏 */
-            .fab { right: 16px; bottom: calc(76px + env(safe-area-inset-bottom)); width: 52px; height: 52px; font-size: 28px; }
             .log-item .log-ops { opacity: 1; }              /* 手机无 hover：操作常显 */
             .log-item { padding: 12px 12px; gap: 10px; }     /* 卡片略收紧 */
             .log-item .op-btn { width: 36px; height: 36px; font-size: 15px; }  /* 加大触控面积 */
-            .log-search { flex: 1; min-width: 100%; order: 2; }                /* 搜索占满一行 */
-            .log-search input { width: 100%; }
             .log-group-head { padding: 8px 0; gap: 8px; }   /* 整行触控区域加大 */
             .modal-row { flex-direction: column; }          /* 手机端日期/类别竖排 */
         }

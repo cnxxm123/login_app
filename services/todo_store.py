@@ -7,36 +7,33 @@
 
 职责：围绕"待办事项"提供增删改查：
 - add_todo()      新增一条待办，返回自增 id
-- all_todos()     按日期倒序列出全部待办（id 倒序 → 同一天内最新在前）
+- all_todos()     按 sort_order / id 倒序列出全部待办
 - get_todo()      按 id 取单条待办（编辑弹窗预填用）
-- update_todo()   修改某条的日期/类别/内容
+- update_todo()   修改某条的日期/内容/截止日期
 - toggle_done()   切换某条的完成 / 未完成状态
 - delete_todo()   按 id 删除
-
-与 log_store 的拆分思路一致：蓝图（todos.py）只做参数解析与渲染，
-存储细节全部收敛到这里，方便以后换数据库而不动路由层。
+- reorder_todos() 批量更新 sort_order（拖拽排序后保存新顺序）
 """
 
-import json  # JSON 序列化：待办库单文件存储
-import os  # 判断文件是否存在、建目录
-import threading  # 读写文件互斥，避免并发新增/编辑时互相覆盖
-from datetime import datetime  # 生成创建/修改时间
+import json
+import os
+import threading
+from datetime import datetime
 
-from config import TODO_FILE  # 待办存储文件（位于项目根目录下的"待办事项"文件夹）
+from config import TODO_FILE
 
-_lock = threading.Lock()  # 所有读写都拿同一把锁，保证进程内串行
+_lock = threading.Lock()
 
-_TIME_FMT = "%Y-%m-%d %H:%M:%S"  # 存储的时间格式
+_TIME_FMT = "%Y-%m-%d %H:%M:%S"
 
 
 def _load() -> dict:
-    """读取并解析待办库；文件缺失/损坏时返回空库。"""
     if not os.path.exists(TODO_FILE):
         return {"next_id": 1, "todos": []}
     try:
         with open(TODO_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
-    except (OSError, ValueError):  # 文件被改坏等异常情况：按空库处理
+    except (OSError, ValueError):
         return {"next_id": 1, "todos": []}
     if not isinstance(data, dict) or not isinstance(data.get("todos"), list):
         return {"next_id": 1, "todos": []}
@@ -47,7 +44,6 @@ def _load() -> dict:
 
 
 def _save(data: dict) -> None:
-    """把整个待办库写回文件（先写临时文件再原子替换，避免写一半损坏）。"""
     os.makedirs(os.path.dirname(TODO_FILE), exist_ok=True)
     tmp = TODO_FILE + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
@@ -56,16 +52,14 @@ def _save(data: dict) -> None:
 
 
 def _to_row(rec: dict) -> dict:
-    """把存储记录转成统一字典：日期为字符串、时间为 datetime（与模板/蓝图约定一致）。
-
-    done 字段做布尔归一：老数据可能存的是 1/0 或 true/false，统一成 bool。
-    """
+    """把存储记录转成统一字典。"""
     return {
         "id": rec["id"],
         "todo_date": rec["todo_date"],
-        "category": rec.get("category", ""),  # 类别（上架游戏 / 更新游戏 / 问题处理）
         "content": rec["content"],
-        "done": bool(rec.get("done", False)),  # 完成状态：False 未完成 / True 已完成
+        "done": bool(rec.get("done", False)),
+        "due_date": rec.get("due_date") or None,  # 截止日期（可选，格式 YYYY-MM-DD）
+        "sort_order": rec.get("sort_order", 0),  # 拖拽排序用，同组内数值越小越靠前
         "created_at": datetime.strptime(rec["created_at"], _TIME_FMT),
         "updated_at": (
             datetime.strptime(rec["updated_at"], _TIME_FMT)
@@ -75,8 +69,8 @@ def _to_row(rec: dict) -> dict:
     }
 
 
-def add_todo(todo_date: str, category: str, content: str) -> int:
-    """新增一条待办，返回新记录 id。"""
+def add_todo(todo_date: str, content: str, due_date: str = "") -> int:
+    """新增一条待办，返回新记录 id。due_date 为截止日期（可选）。"""
     with _lock:
         data = _load()
         new_id = data["next_id"]
@@ -84,9 +78,10 @@ def add_todo(todo_date: str, category: str, content: str) -> int:
             {
                 "id": new_id,
                 "todo_date": todo_date,
-                "category": category,
                 "content": content,
-                "done": False,  # 新待办默认未完成
+                "done": False,
+                "due_date": due_date or None,
+                "sort_order": 0,
                 "created_at": datetime.now().strftime(_TIME_FMT),
                 "updated_at": None,
             }
@@ -97,16 +92,29 @@ def add_todo(todo_date: str, category: str, content: str) -> int:
 
 
 def all_todos() -> list:
-    """按日期倒序返回全部待办（同一天按 id 倒序，最新在前）。"""
+    """按日期倒序返回全部待办（同一天按 sort_order 升序 → 拖拽越靠前数值越小越先显示，id 降序兜底）。"""
     with _lock:
         data = _load()
     rows = [_to_row(r) for r in data["todos"]]
-    rows.sort(key=lambda r: (r["todo_date"], r["id"]), reverse=True)
+    rows.sort(key=lambda r: (r["todo_date"], r["sort_order"], -r["id"]), reverse=False)
+    # 日期降序：日期大的在前，同日期内 sort_order 升序
+    rows.sort(key=lambda r: r["todo_date"], reverse=True)
+    # 最终：日期降序 → 同日期 sort_order 升序 → id 降序兜底
+    from functools import cmp_to_key
+    def _cmp(a, b):
+        # 日期降序
+        if a["todo_date"] != b["todo_date"]:
+            return -1 if a["todo_date"] > b["todo_date"] else 1
+        # sort_order 升序（小在前）
+        if a["sort_order"] != b["sort_order"]:
+            return -1 if a["sort_order"] < b["sort_order"] else 1
+        # id 降序兜底
+        return -1 if a["id"] > b["id"] else 1
+    rows.sort(key=cmp_to_key(_cmp))
     return rows
 
 
 def get_todo(todo_id: int):
-    """按 id 取单条待办；不存在返回 None。"""
     with _lock:
         data = _load()
     for rec in data["todos"]:
@@ -115,15 +123,15 @@ def get_todo(todo_id: int):
     return None
 
 
-def update_todo(todo_id: int, todo_date: str, category: str, content: str) -> bool:
-    """修改某条待办的日期/类别/内容；返回是否真的更新到（id 不存在返回 False）。"""
+def update_todo(todo_id: int, todo_date: str, content: str, due_date: str = "") -> bool:
+    """修改某条待办的日期/内容/截止日期；返回是否真的更新到。"""
     with _lock:
         data = _load()
         for rec in data["todos"]:
             if rec["id"] == todo_id:
                 rec["todo_date"] = todo_date
-                rec["category"] = category
                 rec["content"] = content
+                rec["due_date"] = due_date or None
                 rec["updated_at"] = datetime.now().strftime(_TIME_FMT)
                 _save(data)
                 return True
@@ -131,12 +139,11 @@ def update_todo(todo_id: int, todo_date: str, category: str, content: str) -> bo
 
 
 def toggle_done(todo_id: int) -> bool:
-    """切换某条待办的完成 / 未完成状态；返回是否真的找到（id 不存在返回 False）。"""
     with _lock:
         data = _load()
         for rec in data["todos"]:
             if rec["id"] == todo_id:
-                rec["done"] = not rec["done"]  # 取反：完成 ↔ 未完成
+                rec["done"] = not rec["done"]
                 rec["updated_at"] = datetime.now().strftime(_TIME_FMT)
                 _save(data)
                 return True
@@ -144,12 +151,26 @@ def toggle_done(todo_id: int) -> bool:
 
 
 def delete_todo(todo_id: int) -> bool:
-    """按 id 删除待办；返回是否真的删到（id 不存在返回 False）。"""
     with _lock:
         data = _load()
         new_todos = [rec for rec in data["todos"] if rec["id"] != todo_id]
         if len(new_todos) == len(data["todos"]):
             return False
         data["todos"] = new_todos
+        _save(data)
+        return True
+
+
+def reorder_todos(orders: list) -> bool:
+    """批量更新 sort_order。orders = [{id, sort_order}, ...]。"""
+    if not orders:
+        return False
+    with _lock:
+        data = _load()
+        id_map = {rec["id"]: rec for rec in data["todos"]}
+        for item in orders:
+            rec = id_map.get(item["id"])
+            if rec is not None:
+                rec["sort_order"] = item["sort_order"]
         _save(data)
         return True

@@ -19,7 +19,7 @@
 import json  # 序列化备忘内容给前端编辑弹窗预填
 import os  # 图片路径拼接与扩展名判断
 
-from flask import Blueprint, abort, jsonify, render_template, request, send_file, url_for
+from flask import Blueprint, abort, jsonify, render_template, request, send_file, url_for, Response
 from markupsafe import Markup, escape  # 安全转义备忘正文后插入 <br>
 
 from config import IMAGE_EXTENSIONS, IMAGE_MIME, MEMO_IMAGE_DIR  # 图片扩展名白名单 / MIME / 存放目录
@@ -50,13 +50,10 @@ def index():
                 "id": row["id"],
                 "title": row["title"],
                 "category": row.get("category", "").strip(),
-                # 正文先整体 HTML 转义（防 XSS），再把换行替换为 <br>，包装成 Markup 直接渲染
                 "content_html": Markup(str(escape(row["content"])).replace("\n", "<br>")),
-                # 创建时间，卡片底部时间戳：今天只显示 HH:MM，否则显示日期
                 "time": row["created_at"].strftime("%Y-%m-%d %H:%M"),
-                # 是否被编辑过（updated_at 晚于 created_at），显示小圆点提示
+                "pinned": row.get("pinned", False),  # 是否置顶
                 "edited": row["updated_at"] is not None and row["updated_at"] > row["created_at"],
-                # 图片文件名列表，卡片直接渲染缩略图
                 "images": row["images"],
             }
         )
@@ -123,6 +120,18 @@ def memo_delete():
     return jsonify({"ok": True})
 
 
+@memos_bp.route("/memo/pin", methods=["POST"])
+def memo_pin():
+    """切换置顶状态。表单字段：id。"""
+    try:
+        memo_id = safe_int_id(request.form.get("id"))
+    except ValueError:
+        return jsonify({"ok": False, "error": "参数不正确"}), 400
+    if not memo_store.toggle_pin(memo_id):
+        return jsonify({"ok": False, "error": "备忘不存在"}), 404
+    return jsonify({"ok": True})
+
+
 @memos_bp.route("/memo/upload_image", methods=["POST"])
 def memo_upload_image():
     """上传一张图片（编辑弹窗内选择图片后立即上传，返回访问 URL 供预览）。
@@ -158,3 +167,26 @@ def memo_image(filename):
         abort(404)
     ext = os.path.splitext(name)[1].lower()
     return send_file(path, mimetype=IMAGE_MIME.get(ext, "application/octet-stream"))
+
+
+@memos_bp.route("/memo/export")
+def memo_export():
+    """导出全部备忘为 Markdown 文本（.md 下载）。"""
+    rows = memo_store.all_memos()
+    import datetime as _dt
+    today = _dt.date.today().isoformat()
+    lines = ["# 备忘录", "", f"导出时间：{today}", "", "---", ""]
+    for r in rows:
+        title = r["title"] or "无标题"
+        cat = f' [{r["category"]}]' if r.get("category") else ""
+        pin = " (置顶)" if r.get("pinned") else ""
+        lines.append(f"## {title}{cat}{pin}")
+        lines.append("")
+        lines.append(r["content"])
+        lines.append("")
+    content = "\n".join(lines)
+    return Response(
+        content.encode("utf-8"),
+        mimetype="text/markdown",
+        headers={"Content-Disposition": "attachment; filename=memos.md"},
+    )
