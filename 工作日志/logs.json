@@ -1,5 +1,5 @@
 {
-  "next_id": 104,
+  "next_id": 109,
   "logs": [
     {
       "id": 3,
@@ -543,6 +543,46 @@
       "category": "问题处理",
       "content": "瘟疫传说bug",
       "created_at": "2026-09-19 21:29:53",
+      "updated_at": null
+    },
+    {
+      "id": 104,
+      "log_date": "2026-09-20",
+      "category": "上架游戏",
+      "content": "易红2模组",
+      "created_at": "2026-09-20 20:01:35",
+      "updated_at": null
+    },
+    {
+      "id": 105,
+      "log_date": "2026-09-20",
+      "category": "上架游戏",
+      "content": "深海迷航2模组",
+      "created_at": "2026-09-20 20:01:47",
+      "updated_at": null
+    },
+    {
+      "id": 106,
+      "log_date": "2026-09-20",
+      "category": "上架游戏",
+      "content": "英灵神殿模组",
+      "created_at": "2026-09-20 20:02:02",
+      "updated_at": null
+    },
+    {
+      "id": 107,
+      "log_date": "2026-09-20",
+      "category": "上架游戏",
+      "content": "荒野大镖客2模组",
+      "created_at": "2026-09-20 20:02:12",
+      "updated_at": null
+    },
+    {
+      "id": 108,
+      "log_date": "2026-09-20",
+      "category": "问题处理",
+      "content": "2个西瓜问题",
+      "created_at": "2026-09-20 20:10:40",
       "updated_at": null
     }
   ]
