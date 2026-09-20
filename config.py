@@ -25,7 +25,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 #   - 留空 ""（或注释掉本行）时，依次回退到环境变量 TEXT_DIR，再回退到项目内 text/。
 # 当前浏览根目录：使用示例见注释第一个模式；留空 "" 时回退到环境变量 TEXT_DIR 再回退到项目内 text/。
 # 如需浏览本机其他文件夹，修改 CONTENT_PATH 即可（例如 CONTENT_PATH = r"D:\我的资料"）。
-CONTENT_PATH = ""
+CONTENT_PATH = "F:\sex"
 
 # 内容目录最终取值：CONTENT_PATH（存在时）> 环境变量 TEXT_DIR > 项目内 text/
 TEXT_DIR = (
@@ -55,7 +55,7 @@ MEMO_FILE = os.path.join(MEMO_DIR, "memos.json")
 MEMO_IMAGE_DIR = os.path.join(MEMO_DIR, "images")
 
 # 工作类别白名单：待办事项与工作日志共用，新增/编辑时只能从这四类中选择（对应页面上的彩色标签）
-WORK_CATEGORIES = ["上架游戏", "更新游戏", "更新游戏工具", "问题处理"]
+WORK_CATEGORIES = ["上架游戏", "更新游戏", "更新游戏工具", "问题处理", "其他"]
 
 
 # 视频封面缩略图缓存目录（生成后按文件指纹命名缓存，避免每次重复抽帧）

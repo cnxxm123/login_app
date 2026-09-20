@@ -14,44 +14,19 @@
 - POST 接口返回 JSON，页面用 fetch 调用
 """
 
-import datetime  # 日期解析 / 今天 / 昨天 判断
+import datetime  # 日期解析
 import json  # 序列化日志内容给前端编辑弹窗预填
 
 from flask import Blueprint, jsonify, render_template, request
 from markupsafe import Markup, escape  # 安全转义日志正文后插入 <br>
 
+from blueprints._common import group_label, safe_int_id, valid_category, valid_date  # 共享工具
 from config import WORK_CATEGORIES  # 工作类别白名单（上架游戏 / 更新游戏 / 问题处理）
 from services import log_store  # 工作日志读写（纯逻辑层）
 from services import todo_store  # 待办读写：日志转待办时写入今天的待办
 
 # 创建"工作日志"蓝图；模板里 url_for('logs.xxx') 的 logs 即此名字
 logs_bp = Blueprint("logs", __name__)
-
-_WEEKDAYS = "一二三四五六日"  # 周几的中文显示
-
-
-def _valid_date(s: str) -> bool:
-    """校验日期字符串是否为合法 YYYY-MM-DD。"""
-    try:
-        datetime.date.fromisoformat(s)
-        return True
-    except (ValueError, TypeError):
-        return False
-
-
-def _valid_category(s: str) -> bool:
-    """校验类别是否在白名单内（防提交任意类别破坏界面配色）。"""
-    return s in WORK_CATEGORIES
-
-
-def _group_label(d: datetime.date) -> str:
-    """返回日期分组的显示标签：今天 / 昨天 / 「2026年9月4日 周五」。"""
-    today = datetime.date.today()
-    if d == today:
-        return "今天"
-    if d == today - datetime.timedelta(days=1):
-        return "昨天"
-    return f"{d.year}年{d.month}月{d.day}日 周{_WEEKDAYS[d.weekday()]}"
 
 
 def _group_categories(items: list) -> list:
@@ -91,7 +66,7 @@ def index():
         if groups and groups[-1]["date"] == row["log_date"]:
             groups[-1]["logs"].append(item)
         else:
-            groups.append({"label": _group_label(d), "date": row["log_date"], "logs": [item]})
+            groups.append({"label": group_label(d), "date": row["log_date"], "logs": [item]})
     # 日期分组内再按类别分组（cats），供模板渲染可折叠的类别子分组
     for g in groups:
         g["cats"] = _group_categories(g["logs"])
@@ -122,9 +97,9 @@ def log_add():
     log_date = (request.form.get("log_date") or "").strip()
     category = (request.form.get("category") or "").strip()
     content = (request.form.get("content") or "").strip()
-    if not _valid_date(log_date):
+    if not valid_date(log_date):
         return jsonify({"ok": False, "error": "日期格式不正确"}), 400
-    if not _valid_category(category):
+    if not valid_category(category):
         return jsonify({"ok": False, "error": "请选择正确的类别"}), 400
     if not content:
         return jsonify({"ok": False, "error": "内容不能为空"}), 400
@@ -138,15 +113,15 @@ def log_update():
     表单字段：id（日志 id）、log_date、category、content。
     """
     try:
-        log_id = int(request.form.get("id") or 0)
-    except (ValueError, TypeError):
+        log_id = safe_int_id(request.form.get("id"))
+    except ValueError:
         return jsonify({"ok": False, "error": "参数不正确"}), 400
     log_date = (request.form.get("log_date") or "").strip()
     category = (request.form.get("category") or "").strip()
     content = (request.form.get("content") or "").strip()
-    if not _valid_date(log_date):
+    if not valid_date(log_date):
         return jsonify({"ok": False, "error": "日期格式不正确"}), 400
-    if not _valid_category(category):
+    if not valid_category(category):
         return jsonify({"ok": False, "error": "请选择正确的类别"}), 400
     if not content:
         return jsonify({"ok": False, "error": "内容不能为空"}), 400
@@ -159,8 +134,8 @@ def log_update():
 def log_delete():
     """删除日志。表单字段：id。"""
     try:
-        log_id = int(request.form.get("id") or 0)
-    except (ValueError, TypeError):
+        log_id = safe_int_id(request.form.get("id"))
+    except ValueError:
         return jsonify({"ok": False, "error": "参数不正确"}), 400
     if not log_store.delete_log(log_id):
         return jsonify({"ok": False, "error": "日志不存在"}), 404
@@ -176,8 +151,8 @@ def log_move_todo():
     日志类别若不在白名单内（如老数据未分类），转为待办时类别置空，待办页显示灰色"未分类"。
     """
     try:
-        log_id = int(request.form.get("id") or 0)
-    except (ValueError, TypeError):
+        log_id = safe_int_id(request.form.get("id"))
+    except ValueError:
         return jsonify({"ok": False, "error": "参数不正确"}), 400
     log = log_store.get_log(log_id)
     if log is None:

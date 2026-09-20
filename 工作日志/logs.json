@@ -1,5 +1,5 @@
 {
-  "next_id": 91,
+  "next_id": 104,
   "logs": [
     {
       "id": 3,
@@ -439,6 +439,110 @@
       "category": "上架游戏",
       "content": "集合啦！动物森友会",
       "created_at": "2026-09-17 00:22:59",
+      "updated_at": null
+    },
+    {
+      "id": 91,
+      "log_date": "2026-09-17",
+      "category": "上架游戏",
+      "content": "求生之路2二次元模组",
+      "created_at": "2026-09-19 00:44:07",
+      "updated_at": "2026-09-19 00:45:15"
+    },
+    {
+      "id": 92,
+      "log_date": "2026-09-17",
+      "category": "上架游戏",
+      "content": "四海兄弟模组",
+      "created_at": "2026-09-19 00:44:21",
+      "updated_at": "2026-09-19 00:45:03"
+    },
+    {
+      "id": 93,
+      "log_date": "2026-09-18",
+      "category": "更新游戏",
+      "content": "遗忘之海",
+      "created_at": "2026-09-19 00:45:30",
+      "updated_at": null
+    },
+    {
+      "id": 94,
+      "log_date": "2026-09-18",
+      "category": "更新游戏",
+      "content": "龙岛异兽",
+      "created_at": "2026-09-19 00:45:46",
+      "updated_at": null
+    },
+    {
+      "id": 95,
+      "log_date": "2026-09-17",
+      "category": "更新游戏",
+      "content": "战舰世界",
+      "created_at": "2026-09-19 00:46:19",
+      "updated_at": "2026-09-19 00:46:33"
+    },
+    {
+      "id": 96,
+      "log_date": "2026-09-17",
+      "category": "更新游戏",
+      "content": "雷神加速器",
+      "created_at": "2026-09-19 00:46:56",
+      "updated_at": null
+    },
+    {
+      "id": 97,
+      "log_date": "2026-09-17",
+      "category": "更新游戏",
+      "content": "迅游加速器",
+      "created_at": "2026-09-19 00:47:18",
+      "updated_at": null
+    },
+    {
+      "id": 98,
+      "log_date": "2026-09-18",
+      "category": "其他",
+      "content": "整合了一个荒野大镖客2墨西哥模组",
+      "created_at": "2026-09-19 00:59:13",
+      "updated_at": null
+    },
+    {
+      "id": 99,
+      "log_date": "2026-09-19",
+      "category": "更新游戏",
+      "content": "异环",
+      "created_at": "2026-09-19 21:25:22",
+      "updated_at": null
+    },
+    {
+      "id": 100,
+      "log_date": "2026-09-19",
+      "category": "问题处理",
+      "content": "生化危机4重制版存档问题",
+      "created_at": "2026-09-19 21:25:44",
+      "updated_at": null
+    },
+    {
+      "id": 101,
+      "log_date": "2026-09-19",
+      "category": "问题处理",
+      "content": "用户玩生化危机4重制版操作不跟收手，用户手机解码能力不行",
+      "created_at": "2026-09-19 21:26:23",
+      "updated_at": null
+    },
+    {
+      "id": 102,
+      "log_date": "2026-09-19",
+      "category": "问题处理",
+      "content": "龙岛异兽没删登录凭证文件，导致用户会进到上一个用户的账号",
+      "created_at": "2026-09-19 21:27:28",
+      "updated_at": null
+    },
+    {
+      "id": 103,
+      "log_date": "2026-09-18",
+      "category": "问题处理",
+      "content": "瘟疫传说bug",
+      "created_at": "2026-09-19 21:29:53",
       "updated_at": null
     }
   ]

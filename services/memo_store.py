@@ -69,6 +69,7 @@ def _to_row(rec: dict) -> dict:
         "id": rec["id"],
         "title": rec.get("title", ""),  # 标题（可空，空时页面显示正文前几行）
         "content": rec["content"],
+        "category": rec.get("category", ""),  # 分类（自由填写，可空）
         "images": rec.get("images", []),  # 图片文件名列表（完整文件名，如 abc123.png）
         "created_at": datetime.strptime(rec["created_at"], _TIME_FMT),
         "updated_at": (
@@ -124,9 +125,10 @@ def _normalize_images(images) -> list:
     return out
 
 
-def add_memo(title: str, content: str, images=None) -> int:
-    """新增一条备忘，返回新记录 id。images 为图片文件名列表。"""
+def add_memo(title: str, content: str, category: str = "", images=None) -> int:
+    """新增一条备忘，返回新记录 id。category 为分类（自由填写，可空）。images 为图片文件名列表。"""
     images = _normalize_images(images)
+    category = (category or "").strip()
     with _lock:
         data = _load()
         new_id = data["next_id"]
@@ -135,6 +137,7 @@ def add_memo(title: str, content: str, images=None) -> int:
                 "id": new_id,
                 "title": title,
                 "content": content,
+                "category": category,
                 "images": images,
                 "created_at": datetime.now().strftime(_TIME_FMT),
                 "updated_at": None,
@@ -164,12 +167,13 @@ def get_memo(memo_id: int):
     return None
 
 
-def update_memo(memo_id: int, title: str, content: str, images=None) -> bool:
-    """修改某条备忘的标题/内容/图片；返回是否真的更新到（id 不存在返回 False）。
+def update_memo(memo_id: int, title: str, content: str, category: str = "", images=None) -> bool:
+    """修改某条备忘的标题/内容/分类/图片；返回是否真的更新到（id 不存在返回 False）。
 
     编辑时被移除的旧图片文件会一并删除，避免留下孤儿文件。
     """
     images = _normalize_images(images)
+    category = (category or "").strip()
     removed = []
     with _lock:
         data = _load()
@@ -180,6 +184,7 @@ def update_memo(memo_id: int, title: str, content: str, images=None) -> bool:
                 removed = list(old - new)  # 被移除的旧图片
                 rec["title"] = title
                 rec["content"] = content
+                rec["category"] = category
                 rec["images"] = images
                 rec["updated_at"] = datetime.now().strftime(_TIME_FMT)
                 _save(data)

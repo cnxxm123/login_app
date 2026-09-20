@@ -1,11 +1,12 @@
 // ===== 备忘录页交互（仿 todos.js，去掉日期/类别/完成状态）=====
-// 后端注入的配置：window.MEMOS_CONFIG = {memoData: {id: {title, content, images}}, imageUrl, urls: {...}}
+// 后端注入的配置：window.MEMOS_CONFIG = {memoData: {id: {title, content, category, images}}, categories: [], imageUrl, urls: {...}}
 var MEMO_DATA = window.MEMOS_CONFIG.memoData;
 
 var editMask = document.getElementById("edit-mask");
 var delMask = document.getElementById("del-mask");
 var editTitle = document.getElementById("edit-title");
 var editMemoTitle = document.getElementById("edit-memo-title");
+var editMemoCategory = document.getElementById("edit-memo-category");
 var editContent = document.getElementById("edit-content");
 var editImgGrid = document.getElementById("memo-img-grid");
 var editImgInput = document.getElementById("memo-img-input");
@@ -121,14 +122,16 @@ function openEdit(id) {
     editingId = id || null;
     if (editingId) {
         editTitle.textContent = "✏️ 编辑备忘";
-        // 编辑预填：标题 + 内容 + 图片
+        // 编辑预填：标题 + 分类 + 内容 + 图片
         var rec = MEMO_DATA[String(editingId)] || {};
         editMemoTitle.value = rec.title || "";
+        editMemoCategory.value = rec.category || "";
         editContent.value = rec.content || "";
         currentImages = (rec.images || []).slice();
     } else {
         editTitle.textContent = "🗒 新增备忘";
         editMemoTitle.value = "";
+        editMemoCategory.value = "";
         editContent.value = "";
         currentImages = [];
     }
@@ -150,11 +153,13 @@ editContent.addEventListener("keydown", function (ev) {
 // ===== 保存（新增 / 更新共用）=====
 function saveMemo() {
     var title = editMemoTitle.value.trim();
+    var category = (editMemoCategory ? editMemoCategory.value.trim() : "");
     var content = editContent.value.trim();
     if (!content) { toast("内容不能为空", true); return; }
     var btn = document.getElementById("edit-save");
     btn.disabled = true;
     var body = new URLSearchParams({ title: title, content: content });
+    if (category) body.set("category", category);
     // 把当前图片文件名列表作为可重复的 images 字段一并提交
     currentImages.forEach(function (name) { body.append("images", name); });
     var url = editingId
@@ -166,7 +171,7 @@ function saveMemo() {
         .then(function (data) {
             if (!data.ok) { toast(data.error || "保存失败", true); btn.disabled = false; return; }
             // 维护编辑预填缓存：编辑覆盖原记录；新增记录后端返回的新 id
-            var rec = { title: title, content: content, images: currentImages.slice() };
+            var rec = { title: title, content: content, category: category, images: currentImages.slice() };
             if (editingId) {
                 MEMO_DATA[String(editingId)] = rec;
             } else if (data.id) {
@@ -197,6 +202,24 @@ function refreshList() {
         var statTotal = document.getElementById("stat-total");
         var freshTotal = doc.getElementById("stat-total");
         if (statTotal && freshTotal) statTotal.textContent = freshTotal.textContent;
+        // 同步分类筛选下拉选项（新增分类后可能多出选项）
+        var freshCatFilter = doc.getElementById("memo-cat-filter");
+        var curCatFilter = document.getElementById("memo-cat-filter");
+        if (freshCatFilter && curCatFilter) {
+            var curVal = curCatFilter.value;
+            curCatFilter.innerHTML = freshCatFilter.innerHTML;
+            curCatFilter.value = curVal;  // 保持当前选中项
+        }
+        // 同步 MEMO_DATA 缓存（提取所有卡片的 data-id 和分类信息）
+        var cards = cur.querySelectorAll(".memo-card");
+        cards.forEach(function (card) {
+            var cid = card.getAttribute("data-id");
+            var badge = card.querySelector(".memo-cat-badge");
+            var catText = badge ? badge.textContent : "";
+            if (MEMO_DATA[cid]) {
+                MEMO_DATA[cid].category = catText;
+            }
+        });
         // 兜底：操作成功后关闭可能仍打开的所有弹窗（删除 / 编辑等）
         document.querySelectorAll(".modal-mask").forEach(function (m) { m.hidden = true; });
         pendingDel = null;
@@ -261,17 +284,35 @@ document.getElementById("del-ok").onclick = function () {
     }.bind(this));
 };
 
-// ===== 前端搜索：按标题 / 内容过滤（不回后端，纯客户端过滤）=====
-function applySearch(kw) {
-    kw = (kw || "").trim().toLowerCase();
+var memoQ = document.getElementById("memo-q");
+if (memoQ) memoQ.addEventListener("input", function () { applyAllFilters(); });
+
+// ===== 分类筛选下拉 =====
+var catFilter = document.getElementById("memo-cat-filter");
+if (catFilter) catFilter.addEventListener("change", function () { applyAllFilters(); });
+
+// ===== 合并过滤逻辑：搜索关键词 + 分类筛选 =====
+function applyAllFilters() {
+    var kw = (memoQ ? memoQ.value : "").trim().toLowerCase();
+    var cat = catFilter ? catFilter.value : "";
     document.querySelectorAll(".memo-card").forEach(function (card) {
-        if (!kw) { card.style.display = ""; return; }
-        var title = card.querySelector(".memo-title");
-        var content = card.querySelector(".memo-content");
-        var hit = (title && title.textContent.toLowerCase().indexOf(kw) >= 0) ||
-                  (content && content.textContent.toLowerCase().indexOf(kw) >= 0);
-        card.style.display = hit ? "" : "none";
+        var visible = true;
+        // 搜索过滤
+        if (kw) {
+            var title = card.querySelector(".memo-title");
+            var content = card.querySelector(".memo-content");
+            var hit = (title && title.textContent.toLowerCase().indexOf(kw) >= 0) ||
+                      (content && content.textContent.toLowerCase().indexOf(kw) >= 0);
+            if (!hit) visible = false;
+        }
+        // 分类过滤
+        if (visible && cat) {
+            var badge = card.querySelector(".memo-cat-badge");
+            var cardCat = badge ? badge.textContent.trim() : "";
+            if (cardCat !== cat) visible = false;
+        }
+        card.style.display = visible ? "" : "none";
     });
 }
-var memoQ = document.getElementById("memo-q");
-if (memoQ) memoQ.addEventListener("input", function () { applySearch(memoQ.value); });
+// 保留旧的 applySearch 引用，让 refreshList 回调兼容
+function applySearch(kw) { applyAllFilters(); }

@@ -349,7 +349,91 @@
 
 ---
 
-## 8. 管理接口（`blueprints/manage.py`）
+## 8. 工作日志接口（`blueprints/logs.py`）
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/logs` | 工作日志页（按日期分组 / 类别折叠 / 搜索） |
+| POST | `/log/add` | 新增日志 |
+| POST | `/log/update` | 修改日志 |
+| POST | `/log/delete` | 删除日志 |
+| POST | `/log/move_todo` | 将日志转为今天的待办 |
+
+### 8.1 GET /logs
+
+- 渲染 `templates/logs.html`：按日期倒序分组，每日期下按类别（`WORK_CATEGORIES`：上架游戏/更新游戏/更新游戏工具/问题处理/其他）折叠排列。
+- 类别彩色标签：上架游戏（绿）、更新游戏（蓝）、更新游戏工具（紫）、问题处理（橙红）、其他（灰）。
+- 支持前端搜索过滤、手风琴折叠（同时只展开一个日期/类别分组）。
+- 页面上下文：`groups`、`total`、`today_count`、`logs_json`（编辑预填 JSON）、`categories`。
+
+### 8.2 POST /log/add
+
+| 字段 | 必填 | 说明 |
+| --- | --- | --- |
+| `log_date` | 是 | 日期（YYYY-MM-DD） |
+| `category` | 是 | 类别（必须在 `WORK_CATEGORIES` 白名单内） |
+| `content` | 是 | 正文（非空） |
+
+- 返回 JSON：`{"ok": true, "id": 新记录id}` 或 `{"ok": false, "error": "..."}`。
+
+### 8.3 POST /log/update
+
+- **表单字段**：`id`（必填）+ 同 `/log/add`。
+- 返回 JSON：`{"ok": true}` 或 `{"ok": false, "error": "..."}`（404 日志不存在）。
+
+### 8.4 POST /log/delete
+
+- **表单字段**：`id`（必填）。
+- 返回 JSON：`{"ok": true}` 或 `{"ok": false, "error": "..."}`（404 日志不存在）。
+
+### 8.5 POST /log/move_todo
+
+- **表单字段**：`id`（必填）。
+- 以今天的日期、日志原有的类别与内容写入一条待办，然后删除原日志。
+- 返回 JSON：`{"ok": true}` 或 `{"ok": false, "error": "..."}`。
+
+---
+
+## 9. 待办事项接口（`blueprints/todos.py`）
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/todos` | 待办事项页（按日期分组） |
+| POST | `/todo/add` | 新增待办 |
+| POST | `/todo/update` | 修改待办 |
+| POST | `/todo/toggle` | 切换完成状态（勾选完成 → 转移到今天的工作日志） |
+| POST | `/todo/delete` | 删除待办 |
+
+### 9.1 GET /todos
+
+- 渲染 `templates/todos.html`：按日期倒序分组，显示完成/未完成状态。
+- 页面上下文：`groups`、`total`、`today_count`、`undone_count`、`todos_json`、`categories`。
+
+### 9.2 POST /todo/add
+
+- **表单字段**：`todo_date`（日期）、`category`（类别）、`content`（正文，非空）。
+- 返回 JSON：`{"ok": true, "id": 新记录id}`。
+
+### 9.3 POST /todo/update
+
+- **表单字段**：`id`（必填）+ 同 `/todo/add`。
+- 返回 JSON：`{"ok": true}`。
+
+### 9.4 POST /todo/toggle
+
+- **表单字段**：`id`（必填）。
+- 未完成 → 完成：转移到今天的工作日志（保留类别与内容），并删除待办。
+- 已完成 → 未完成：仅恢复状态，不转移。
+- 返回 JSON：`{"ok": true, "moved": true/false}`。
+
+### 9.5 POST /todo/delete
+
+- **表单字段**：`id`（必填）。
+- 返回 JSON：`{"ok": true}`。
+
+---
+
+## 10. 管理接口（`blueprints/manage.py`）
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
@@ -393,7 +477,7 @@
 
 ---
 
-## 9. 模块依赖速查
+## 11. 模块依赖速查
 
 | 接口 | 依赖的纯逻辑层（`services/`） | 依赖的配置（`config.py`） |
 | --- | --- | --- |
@@ -410,10 +494,12 @@
 | 管理 `/edit`、`/save` | `path_utils.safe_path`、`text_utils.read_text_file` | `TEXT_EXTENSIONS` |
 | EPUB `/epub`、`/epub/api/*` | `path_utils.safe_path`、`epub_utils.parse_epub`、`get_epub_chapter_content`、`get_epub_resource` | — |
 | 备忘 `/memos`、`/memo/*` | `memo_store`（增删改查 + 图片存取 + 文件名校验） | `MEMO_DIR`、`MEMO_IMAGE_DIR` |
+| 日志 `/logs`、`/log/*` | `log_store`（增删改查） | `LOG_DIR`、`WORK_CATEGORIES` |
+| 待办 `/todos`、`/todo/*` | `todo_store`（增删改查 + 状态切换）、`log_store`（完成时写入日志） | `TODO_DIR`、`WORK_CATEGORIES` |
 
 ---
 
-## 10. 二次开发指引
+## 12. 二次开发指引
 
 - **新增文件类型预览**：只需改 `config.py` 的扩展名表（如把新扩展名加进 `TEXT_EXTENSIONS`），并在 `blueprints/view.py` 的分派处补充渲染逻辑。
 - **新增接口**：在对应的 `blueprints/*.py` 中加路由；若涉及磁盘路径，一律经 `services/path_utils.safe_path()` 校验。

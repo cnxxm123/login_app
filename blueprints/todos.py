@@ -15,44 +15,19 @@
 - 与 logs 蓝图的写法保持一致：POST 接口返回 JSON，页面用 fetch 调用
 """
 
-import datetime  # 日期解析 / 今天 / 昨天 判断
+import datetime  # 日期解析
 import json  # 序列化待办内容给前端编辑弹窗预填
 
 from flask import Blueprint, jsonify, render_template, request
 from markupsafe import Markup, escape  # 安全转义待办正文后插入 <br>
 
+from blueprints._common import group_label, safe_int_id, valid_category, valid_date  # 共享工具
 from config import WORK_CATEGORIES  # 工作类别白名单（上架游戏 / 更新游戏 / 问题处理）
 from services import log_store  # 工作日志读写：完成待办时转移到今天的日志
 from services import todo_store  # 待办读写（纯逻辑层）
 
 # 创建"待办事项"蓝图；模板里 url_for('todos.xxx') 的 todos 即此名字
 todos_bp = Blueprint("todos", __name__)
-
-_WEEKDAYS = "一二三四五六日"  # 周几的中文显示
-
-
-def _valid_date(s: str) -> bool:
-    """校验日期字符串是否为合法 YYYY-MM-DD。"""
-    try:
-        datetime.date.fromisoformat(s)
-        return True
-    except (ValueError, TypeError):
-        return False
-
-
-def _valid_category(s: str) -> bool:
-    """校验类别是否在白名单内（防提交任意类别破坏界面配色）。"""
-    return s in WORK_CATEGORIES
-
-
-def _group_label(d: datetime.date) -> str:
-    """返回日期分组的显示标签：今天 / 昨天 / 「2026年9月4日 周五」。"""
-    today = datetime.date.today()
-    if d == today:
-        return "今天"
-    if d == today - datetime.timedelta(days=1):
-        return "昨天"
-    return f"{d.year}年{d.month}月{d.day}日 周{_WEEKDAYS[d.weekday()]}"
 
 
 @todos_bp.route("/todos")
@@ -77,7 +52,7 @@ def index():
         if groups and groups[-1]["date"] == row["todo_date"]:
             groups[-1]["todos"].append(item)
         else:
-            groups.append({"label": _group_label(d), "date": row["todo_date"], "todos": [item]})
+            groups.append({"label": group_label(d), "date": row["todo_date"], "todos": [item]})
     today = datetime.date.today().isoformat()
     # 编辑弹窗预填用：{id: 记录} 的 JSON 映射（含类别与内容），直接嵌进页面 <script>。
     # ensure_ascii=False 保留中文；再把 < 转义成 \u003c，防止内容里的 </script> 破坏脚本标签。
@@ -106,9 +81,9 @@ def todo_add():
     todo_date = (request.form.get("todo_date") or "").strip()
     category = (request.form.get("category") or "").strip()
     content = (request.form.get("content") or "").strip()
-    if not _valid_date(todo_date):
+    if not valid_date(todo_date):
         return jsonify({"ok": False, "error": "日期格式不正确"}), 400
-    if not _valid_category(category):
+    if not valid_category(category):
         return jsonify({"ok": False, "error": "请选择正确的类别"}), 400
     if not content:
         return jsonify({"ok": False, "error": "内容不能为空"}), 400
@@ -122,15 +97,15 @@ def todo_update():
     表单字段：id（待办 id）、todo_date、category、content。
     """
     try:
-        todo_id = int(request.form.get("id") or 0)
-    except (ValueError, TypeError):
+        todo_id = safe_int_id(request.form.get("id"))
+    except ValueError:
         return jsonify({"ok": False, "error": "参数不正确"}), 400
     todo_date = (request.form.get("todo_date") or "").strip()
     category = (request.form.get("category") or "").strip()
     content = (request.form.get("content") or "").strip()
-    if not _valid_date(todo_date):
+    if not valid_date(todo_date):
         return jsonify({"ok": False, "error": "日期格式不正确"}), 400
-    if not _valid_category(category):
+    if not valid_category(category):
         return jsonify({"ok": False, "error": "请选择正确的类别"}), 400
     if not content:
         return jsonify({"ok": False, "error": "内容不能为空"}), 400
@@ -151,8 +126,8 @@ def todo_toggle():
     返回 JSON：{ok, moved}，moved=True 表示本次操作产生了转移。
     """
     try:
-        todo_id = int(request.form.get("id") or 0)
-    except (ValueError, TypeError):
+        todo_id = safe_int_id(request.form.get("id"))
+    except ValueError:
         return jsonify({"ok": False, "error": "参数不正确"}), 400
     todo = todo_store.get_todo(todo_id)
     if todo is None:
@@ -175,8 +150,8 @@ def todo_toggle():
 def todo_delete():
     """删除待办。表单字段：id。"""
     try:
-        todo_id = int(request.form.get("id") or 0)
-    except (ValueError, TypeError):
+        todo_id = safe_int_id(request.form.get("id"))
+    except ValueError:
         return jsonify({"ok": False, "error": "参数不正确"}), 400
     if not todo_store.delete_todo(todo_id):
         return jsonify({"ok": False, "error": "待办不存在"}), 404

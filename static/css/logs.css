@@ -70,6 +70,7 @@
         .log-cat-head .log-cat-name[data-category="更新游戏"] { background: #2563eb; }  /* 蓝：更新 */
         .log-cat-head .log-cat-name[data-category="更新游戏工具"] { background: #9333ea; }  /* 紫：工具更新 */
         .log-cat-head .log-cat-name[data-category="问题处理"] { background: #ea580c; }  /* 橙红：问题 */
+.log-cat-head .log-cat-name[data-category="其他"] { background: #6b7280; }  /* 灰：其他 */
         /* 老日志没有类别：灰色"未分类" */
         .log-cat-head .log-cat-name.uncat { background: var(--text-3); opacity: .75; }
         /* 该类别下的记录条数 */
