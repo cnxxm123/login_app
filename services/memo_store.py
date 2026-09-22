@@ -65,11 +65,17 @@ def _save(data: dict) -> None:
 
 def _to_row(rec: dict) -> dict:
     """把存储记录转成统一字典：时间为 datetime（与模板/蓝图约定一致）。"""
+    # 向后兼容：旧数据可能没有 tags 字段，从 category 迁移
+    tags = rec.get("tags", None)
+    if tags is None and rec.get("category", "").strip():
+        tags = [rec["category"].strip()]
+    elif not isinstance(tags, list):
+        tags = []
     return {
         "id": rec["id"],
         "title": rec.get("title", ""),
         "content": rec["content"],
-        "category": rec.get("category", ""),
+        "tags": tags,
         "images": rec.get("images", []),
         "pinned": bool(rec.get("pinned", False)),  # 是否置顶
         "created_at": datetime.strptime(rec["created_at"], _TIME_FMT),
@@ -126,10 +132,27 @@ def _normalize_images(images) -> list:
     return out
 
 
-def add_memo(title: str, content: str, category: str = "", images=None) -> int:
-    """新增一条备忘，返回新记录 id。category 为分类（自由填写，可空）。images 为图片文件名列表。"""
+def _normalize_tags(tags) -> list:
+    """规整传入的标签：支持 list 或逗号分隔字符串，去重、去空、去前后空格。"""
+    if not tags:
+        return []
+    if isinstance(tags, str):
+        tags = [t.strip() for t in tags.split(",") if t.strip()]
+    out = []
+    seen = set()
+    for t in tags:
+        t = (t or "").strip()
+        if not t or t in seen:
+            continue
+        out.append(t)
+        seen.add(t)
+    return out
+
+
+def add_memo(title: str, content: str, tags=None, images=None) -> int:
+    """新增一条备忘，返回新记录 id。tags 为标签列表或逗号分隔字符串。images 为图片文件名列表。"""
     images = _normalize_images(images)
-    category = (category or "").strip()
+    tags = _normalize_tags(tags)
     with _lock:
         data = _load()
         new_id = data["next_id"]
@@ -138,7 +161,7 @@ def add_memo(title: str, content: str, category: str = "", images=None) -> int:
                 "id": new_id,
                 "title": title,
                 "content": content,
-                "category": category,
+                "tags": tags,
                 "images": images,
                 "created_at": datetime.now().strftime(_TIME_FMT),
                 "updated_at": None,
@@ -168,13 +191,13 @@ def get_memo(memo_id: int):
     return None
 
 
-def update_memo(memo_id: int, title: str, content: str, category: str = "", images=None) -> bool:
-    """修改某条备忘的标题/内容/分类/图片；返回是否真的更新到（id 不存在返回 False）。
+def update_memo(memo_id: int, title: str, content: str, tags=None, images=None) -> bool:
+    """修改某条备忘的标题/内容/标签/图片；返回是否真的更新到（id 不存在返回 False）。
 
     编辑时被移除的旧图片文件会一并删除，避免留下孤儿文件。
     """
     images = _normalize_images(images)
-    category = (category or "").strip()
+    tags = _normalize_tags(tags)
     removed = []
     with _lock:
         data = _load()
@@ -185,7 +208,7 @@ def update_memo(memo_id: int, title: str, content: str, category: str = "", imag
                 removed = list(old - new)  # 被移除的旧图片
                 rec["title"] = title
                 rec["content"] = content
-                rec["category"] = category
+                rec["tags"] = tags
                 rec["images"] = images
                 rec["updated_at"] = datetime.now().strftime(_TIME_FMT)
                 _save(data)
@@ -228,3 +251,21 @@ def toggle_pin(memo_id: int) -> bool:
                 _save(data)
                 return True
     return False
+
+
+def all_tags() -> list:
+    """收集所有备忘中出现过的标签（去重、排序）。向后兼容旧 category 字段。"""
+    with _lock:
+        data = _load()
+    tag_set = set()
+    for rec in data["memos"]:
+        tags = rec.get("tags", None)
+        if isinstance(tags, list):
+            for t in tags:
+                t = (t or "").strip()
+                if t:
+                    tag_set.add(t)
+        elif rec.get("category", "").strip():
+            # 向后兼容旧数据
+            tag_set.add(rec["category"].strip())
+    return sorted(tag_set)

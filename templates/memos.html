@@ -23,10 +23,10 @@
         <div class="page-stats">
             <div class="stat">共<b id="stat-total">{{ total }}</b>条</div>
             <div class="memo-filter">
-                <select id="memo-cat-filter">
-                    <option value="">📂 全部分类</option>
-                    {% for cat in categories %}
-                        <option value="{{ cat }}" {% if filter_cat == cat %}selected{% endif %}>{{ cat }}</option>
+                <select id="memo-tag-filter">
+                    <option value="">🏷 全部标签</option>
+                    {% for t in tags %}
+                        <option value="{{ t }}" {% if filter_tag == t %}selected{% endif %}>{{ t }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -43,8 +43,12 @@
                         <span class="memo-title">{{ item.title or "无标题" }}</span>
                         {% if item.edited %}<span class="edited-dot" title="已编辑"></span>{% endif %}
                     </div>
-                    {% if item.category %}
-                        <div class="memo-cat-badge">{{ item.category }}</div>
+                    {% if item.tags %}
+                        <div class="memo-tags">
+                            {% for t in item.tags %}
+                                <span class="memo-tag-badge">{{ t }}</span>
+                            {% endfor %}
+                        </div>
                     {% endif %}
                     <div class="memo-content">
                         {{- item.content_html -}}
@@ -81,10 +85,10 @@
         <div class="modal-box" role="dialog" aria-modal="true">
             <div class="modal-title" id="edit-title">🗒 新增备忘</div>
             <input class="modal-input" type="text" id="edit-memo-title" placeholder="标题（可留空）" maxlength="100">
-            <input class="modal-input" type="text" id="edit-memo-category" placeholder="分类（自由填写，可留空）" maxlength="50" list="memo-cat-suggestions">
-            <datalist id="memo-cat-suggestions">
-                {% for cat in categories %}
-                    <option value="{{ cat }}">
+            <input class="modal-input" type="text" id="edit-memo-tags" placeholder="标签，多个用逗号分隔（如：工作, 重要）" maxlength="200" list="memo-tag-suggestions">
+            <datalist id="memo-tag-suggestions">
+                {% for t in tags %}
+                    <option value="{{ t }}">
                 {% endfor %}
             </datalist>
             <textarea class="modal-input memo-textarea" id="edit-content" placeholder="记点什么？…"></textarea>
@@ -125,7 +129,7 @@
         // ===== 页面配置：后端注入，供 memos.js 使用 =====
         window.MEMOS_CONFIG = {
     memoData: {{ memos_json | safe }},
-    categories: {{ categories | tojson }},
+    tags: {{ tags | tojson }},
     imageUrl: {{ image_url | tojson }},  // 形如 "/memo/image/__NAME__"，前端把 __NAME__ 替换成实际文件名
     urls: {
         add: "{{ url_for('memos.memo_add') }}",

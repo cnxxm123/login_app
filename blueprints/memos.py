@@ -35,21 +35,20 @@ MAX_MEMO_IMAGE_BYTES = 10 * 1024 * 1024
 
 @memos_bp.route("/memos")
 def index():
-    """备忘录页：卡片网格展示全部备忘（最新在前）。支持 ?category=xxx 筛选。"""
+    """备忘录页：卡片网格展示全部备忘（最新在前）。支持 ?tag=xxx 筛选。"""
     rows = memo_store.all_memos()
-    # 收集所有已使用的分类（去重、排序），供前端筛选下拉使用
-    categories = sorted({r["category"].strip() for r in rows if r.get("category", "").strip()})
-    # URL 查询参数筛选（服务端过滤，也支持客户端切换时前端自行过滤）
-    filter_cat = (request.args.get("category") or "").strip()
-    items = []  # [{id, title, content_html, category, time, edited, images}]
+    tags = memo_store.all_tags()
+    # URL 查询参数筛选：选中标签时，只显示包含该标签的备忘
+    filter_tag = (request.args.get("tag") or "").strip()
+    items = []  # [{id, title, content_html, tags, time, edited, images}]
     for row in rows:
-        if filter_cat and row.get("category", "").strip() != filter_cat:
+        if filter_tag and filter_tag not in row.get("tags", []):
             continue
         items.append(
             {
                 "id": row["id"],
                 "title": row["title"],
-                "category": row.get("category", "").strip(),
+                "tags": row["tags"],
                 "content_html": Markup(str(escape(row["content"])).replace("\n", "<br>")),
                 "time": row["created_at"].strftime("%Y-%m-%d %H:%M"),
                 "pinned": row.get("pinned", False),  # 是否置顶
@@ -60,33 +59,33 @@ def index():
     # 编辑弹窗预填用：{id: 记录} 的 JSON 映射，直接嵌进页面 <script>。
     # ensure_ascii=False 保留中文；再把 < 转义成 \u003c，防止内容里的 </script> 破坏脚本标签。
     memos_json = json.dumps(
-        {str(r["id"]): {"title": r["title"], "content": r["content"], "category": r.get("category", "").strip(), "images": r["images"]} for r in rows},
+        {str(r["id"]): {"title": r["title"], "content": r["content"], "tags": r["tags"], "images": r["images"]} for r in rows},
         ensure_ascii=False,
     ).replace("<", "\\u003c")
-    return render_template("memos.html", items=items, total=len(rows), filter_cat=filter_cat, categories=categories, memos_json=memos_json, image_url=url_for("memos.memo_image", filename="__NAME__"))
+    return render_template("memos.html", items=items, total=len(rows), filter_tag=filter_tag, tags=tags, memos_json=memos_json, image_url=url_for("memos.memo_image", filename="__NAME__"))
 
 
 @memos_bp.route("/memo/add", methods=["POST"])
 def memo_add():
     """新增备忘。
 
-    表单字段：title（标题，可空）、content（正文，非空）、category（分类，可空）、images（可重复的图片文件名）。
+    表单字段：title（标题，可空）、content（正文，非空）、tags（逗号分隔标签字符串，可空）、images（可重复的图片文件名）。
     返回 JSON：{ok, id} 或 {ok: False, error}。
     """
     title = (request.form.get("title") or "").strip()
     content = (request.form.get("content") or "").strip()
-    category = (request.form.get("category") or "").strip()
+    tags = (request.form.get("tags") or "")
     images = request.form.getlist("images")
     if not content:
         return jsonify({"ok": False, "error": "内容不能为空"}), 400
-    return jsonify({"ok": True, "id": memo_store.add_memo(title, content, category, images)})
+    return jsonify({"ok": True, "id": memo_store.add_memo(title, content, tags, images)})
 
 
 @memos_bp.route("/memo/update", methods=["POST"])
 def memo_update():
     """修改备忘。
 
-    表单字段：id、title、content（非空）、category（分类，可空）、images（可重复的图片文件名）。
+    表单字段：id、title、content（非空）、tags（逗号分隔标签字符串，可空）、images（可重复的图片文件名）。
     返回 JSON：{ok: True} 或 {ok: False, error}。
     """
     try:
@@ -95,11 +94,11 @@ def memo_update():
         return jsonify({"ok": False, "error": "参数不正确"}), 400
     title = (request.form.get("title") or "").strip()
     content = (request.form.get("content") or "").strip()
-    category = (request.form.get("category") or "").strip()
+    tags = (request.form.get("tags") or "")
     images = request.form.getlist("images")
     if not content:
         return jsonify({"ok": False, "error": "内容不能为空"}), 400
-    if not memo_store.update_memo(memo_id, title, content, category, images):
+    if not memo_store.update_memo(memo_id, title, content, tags, images):
         return jsonify({"ok": False, "error": "备忘不存在"}), 404
     return jsonify({"ok": True})
 
@@ -178,9 +177,9 @@ def memo_export():
     lines = ["# 备忘录", "", f"导出时间：{today}", "", "---", ""]
     for r in rows:
         title = r["title"] or "无标题"
-        cat = f' [{r["category"]}]' if r.get("category") else ""
+        tag_str = f' [{", ".join(r["tags"])}]' if r.get("tags") else ""
         pin = " (置顶)" if r.get("pinned") else ""
-        lines.append(f"## {title}{cat}{pin}")
+        lines.append(f"## {title}{tag_str}{pin}")
         lines.append("")
         lines.append(r["content"])
         lines.append("")
