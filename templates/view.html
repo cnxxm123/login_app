@@ -14,6 +14,7 @@
         <div class="toolbar">
         <a class="back" href="{{ url_for('browser.browse', subpath=parent) if parent else url_for('browser.main') }}">← 返回目录</a>
         <div class="toolbar-right">
+            <button class="tool-btn favorite-tool" type="button" data-personal-favorite data-path="{{ path }}" aria-pressed="{{ 'true' if personal_state.favorite else 'false' }}" title="{{ '取消收藏' if personal_state.favorite else '收藏' }}">{{ '★' if personal_state.favorite else '☆' }}</button>
             <!-- 编辑按钮：仅文本/代码文件显示，进入在线编辑器（manage 蓝图 edit 路由） -->
             {% if is_text %}
                 <button class="tool-btn" type="button" onclick="location.href='{{ url_for('manage.edit', subpath=path) }}'">✏️ 编辑</button>
@@ -158,17 +159,31 @@
     </div>
     </div>
     <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/player.js') }}"></script>
     <script>
-        // ===== 页面配置：后端注入（图片列表/播放列表/路径），供 view.js 使用 =====
+        // 页面配置必须在 personal/player/view 脚本前注入，供初始化和服务端进度恢复使用。
+        window.PERSONAL_CONFIG = {
+            favoriteUrl: {{ url_for('personal.favorite')|tojson }},
+            historyUrl: {{ url_for('personal.history')|tojson }},
+            progressUrl: {{ url_for('personal.progress')|tojson }},
+            stateUrl: {{ url_for('personal.state')|tojson }}
+        };
         window.VIEW_CONFIG = {
-            imageUrls: {{ image_urls | tojson }},
-            currentUrl: {{ url_for('media.media', subpath=path) | tojson }},
-            parent: {{ parent | tojson }},
-            playlist: {{ playlist | tojson }},
+            path: {{ path|tojson }},
+            progressPath: {{ progress_path|tojson }},
+            mediaType: {{ media_type|tojson }},
+            trackScroll: {{ (is_text or media_type == 'office')|tojson }},
+            isText: {{ is_text|tojson }},
+            initialProgress: {{ personal_state.progress|tojson }},
+            imageUrls: {{ image_urls|tojson }},
+            imagePaths: {{ image_paths|tojson }},
+            currentUrl: {{ url_for('media.media', subpath=path)|tojson }},
+            parent: {{ parent|tojson }},
+            playlist: {{ playlist|tojson }},
             playlistIndex: {{ playlist_index }}
         };
-        </script>
+    </script>
+    <script src="{{ url_for('static', filename='js/personal.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/player.js') }}"></script>
     <script src="{{ url_for('static', filename='js/view.js') }}"></script>
     <script src="{{ url_for('static', filename='js/confirm-download.js') }}"></script>
 </body>

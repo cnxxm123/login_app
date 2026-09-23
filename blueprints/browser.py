@@ -26,6 +26,7 @@ from config import (
 from services.dir_utils import dir_all_images, find_cover_image, is_cover_image, list_entries, search_content, search_files  # 纯逻辑：列目录 / 递归搜索 / 图集判定 / 封面图
 from services.media_utils import get_video_duration  # 视频时长探测
 from services.path_utils import safe_path  # 相对路径 → 安全绝对路径（越界防护）
+from blueprints.personal import get_resource_states, record_resource_history
 
 # 创建"浏览"蓝图；模板里 url_for('browser.xxx') 的 browser 即此名字
 browser_bp = Blueprint("browser", __name__)
@@ -85,6 +86,14 @@ def browse_context(subpath: str) -> dict | None:
     # （如搜索"封面"仍能直接搜到/打开，不受影响）
     visible_files = [f for f in files if not is_cover_image(f)]
     file_entries = build_file_items(visible_files, rel)
+
+    # 一次查询当前页所有卡片状态，避免每张卡单独请求数据库。
+    all_entries = dir_entries + file_entries
+    states = get_resource_states([item["path"] for item in all_entries])
+    for item in all_entries:
+        state = states.get(item["path"], {"favorite": False, "progress": None})
+        item["favorite"] = state["favorite"]
+        item["progress"] = state["progress"]
 
     # 按"是否有封面"拆分文件夹：有封面的（图片文件夹）排在前区展示，
     # 无封面的（纯文件夹）独立成区，网格各自换行，不再混排
@@ -191,12 +200,13 @@ def build_file_items(files, rel):
             thumb = url_for("media.thumb", subpath=rel(f)) if fext != ".m3u8" else None
             url, external = url_for("view.view_file", subpath=rel(f)), True
         elif fext in PDF_EXTENSIONS:
+            # 统一经过查看页，才能记录历史并提供收藏入口；查看页内仍用原生 PDF。
             kind, thumb = "text", None
-            url, external = url_for("media.media", subpath=rel(f)), True
+            url, external = url_for("view.view_file", subpath=rel(f)), True
         elif fext in AUDIO_EXTENSIONS:
-            # 音频：直接指向 /media 二进制流，交给浏览器自带播放器播放。
+            # 音频进入查看页，获得连播、收藏和播放进度同步。
             kind, thumb = "audio", None
-            url, external = url_for("media.media", subpath=rel(f)), True
+            url, external = url_for("view.view_file", subpath=rel(f)), True
         elif fext in EPUB_EXTENSIONS:
             # EPUB 电子书：跳到浏览器内阅读器，支持章节导航
             kind, thumb = "epub", None
@@ -231,6 +241,8 @@ def render_browse(subpath: str):
     if ctx is None:
         # abort(404) 让 Flask 返回"页面不存在"，而不是崩溃
         abort(404)
+    if subpath:
+        record_resource_history(subpath)
     # **ctx 把字典展开成关键字参数：
     # render_template("main.html", path=..., dirs=..., files=..., ...)
     return render_template(

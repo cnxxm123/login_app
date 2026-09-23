@@ -132,7 +132,8 @@
                 readingArea.scrollTop = 0;
             })
             .catch(function (err) {
-                chapterContent.innerHTML = '<p style="color:var(--text-3);text-align:center;padding:40px;">加载章节失败：' + err.message + "</p>";
+                chapterContent.textContent = "加载章节失败：" + err.message;
+                chapterContent.classList.add("chapter-error");
                 hideLoading();
                 updateNav();
             });
@@ -140,6 +141,7 @@
 
     // ── 渲染章节内容 ──
     function renderChapter(html, chapterHref) {
+        chapterContent.classList.remove("chapter-error");
         // 重写内嵌资源 URL（图片、CSS 等），指向 /epub/api/resource/...
         var baseDir = chapterHref ? chapterHref.substring(0, chapterHref.lastIndexOf("/") + 1) : "";
 
@@ -268,6 +270,10 @@
 
     // ── 加载 / 保存阅读进度 ──
     function loadProgress() {
+        var serverProgress = window.EPUB_CONFIG.initialProgress;
+        if (serverProgress && serverProgress.kind === "chapter" && serverProgress.locator) {
+            return serverProgress.locator;
+        }
         try {
             var key = "epub_progress_" + filePath;
             return localStorage.getItem(key);
@@ -281,7 +287,17 @@
             var key = "epub_progress_" + filePath;
             localStorage.setItem(key, currentChapterId);
         } catch (e) {
-            // 存储不可用时静默忽略
+            // 存储不可用时仍继续使用服务端同步。
+        }
+        if (window.Personal && currentIndex >= 0) {
+            window.Personal.reportProgress({
+                path: filePath,
+                kind: "chapter",
+                position: currentIndex + 1,
+                total: chapters.length,
+                locator: currentChapterId,
+                completed: currentIndex >= chapters.length - 1
+            });
         }
     }
 

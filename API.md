@@ -504,3 +504,37 @@
 - **新增文件类型预览**：只需改 `config.py` 的扩展名表（如把新扩展名加进 `TEXT_EXTENSIONS`），并在 `blueprints/view.py` 的分派处补充渲染逻辑。
 - **新增接口**：在对应的 `blueprints/*.py` 中加路由；若涉及磁盘路径，一律经 `services/path_utils.safe_path()` 校验。
 - **修改内容根目录**：设置环境变量 `TEXT_DIR`（如 `$env:TEXT_DIR="F:\某目录"`）后重启服务；不设置则用默认 `login_app/text/`。改完保存并**删除 `__pycache__` 目录**再重启才生效。
+
+
+---
+
+## 13. 个人中心接口（`blueprints/personal.py`）
+
+个人中心使用 `services/personal_store.py` 的 SQLite 数据库，统一保存收藏、最近浏览和阅读/播放进度。资源主键始终是相对 `TEXT_DIR` 的路径；服务端会重新校验路径并根据当前文件类型生成访问 URL。
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/personal` | 个人中心页面：继续、收藏、最近浏览 |
+| GET | `/api/personal/state?path=...` | 查询单个资源的收藏和进度 |
+| POST | `/api/personal/state/batch` | 批量查询状态，JSON `{"paths": [...]}`，最多 500 项 |
+| PUT | `/api/personal/favorite` | 幂等设置收藏，JSON `{"path": "...", "favorite": true}` |
+| POST | `/api/personal/history` | 记录同页媒体切换历史，JSON `{"path": "..."}` |
+| PUT | `/api/personal/progress` | 保存阅读或播放进度 |
+| DELETE | `/api/personal/progress` | 清除进度，JSON `{"path": "..."}` |
+
+### 13.1 进度请求
+
+```json
+{
+  "path": "书籍/示例.epub",
+  "kind": "chapter",
+  "position": 3,
+  "total": 20,
+  "locator": "chapter-3",
+  "completed": false
+}
+```
+
+`kind` 支持：`seconds`（音视频秒数）、`chapter`（EPUB 章节）、`page`（图片/图集页码）、`scroll`（文档滚动比例）。`position` 必须为非负有限数值，`total` 如提供则必须大于 0。
+
+所有写接口只接受 `application/json`。当前项目没有用户账户，因此个人中心数据为该服务实例共享的单一档案，并非按访问设备隔离。

@@ -22,9 +22,10 @@
 
     /* ================= 数据与 DOM ================= */
     var D = window.GALLERY_DATA || {};
-    var imgs = D.imageUrls || [];      // 全部原图地址（带签名令牌）
+    var imgs = D.imageUrls || [];      // 全部原图地址
+    var imagePaths = D.imagePaths || [];
     var thumbs = D.thumbUrls || [];    // 全部压缩缩略图地址
-    var parentPath = D.parent || "";   // 父目录（阅读进度记忆键）
+    var itemPath = D.itemPath || "";   // 图集自身路径（收藏和进度的稳定标识）
     var total = imgs.length;
 
     var stage = document.getElementById("gl-stage");
@@ -92,7 +93,31 @@
         return (S.cur + 1) + " / " + total;
     }
 
-    var posKey = "gallery_pos_" + parentPath;
+    var posKey = "gallery_pos_" + itemPath;
+    var syncTimer = null;
+    function progressPayload() {
+        return {
+            path: itemPath,
+            kind: "page",
+            position: S.cur + 1,
+            total: total,
+            locator: imagePaths[S.cur] || null,
+            completed: S.cur >= total - 1
+        };
+    }
+    function syncGlobalProgress() {
+        if (!window.Personal || !itemPath || !total) return;
+        window.clearTimeout(syncTimer);
+        syncTimer = window.setTimeout(function () {
+            window.Personal.reportProgress(progressPayload());
+        }, 600);
+    }
+    window.addEventListener("pagehide", function () {
+        window.clearTimeout(syncTimer);
+        if (window.Personal && itemPath && total) {
+            window.Personal.reportProgress(progressPayload(), true);
+        }
+    });
     function savePos() {
         if (!total) return;
         var val = { mode: S.mode };
@@ -103,14 +128,23 @@
             val.index = S.cur;
         }
         savePref(posKey, val);
+        syncGlobalProgress();
     }
     function restorePos() {
+        var server = D.initialProgress;
+        if (server && server.kind === "page") {
+            var serverIndex = server.locator ? imagePaths.indexOf(server.locator) : Math.round(Number(server.position || 1)) - 1;
+            if (serverIndex >= 0 && serverIndex < total) {
+                S.cur = serverIndex;
+                return;
+            }
+        }
         var saved = loadPref(posKey, null);
         if (!saved) return;
         if (saved.mode === S.mode && S.mode === "strip" && typeof saved.ratio === "number") {
-            S._stripRatio = saved.ratio;   // 长条模式：按滚动比例续读
+            S._stripRatio = saved.ratio;
         } else if (typeof saved.index === "number" && saved.index >= 0 && saved.index < total) {
-            S.cur = saved.index;           // 单页：按页码续读
+            S.cur = saved.index;
         }
     }
 

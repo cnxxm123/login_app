@@ -16,6 +16,10 @@
            href="{{ url_for('browser.main') }}" title="浏览文件">
             <span class="sb-ico">📂</span><span class="sb-txt">文件浏览</span>
         </a>
+        <a class="sb-link{% if request.endpoint == 'personal.index' %} active{% endif %}"
+           href="{{ url_for('personal.index') }}" title="收藏、最近浏览与阅读进度">
+            <span class="sb-ico">👤</span><span class="sb-txt">个人中心</span>
+        </a>
         <a class="sb-link{% if request.endpoint == 'logs.index' %} active{% endif %}"
            href="{{ url_for('logs.index') }}" title="记录每天的工作 / 备忘">
             <span class="sb-ico">📝</span><span class="sb-txt">工作日志</span>

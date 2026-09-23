@@ -18,6 +18,7 @@ from services.epub_utils import (
     parse_epub,
 )
 from services.path_utils import safe_path
+from blueprints.personal import get_resource_state, record_resource_history
 
 # 创建"EPUB"蓝图；模板里 url_for('epub.xxx') 的 epub 即此名字
 epub_bp = Blueprint("epub", __name__)
@@ -40,6 +41,8 @@ def epub_reader(subpath: str):
     title = book["title"] if book else os.path.basename(target)
 
     parent = os.path.dirname(subpath).replace("\\", "/")
+    record_resource_history(subpath)
+    personal_state = get_resource_state(subpath)
 
     return render_template(
         "epub_reader.html",
@@ -47,6 +50,7 @@ def epub_reader(subpath: str):
         book_title=title,
         path=subpath,
         parent=parent,
+        personal_state=personal_state,
     )
 
 

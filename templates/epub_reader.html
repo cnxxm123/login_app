@@ -14,6 +14,7 @@
     <div class="epub-topbar">
         <a class="back-btn" href="{{ url_for('browser.browse', subpath=parent) if parent else url_for('browser.main') }}">← 返回目录</a>
         <span class="book-title" id="topbar-book-title">{{ book_title }}</span>
+        <button class="toc-toggle-btn epub-favorite" type="button" data-personal-favorite data-path="{{ path }}" aria-pressed="{{ 'true' if personal_state.favorite else 'false' }}" title="{{ '取消收藏' if personal_state.favorite else '收藏' }}">{{ '★' if personal_state.favorite else '☆' }}</button>
         <button class="toc-toggle-btn" id="toc-toggle-btn" type="button" title="显示/隐藏目录">📑 目录</button>
         <button class="theme-toggle" type="button" onclick="toggleTheme()" title="切换深色/浅色">🌓</button>
     </div>
@@ -63,10 +64,18 @@
     <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
     <script>
         // 页面配置：供 epub_reader.js 使用
+        window.PERSONAL_CONFIG = {
+            favoriteUrl: {{ url_for('personal.favorite')|tojson }},
+            historyUrl: {{ url_for('personal.history')|tojson }},
+            progressUrl: {{ url_for('personal.progress')|tojson }},
+            stateUrl: {{ url_for('personal.state')|tojson }}
+        };
         window.EPUB_CONFIG = {
-            filePath: {{ path | tojson }}
+            filePath: {{ path|tojson }},
+            initialProgress: {{ personal_state.progress|tojson }}
         };
     </script>
+    <script src="{{ url_for('static', filename='js/personal.js') }}"></script>
     <script src="{{ url_for('static', filename='js/epub_reader.js') }}"></script>
 </body>
 </html>

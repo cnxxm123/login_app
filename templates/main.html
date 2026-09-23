@@ -61,6 +61,8 @@
                                     <img src="{{ d.cover.url }}" alt="" loading="lazy" decoding="async">
                                     {% if d.cover.count %}<span class="fc-folder-badge">📁 {{ d.cover.count }} 张</span>{% endif %}
                                 </a>
+                                <button class="fc-fav" type="button" data-personal-favorite data-path="{{ d.path }}" aria-pressed="{{ 'true' if d.favorite else 'false' }}" title="{{ '取消收藏' if d.favorite else '收藏' }}">{{ '★' if d.favorite else '☆' }}</button>
+                                {% if d.progress and not d.progress.completed %}<span class="fc-resume">继续</span>{% endif %}
                                 <div class="fc-overlay">
                                     <a class="fc-name" href="{{ d.url }}" {% if d.new_tab %}target="_blank" rel="noopener"{% endif %}>{{ d.name }}</a>
                                     
@@ -75,6 +77,8 @@
                         {% for d in dirs_plain %}
                             <div class="file-card folder-card folder-plain" data-path="{{ d.path }}">
                                 <a class="fc-thumb" href="{{ d.url }}" title="{{ d.name }}"></a>
+                                <button class="fc-fav" type="button" data-personal-favorite data-path="{{ d.path }}" aria-pressed="{{ 'true' if d.favorite else 'false' }}" title="{{ '取消收藏' if d.favorite else '收藏' }}">{{ '★' if d.favorite else '☆' }}</button>
+                                {% if d.progress and not d.progress.completed %}<span class="fc-resume">继续</span>{% endif %}
                                 <div class="fc-overlay">
                                     <a class="fc-name" href="{{ d.url }}">{{ d.name }}</a>
                                     
@@ -106,6 +110,8 @@
                             {% endif %}
                             {% if f.kind == "video" %}<span class="fc-dur" data-path="{{ f.path }}"></span>{% endif %}
                         </a>
+                        <button class="fc-fav" type="button" data-personal-favorite data-path="{{ f.path }}" aria-pressed="{{ 'true' if f.favorite else 'false' }}" title="{{ '取消收藏' if f.favorite else '收藏' }}">{{ '★' if f.favorite else '☆' }}</button>
+                        {% if f.progress and not f.progress.completed %}<span class="fc-resume">继续</span>{% endif %}
                         <a class="fc-name" href="{{ f.url }}" {% if f.external %}target="_blank" rel="noopener"{% endif %}>{{ f.name }}</a>
                         
                         <a class="fc-dl" href="{{ url_for('download.download_dir', subpath=f.path) }}" title="下载" aria-label="下载">⬇</a>
@@ -144,6 +150,12 @@
     </div>
     <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
     <script>
+        window.PERSONAL_CONFIG = {
+            favoriteUrl: {{ url_for('personal.favorite')|tojson }},
+            historyUrl: {{ url_for('personal.history')|tojson }},
+            progressUrl: {{ url_for('personal.progress')|tojson }},
+            stateUrl: {{ url_for('personal.state')|tojson }}
+        };
         // ===== 页面配置：后端注入（url_for / 上传上限），供 main.js 使用 =====
         window.MAIN_CONFIG = {
             urls: {
@@ -155,6 +167,7 @@
             maxBytes: {{ max_upload_bytes }}
         };
         </script>
+    <script src="{{ url_for('static', filename='js/personal.js') }}"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script src="{{ url_for('static', filename='js/confirm-download.js') }}"></script>
 </body>

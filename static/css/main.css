@@ -378,4 +378,25 @@
             transition: width .2s ease;
         }
         .progress-info { font-size: 12px; color: var(--text-2); text-align: center; }
-    
+
+/* 个人中心状态：卡片收藏按钮与续读角标 */
+.fc-fav {
+    position: absolute; top: 8px; right: 36px; z-index: 7;
+    width: 32px; height: 32px; display: grid; place-items: center;
+    border: 1px solid rgba(255, 255, 255, .22); border-radius: 9px;
+    background: rgba(10, 14, 26, .58); color: rgba(255, 255, 255, .86);
+    font-size: 17px; cursor: pointer; backdrop-filter: blur(5px); transition: var(--t);
+}
+.fc-fav:hover { color: #fbbf24; background: rgba(10, 14, 26, .82); transform: scale(1.06); }
+.fc-fav[aria-pressed="true"] { color: #fbbf24; }
+.fc-fav:disabled { opacity: .55; cursor: wait; }
+.fc-resume {
+    position: absolute; left: 8px; bottom: 48px; z-index: 7;
+    padding: 3px 8px; border-radius: 999px; pointer-events: none;
+    background: rgba(90, 98, 240, .9); color: #fff; font-size: 10px; font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .2);
+}
+.file-card:not(.folder-card) .fc-resume { bottom: 48px; }
+@media (max-width: 1024px) {
+    .fc-fav { width: 36px; height: 36px; right: 38px; }
+}

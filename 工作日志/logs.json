@@ -1,5 +1,5 @@
 {
-  "next_id": 122,
+  "next_id": 124,
   "logs": [
     {
       "id": 3,
@@ -680,6 +680,22 @@
       "content": "wwe2k26  错误码200100\n2026-09-22 18:47:59\ncjk0c11vz5sxwiznvmw8v104\nmbqzpijr6bnfngbi\n\n网络问题，丢包多",
       "created_at": "2026-09-23 00:48:29",
       "updated_at": "2026-09-23 00:48:42"
+    },
+    {
+      "id": 122,
+      "log_date": "2026-09-23",
+      "category": "上架游戏",
+      "content": "OpenFront【steam】",
+      "created_at": "2026-09-23 12:45:10",
+      "updated_at": null
+    },
+    {
+      "id": 123,
+      "log_date": "2026-09-23",
+      "category": "问题处理",
+      "content": "僵尸毁灭工程\n66b07b050d2b315fafda35d5\neqtegveu3sw26uky\n用户反馈云存档加载中100%一直卡在这里。\n查看结束游戏录播里确实一直在这里停滞着",
+      "created_at": "2026-09-23 12:45:52",
+      "updated_at": null
     }
   ]
 }

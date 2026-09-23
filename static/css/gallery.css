@@ -279,3 +279,13 @@ body.gl-ui-hidden .gl-thumbs { opacity: 0; pointer-events: none; }
     .gl-modal { padding: 16px; }
     .gl-set-row .gl-seg-btn { padding: 6px 8px; font-size: 12px; }
 }
+
+/* 图集收藏与同步提示 */
+.gl-favorite { color: #c6cddd; font-size: 17px; }
+.gl-favorite[aria-pressed="true"] { color: #fbbf24; border-color: rgba(251, 191, 36, .42); }
+.personal-toast {
+    position: fixed; left: 50%; bottom: 34px; z-index: 100;
+    transform: translateX(-50%); padding: 9px 18px; border-radius: 999px;
+    background: #16a34a; color: #fff; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,.35);
+}
+.personal-toast.error { background: #e5484d; }

@@ -244,44 +244,80 @@
     video.addEventListener("pause", syncPlayUI);
     video.addEventListener("ended", syncPlayUI);
 
-    /* ---------- 7.5 播放进度记忆 + 续播提示 + 结束覆盖层 ----------
-       以当前文件 subpath 为 key 存 localStorage；再次进入且没看完时，
-       弹"上次看到这里"询问继续/从头。播放完成清除记录并显示结束层。 */
-    var posKey = playerEl.getAttribute("data-key") ? "vp_pos_" + playerEl.getAttribute("data-key") : "";
-    var resumeShown = false;   // 续播提示只在页面首次加载时弹一次（切集不弹）
+    /* ---------- 7.5 播放进度记忆 + 服务端同步 ---------- */
     var lastSaveAt = 0;
-    var savedPos = 0;          // 上次看到的秒数（续播按钮用）
+    var savedPos = 0;
+    var resumeForPath = "";
+    var resumeToken = 0;
 
-    function rememberProgress() {
-        var d = getDuration();
-        if (!posKey || d <= 30) return;
-        // 播完 / 只看开头都不算"进度"；结尾 10s 内视为快看完，不打扰下次
+    function currentPath() { return playerEl.getAttribute("data-key") || ""; }
+    function currentPosKey() { return currentPath() ? "vp_pos_" + currentPath() : ""; }
+    function reportVideoProgress(completed, keepalive) {
+        var d = getDuration(), path = currentPath();
+        if (!path || d <= 30 || !window.Personal) return;
+        window.Personal.reportProgress({
+            path: path,
+            kind: "seconds",
+            position: completed ? d : video.currentTime,
+            total: d,
+            completed: !!completed
+        }, keepalive);
+    }
+    function rememberProgress(keepalive) {
+        var d = getDuration(), key = currentPosKey();
+        if (!key || d <= 30) return;
         if (video.currentTime > 5 && video.currentTime < d - 10) {
-            localStorage.setItem(posKey, String(Math.floor(video.currentTime)));
+            try { localStorage.setItem(key, String(Math.floor(video.currentTime))); } catch (e) {}
+            reportVideoProgress(false, !!keepalive);
         }
     }
-    function clearProgress() { if (posKey) localStorage.removeItem(posKey); }
+    function clearProgress() {
+        var key = currentPosKey();
+        if (key) {
+            try { localStorage.removeItem(key); } catch (e) {}
+        }
+    }
 
-    // 每 5 秒 + 暂停时各存一次（localStorage 写入有开销，节流）
     video.addEventListener("timeupdate", function () {
         var now = Date.now();
         if (now - lastSaveAt < 5000) return;
         lastSaveAt = now;
         rememberProgress();
     });
-    video.addEventListener("pause", rememberProgress);
+    video.addEventListener("pause", function () { if (!video.ended) rememberProgress(); });
+    window.addEventListener("pagehide", function () {
+        rememberProgress(true);
+    });
 
-    // 元数据就绪后：首次加载检查是否续播
     video.addEventListener("loadedmetadata", function () {
-        if (resumeShown || !posKey) return;
-        resumeShown = true;
-        var saved = parseInt(localStorage.getItem(posKey) || "0", 10);
+        var path = currentPath();
+        if (!path || resumeForPath === path) return;
+        resumeForPath = path;
+        var token = ++resumeToken;
         var d = getDuration();
-        if (saved > 10 && d > 30 && saved < d - 10) {
-            savedPos = saved;
-            resumeInfo.textContent = "上次看到 " + fmt(saved) + " / " + fmt(d);
-            resumeLayer.hidden = false;
-            showControls();
+        function localSaved() {
+            try { return parseInt(localStorage.getItem(currentPosKey()) || "0", 10); } catch (e) { return 0; }
+        }
+        function offerResume(saved) {
+            if (token !== resumeToken || currentPath() !== path) return;
+            saved = Number(saved || 0);
+            if (saved > 10 && d > 30 && saved < d - 10) {
+                savedPos = saved;
+                resumeInfo.textContent = "上次看到 " + fmt(saved) + " / " + fmt(d);
+                resumeLayer.hidden = false;
+                showControls();
+            }
+        }
+        var initial = window.VIEW_CONFIG && window.VIEW_CONFIG.initialProgress;
+        if (window.VIEW_CONFIG && path === window.VIEW_CONFIG.path && initial && initial.kind === "seconds") {
+            offerResume(initial.position);
+        } else if (window.Personal) {
+            window.Personal.getState(path).then(function (state) {
+                var progress = state.progress;
+                offerResume(progress && progress.kind === "seconds" ? progress.position : localSaved());
+            }).catch(function () { offerResume(localSaved()); });
+        } else {
+            offerResume(localSaved());
         }
     });
     resumeBtn.addEventListener("click", function () {
@@ -291,16 +327,17 @@
     });
     restartBtn.addEventListener("click", function () {
         clearProgress();
+        if (window.Personal && currentPath()) window.Personal.clearProgress(currentPath()).catch(function () {});
         resumeLayer.hidden = true;
         video.currentTime = 0;
         video.play().catch(function () {});
     });
 
-    // 播放完成：清除进度记录，显示"重播 / 下一集"
     video.addEventListener("ended", function () {
         clearProgress();
+        reportVideoProgress(true, false);
         var items = document.querySelectorAll("#pl-list .pl-item");
-        endNext.style.display = (items.length > 1) ? "" : "none";  // 连播列表有下一项才显示
+        endNext.style.display = (items.length > 1) ? "" : "none";
         endLayer.hidden = false;
         showControls();
     });
@@ -314,7 +351,6 @@
         if (window.plGo) window.plGo(1);
     });
 
-    // 切换 src（上一集/下一集/重试）时复位覆盖层
     video.addEventListener("emptied", function () {
         endLayer.hidden = true;
         resumeLayer.hidden = true;

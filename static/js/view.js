@@ -1,227 +1,331 @@
-        // ===== 阅读进度条：随滚动填充顶部细线 =====
-        (function () {
-            var bar = document.getElementById("reading-bar");
-            if (!bar) return;
-            function update() {
-                var h = document.documentElement;
-                var max = h.scrollHeight - h.clientHeight;
-                bar.style.width = (max > 0 ? Math.min(window.scrollY / max, 1) * 100 : 0) + "%";
-            }
-            window.addEventListener("scroll", update, { passive: true });
-            window.addEventListener("resize", update);
-            update();
-        })();
-        // ===== 图片阅读器：单页/长条切换、翻页、缩放、全屏、记忆位置 =====
-        // imgs：本目录所有图片的访问地址（后端传入 image_urls），翻页即在其中切换
-        var imgs = window.VIEW_CONFIG.imageUrls;
-        var reader = document.getElementById("reader-single");
-        var strip = document.getElementById("img-strip");  // 长条模式容器（setMode 切换显隐用）
-        if (reader) {
-            var currentUrl = window.VIEW_CONFIG.currentUrl;
-            // 按"所在目录"记忆阅读位置：下次重开同一文件时继续上次那一张
-            var posKey = "img_pos_" + window.VIEW_CONFIG.parent;
-            var saved = JSON.parse(localStorage.getItem(posKey) || "null");
-            var cur = 0;
-            if (saved && saved.path === currentUrl && saved.index >= 0 && saved.index < imgs.length) {
-                cur = saved.index;              // 重开同一个文件 → 继续上次位置
-            } else {
-                cur = imgs.indexOf(currentUrl); // 新点开 → 从当前文件开始
-                if (cur < 0) cur = 0;
-            }
-            var scale = 1;
-            // 阅读模式：每次打开图片一律默认单页模式
-            var mode = "single";
+/* 通用查看页：阅读进度、图片阅读、目录和音视频连播。 */
+(function () {
+    "use strict";
 
-            function show(i) {
-                if (!imgs.length) return;
-                cur = Math.max(0, Math.min(imgs.length - 1, i));
-                var img = document.getElementById("reader-img");
-                img.src = imgs[cur];
-                img.style.transform = ""; scale = 1;      // 换页时重置缩放
-                document.getElementById("reader-pos").textContent = (cur + 1) + " / " + imgs.length;
-                // 记忆：保存"位置 + 当前图片地址"，重开该文件时据此续读
-                localStorage.setItem(posKey, JSON.stringify({ index: cur, path: imgs[cur] }));
+    var cfg = window.VIEW_CONFIG || {};
+
+    function report(payload, keepalive) {
+        if (!window.Personal || !cfg.path) return;
+        payload.path = payload.path || cfg.progressPath || cfg.path;
+        window.Personal.reportProgress(payload, keepalive);
+    }
+
+    // ===== 文档阅读进度：恢复并按滚动比例节流同步 =====
+    (function () {
+        var bar = document.getElementById("reading-bar");
+        if (!bar) return;
+        var timer = null;
+        var restored = false;
+
+        function ratio() {
+            var root = document.documentElement;
+            var max = root.scrollHeight - root.clientHeight;
+            return max > 0 ? Math.min(Math.max(window.scrollY / max, 0), 1) : 0;
+        }
+        function update(sync) {
+            var value = ratio();
+            bar.style.width = (value * 100) + "%";
+            if (!cfg.trackScroll || !sync) return;
+            window.clearTimeout(timer);
+            timer = window.setTimeout(function () {
+                report({kind: "scroll", position: value, total: 1, completed: value >= 0.98});
+            }, 1200);
+        }
+        window.addEventListener("scroll", function () { update(true); }, {passive: true});
+        window.addEventListener("resize", function () { update(false); });
+        window.addEventListener("pagehide", function () {
+            if (cfg.trackScroll) report({kind: "scroll", position: ratio(), total: 1, completed: ratio() >= 0.98}, true);
+        });
+        window.requestAnimationFrame(function () {
+            var progress = cfg.initialProgress;
+            if (!restored && cfg.trackScroll && progress && progress.kind === "scroll" && progress.position > 0 && progress.position < 0.98) {
+                restored = true;
+                var root = document.documentElement;
+                window.scrollTo(0, (root.scrollHeight - root.clientHeight) * progress.position);
             }
-            function go(d) { show(cur + d); }  // d=-1 上一张，d=1 下一张
-            // 判断当前处于哪种模式：直接用"哪个容器当前可见"来判断。
-            // 不用 mode 变量，避免 localStorage/状态不同步时缩放、全屏作用到错误的容器。
-            function currentContainer() {
-                return strip.hidden ? reader : strip;  // 长条隐藏 → 单页；否则 → 长条
+            update(false);
+        });
+    }());
+
+    // ===== 图片阅读器：单页/长条、翻页、缩放、全屏、进度 =====
+    var imgs = cfg.imageUrls || [];
+    var imagePaths = cfg.imagePaths || [];
+    var reader = document.getElementById("reader-single");
+    var strip = document.getElementById("img-strip");
+    if (reader) {
+        var currentUrl = cfg.currentUrl;
+        var posKey = "img_pos_" + cfg.parent;
+        var saved = null;
+        try { saved = JSON.parse(localStorage.getItem(posKey) || "null"); } catch (e) {}
+        var cur = 0;
+        var serverProgress = cfg.initialProgress;
+        if (serverProgress && serverProgress.kind === "page" && serverProgress.locator) {
+            cur = imagePaths.indexOf(serverProgress.locator);
+        }
+        if (cur < 0 || cur >= imgs.length) cur = 0;
+        if ((!serverProgress || serverProgress.kind !== "page") && saved && saved.path === currentUrl && saved.index >= 0 && saved.index < imgs.length) {
+            cur = saved.index;
+        } else if ((!serverProgress || serverProgress.kind !== "page") && imgs.indexOf(currentUrl) >= 0) {
+            cur = imgs.indexOf(currentUrl);
+        }
+        var scale = 1;
+        var mode = "single";
+
+        function saveImageProgress() {
+            try { localStorage.setItem(posKey, JSON.stringify({index: cur, path: imgs[cur]})); } catch (e) {}
+            report({
+                kind: "page",
+                position: cur + 1,
+                total: imgs.length,
+                locator: imagePaths[cur] || null,
+                completed: cur >= imgs.length - 1
+            });
+        }
+        function show(i) {
+            if (!imgs.length) return;
+            cur = Math.max(0, Math.min(imgs.length - 1, i));
+            var img = document.getElementById("reader-img");
+            img.src = imgs[cur];
+            img.style.transform = "";
+            scale = 1;
+            document.getElementById("reader-pos").textContent = (cur + 1) + " / " + imgs.length;
+            saveImageProgress();
+        }
+        function go(d) { show(cur + d); }
+        function currentContainer() { return strip.hidden ? reader : strip; }
+        function applyZoom() {
+            var element = mode === "single" ? document.getElementById("reader-img") : strip;
+            element.style.transform = scale === 1 ? "" : "scale(" + scale + ")";
+        }
+        function zoom(d) { scale = Math.min(3, Math.max(0.5, +(scale + d).toFixed(2))); applyZoom(); }
+        function zoomReset() { scale = 1; applyZoom(); }
+        function toggleFullscreen() {
+            var element = currentContainer();
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                var request = element.requestFullscreen || element.webkitRequestFullscreen;
+                if (request) request.call(element);
+            } else if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
             }
-            // 把当前缩放值应用到"当前模式"的容器：
-            //   单页模式 → 作用于当前那张图；长条模式 → 作用于整条（全部图片一起缩放）
-            function applyZoom() {
-                var el = (mode === "single") ? document.getElementById("reader-img") : strip;
-                el.style.transform = (scale === 1) ? "" : "scale(" + scale + ")";
+        }
+        function scrollToCurrent() {
+            var items = strip.querySelectorAll(".img-item");
+            if (items[cur]) items[cur].scrollIntoView({block: "start"});
+        }
+        function setMode(value) {
+            mode = value;
+            document.getElementById("mode-single").classList.toggle("active", value === "single");
+            document.getElementById("mode-strip").classList.toggle("active", value === "strip");
+            reader.hidden = value !== "single";
+            strip.hidden = value !== "strip";
+            applyZoom();
+            if (value === "single") show(cur);
+            else if (value === "strip") scrollToCurrent();
+        }
+        document.addEventListener("keydown", function (event) {
+            var tag = (event.target.tagName || "").toLowerCase();
+            if (tag === "input" || tag === "textarea") return;
+            if (event.key === "+" || event.key === "=") { zoom(0.2); event.preventDefault(); return; }
+            if (event.key === "-" || event.key === "_") { zoom(-0.2); event.preventDefault(); return; }
+            if (event.key === "0") { zoomReset(); event.preventDefault(); return; }
+            if (event.key.toLowerCase() === "f") { toggleFullscreen(); event.preventDefault(); return; }
+            if (!reader.hidden) {
+                if (["ArrowLeft", "ArrowUp", "PageUp"].indexOf(event.key) >= 0) { go(-1); event.preventDefault(); }
+                else if (["ArrowRight", "ArrowDown", "PageDown", " "].indexOf(event.key) >= 0) { go(1); event.preventDefault(); }
             }
-            function zoom(d) {
-                scale = Math.min(3, Math.max(0.5, +(scale + d).toFixed(2)));  // 限制 0.5x~3x
-                applyZoom();
+        });
+        window.go = go;
+        window.zoom = zoom;
+        window.zoomReset = zoomReset;
+        window.toggleFullscreen = toggleFullscreen;
+        window.setMode = setMode;
+        // 长条模式根据进入视口中心的图片更新当前页，避免进度停在切换前位置。
+        if ("IntersectionObserver" in window) {
+            var stripItems = Array.prototype.slice.call(strip.querySelectorAll(".img-item"));
+            var observer = new IntersectionObserver(function (entries) {
+                entries.forEach(function (entry) {
+                    if (!entry.isIntersecting || mode !== "strip") return;
+                    var index = stripItems.indexOf(entry.target);
+                    if (index >= 0 && index !== cur) {
+                        cur = index;
+                        document.getElementById("reader-pos").textContent = (cur + 1) + " / " + imgs.length;
+                        saveImageProgress();
+                    }
+                });
+            }, {root: null, rootMargin: "-20% 0px -55% 0px", threshold: 0});
+            stripItems.forEach(function (item) { observer.observe(item); });
+        }
+        window.addEventListener("pagehide", function () {
+            report({
+                kind: "page",
+                position: cur + 1,
+                total: imgs.length,
+                locator: imagePaths[cur] || null,
+                completed: cur >= imgs.length - 1
+            }, true);
+        });
+        setMode(mode);
+    }
+
+    // ===== 文档目录 =====
+    (function () {
+        var body = document.querySelector(".md-body");
+        var toggle = document.getElementById("toc-toggle");
+        var panel = document.getElementById("toc-panel");
+        if (!body || !toggle || !panel) return;
+        var headings = body.querySelectorAll("h1, h2, h3");
+        if (!headings.length) return;
+        headings.forEach(function (heading, index) { if (!heading.id) heading.id = "toc-h" + index; });
+        var list = document.createElement("ul");
+        headings.forEach(function (heading) {
+            var item = document.createElement("li");
+            item.className = "toc-" + heading.tagName.toLowerCase();
+            var link = document.createElement("a");
+            link.textContent = heading.textContent;
+            link.href = "#" + heading.id;
+            link.addEventListener("click", function (event) {
+                event.preventDefault();
+                heading.scrollIntoView({behavior: "smooth", block: "start"});
+            });
+            item.appendChild(link);
+            list.appendChild(item);
+        });
+        document.getElementById("toc-list").appendChild(list);
+        toggle.hidden = false;
+        toggle.addEventListener("click", function () { panel.hidden = !panel.hidden; });
+    }());
+
+    // ===== 编辑保存提示 =====
+    (function () {
+        if (new URLSearchParams(location.search).get("saved") !== "1") return;
+        var node = document.createElement("div");
+        node.className = "save-toast";
+        node.textContent = "已保存";
+        document.body.appendChild(node);
+        setTimeout(function () { node.classList.add("hide"); }, 1800);
+        setTimeout(function () { node.remove(); }, 2400);
+    }());
+
+    // ===== 音视频连播与音频进度 =====
+    (function () {
+        var playlist = cfg.playlist || [];
+        var player = document.getElementById("media-player");
+        if (!player || !playlist.length) return;
+        var pIndex = cfg.playlistIndex || 0;
+        var list = document.getElementById("pl-list");
+        var count = document.getElementById("pl-count");
+        var lastSaveAt = 0;
+        var restoredPath = null;
+        var restoreToken = 0;
+
+        function currentItem() { return playlist[pIndex]; }
+        function localKey() { return "media_pos_" + currentItem().path; }
+        function rememberAudio(completed, keepalive) {
+            if (cfg.mediaType !== "audio" || !isFinite(player.duration) || player.duration <= 0) return;
+            var position = completed ? player.duration : player.currentTime;
+            try {
+                if (completed) localStorage.removeItem(localKey());
+                else if (position > 5 && position < player.duration - 5) localStorage.setItem(localKey(), String(Math.floor(position)));
+            } catch (e) {}
+            if (position > 5 || completed) {
+                report({path: currentItem().path, kind: "seconds", position: position, total: player.duration, completed: !!completed}, keepalive);
             }
-            function zoomReset() { scale = 1; applyZoom(); }
-            // 全屏：单页模式全屏单页容器；长条模式全屏整条容器。
-            // 用 currentContainer() 判断（不依赖 mode 变量），并兼容老浏览器 webkit 前缀。
-            function toggleFullscreen() {
-                var el = currentContainer();
-                if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-                    var req = el.requestFullscreen || el.webkitRequestFullscreen;  // 老 Chrome/Safari 用 webkit 前缀
-                    if (req) req.call(el);
-                } else if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                } else if (document.webkitExitFullscreen) {
-                    document.webkitExitFullscreen();
+        }
+        if (cfg.mediaType === "audio") {
+            player.addEventListener("timeupdate", function () {
+                var now = Date.now();
+                if (now - lastSaveAt < 5000) return;
+                lastSaveAt = now;
+                rememberAudio(false, false);
+            });
+            player.addEventListener("pause", function () { if (!player.ended) rememberAudio(false, false); });
+            window.addEventListener("pagehide", function () { rememberAudio(false, true); });
+            player.addEventListener("loadedmetadata", function () {
+                var item = currentItem();
+                if (restoredPath === item.path) return;
+                restoredPath = item.path;
+                var token = ++restoreToken;
+                function localSaved() {
+                    try { return Number(localStorage.getItem(localKey()) || 0); } catch (e) { return 0; }
                 }
-            }
-            // 长条模式：滚动定位到当前图片（.img-item 顺序与 imgs 一致，索引即 cur）
-            function scrollToCurrent() {
-                var items = strip.querySelectorAll(".img-item");
-                if (items[cur]) items[cur].scrollIntoView({ block: "start" });
-            }
-            function setMode(m) {
-                mode = m;
-                document.getElementById("mode-single").classList.toggle("active", m === "single");
-                document.getElementById("mode-strip").classList.toggle("active", m === "strip");
-                reader.hidden = m !== "single";   // 单页模式显示单页容器
-                strip.hidden = m !== "strip";     // 长条模式显示长条容器
-                applyZoom();                      // 先把缩放应用到切换后的容器，再定位滚动（transform 不影响布局坐标）
-                if (m === "single") { show(cur); }      // 切回单页时刷新当前页
-                else if (m === "strip") { scrollToCurrent(); }  // 切到长条时定位到当前图片
-            }
-            // 键盘快捷键：+/- 缩放、0 重置、F 全屏在两种模式都生效；
-            // 翻页（←/→ 等）仅在单页模式生效，长条模式下方向键留给页面滚动
-            document.addEventListener("keydown", function (e) {
-                var tag = (e.target.tagName || "").toLowerCase();
-                if (tag === "input" || tag === "textarea") return;  // 输入框里不拦截
-                if (e.key === "+" || e.key === "=") { zoom(0.2); e.preventDefault(); return; }
-                if (e.key === "-" || e.key === "_") { zoom(-0.2); e.preventDefault(); return; }
-                if (e.key === "0") { zoomReset(); e.preventDefault(); return; }
-                if (e.key.toLowerCase() === "f") { toggleFullscreen(); e.preventDefault(); return; }
-                if (!reader.hidden) {
-                    if (e.key === "ArrowLeft" || e.key === "ArrowUp" || e.key === "PageUp") { go(-1); e.preventDefault(); }
-                    else if (e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === "PageDown" || e.key === " ") { go(1); e.preventDefault(); }
+                function applySaved(saved) {
+                    if (token !== restoreToken || currentItem().path !== item.path) return;
+                    saved = Number(saved || 0);
+                    if (saved > 5 && saved < player.duration - 5) player.currentTime = saved;
+                }
+                if (item.path === cfg.path && cfg.initialProgress && cfg.initialProgress.kind === "seconds") {
+                    applySaved(cfg.initialProgress.position);
+                } else if (window.Personal) {
+                    window.Personal.getState(item.path).then(function (state) {
+                        var progress = state.progress;
+                        applySaved(progress && progress.kind === "seconds" ? progress.position : localSaved());
+                    }).catch(function () { applySaved(localSaved()); });
+                } else {
+                    applySaved(localSaved());
                 }
             });
-            show(cur);
-            setMode(mode);
+            player.addEventListener("ended", function () { rememberAudio(true, false); });
         }
 
-        // ===== 文档目录（TOC）：解析 .md-body 的标题生成侧边导航 =====
-        (function () {
-            var body = document.querySelector(".md-body");
-            var toggle = document.getElementById("toc-toggle");
-            var panel = document.getElementById("toc-panel");
-            if (!body || !toggle || !panel) return;
-            var headings = body.querySelectorAll("h1, h2, h3");  // 只收前三级标题
-            if (!headings.length) return;
-            headings.forEach(function (h, i) {
-                if (!h.id) h.id = "toc-h" + i;  // 给标题补 id，供锚点跳转
-            });
-            var ul = document.createElement("ul");
-            headings.forEach(function (h, i) {
-                var li = document.createElement("li");
-                li.className = "toc-" + h.tagName.toLowerCase();  // toc-h1 / toc-h2 / toc-h3（缩进）
-                var a = document.createElement("a");
-                a.textContent = h.textContent;
-                a.href = "#" + h.id;
-                a.addEventListener("click", function (e) {
-                    e.preventDefault();
-                    h.scrollIntoView({ behavior: "smooth", block: "start" });  // 平滑滚动到标题
-                });
-                li.appendChild(a);
-                ul.appendChild(li);
-            });
-            document.getElementById("toc-list").appendChild(ul);
-            toggle.hidden = false;  // 有标题才显示"目录"按钮
-            toggle.addEventListener("click", function () {
-                panel.hidden = !panel.hidden;  // 点击切换面板显隐
-            });
-        })();
-
-        // ===== "已保存"提示：保存编辑后跳转回来时（URL 带 saved=1）短暂显示 =====
-        (function () {
-            if (new URLSearchParams(location.search).get("saved") !== "1") return;
-            var t = document.createElement("div");
-            t.className = "save-toast";
-            t.textContent = "已保存";
-            document.body.appendChild(t);
-            setTimeout(function () { t.classList.add("hide"); }, 1800);  // 1.8s 后淡出
-            setTimeout(function () { t.remove(); }, 2400);               // 2.4s 后移除
-        })();
-
-        // ===== 音视频连播：整目录同类媒体自动连播（播放结束切下一首/集）=====
-        (function () {
-            var playlist = window.VIEW_CONFIG.playlist;   // 后端传入的目录媒体列表（含签名令牌 URL）
-            var player = document.getElementById("media-player");
-            if (!player || !playlist.length) return;  // 非音视频页面 / 目录没有同类媒体 → 跳过
-            var pIndex = window.VIEW_CONFIG.playlistIndex;        // 当前文件在列表中的下标
-
-            // 渲染播放列表（视频页为右侧"接下来播放"，带缩略图；音频页为原生列表）
-            var list = document.getElementById("pl-list");
-            var count = document.getElementById("pl-count");  // 列表标题里的"共 N 项"
-            if (count) count.textContent = "共 " + playlist.length + " 项";
-            // 面板标题里追加总数（音频/视频共用同一个 <span>，去掉旧括号内容避免重复）
-            var headTitle = document.querySelector("#pl-head span");
-            if (headTitle) headTitle.textContent = headTitle.textContent.split("（")[0] + "（" + playlist.length + " 项）";
-            playlist.forEach(function (item, i) {
-                var btn = document.createElement("button");
-                btn.type = "button";
-                btn.className = "pl-item" + (i === pIndex ? " active" : "");
-                // 视频：左侧缩略图（media.thumb 抽帧）；音频无封面
-                if (item.thumb) {
-                    var thumb = document.createElement("span");
-                    thumb.className = "pl-thumb";
-                    var img = document.createElement("img");
-                    img.src = item.thumb;
-                    img.alt = "";
-                    img.loading = "lazy";
-                    thumb.appendChild(img);
-                    btn.appendChild(thumb);
-                } else {
-                    var idx = document.createElement("span");
-                    idx.className = "pl-idx"; idx.textContent = (i + 1) + ".";
-                    btn.appendChild(idx);
-                }
-                var name = document.createElement("span");
-                name.className = "pl-name"; name.textContent = item.name;
-                btn.appendChild(name);
-                btn.addEventListener("click", function () { playAt(i); });
-                list.appendChild(btn);
-            });
-
-            // 高亮当前项，并滚动到可见位置（列表长时保证当前项不跑出视口）
-            function updateActive() {
-                list.querySelectorAll(".pl-item").forEach(function (el, i) {
-                    el.classList.toggle("active", i === pIndex);
-                });
-                var cur = list.querySelector(".pl-item.active");
-                if (cur) cur.scrollIntoView({ block: "nearest" });
+        if (count) count.textContent = "共 " + playlist.length + " 项";
+        var headTitle = document.querySelector("#pl-head span");
+        if (headTitle) headTitle.textContent = headTitle.textContent.split("（")[0] + "（" + playlist.length + " 项）";
+        playlist.forEach(function (item, index) {
+            var button = document.createElement("button");
+            button.type = "button";
+            button.className = "pl-item" + (index === pIndex ? " active" : "");
+            if (item.thumb) {
+                var thumb = document.createElement("span");
+                thumb.className = "pl-thumb";
+                var image = document.createElement("img");
+                image.src = item.thumb; image.alt = ""; image.loading = "lazy";
+                thumb.appendChild(image); button.appendChild(thumb);
+            } else {
+                var number = document.createElement("span");
+                number.className = "pl-idx"; number.textContent = (index + 1) + ".";
+                button.appendChild(number);
             }
+            var name = document.createElement("span");
+            name.className = "pl-name"; name.textContent = item.name;
+            button.appendChild(name);
+            button.addEventListener("click", function () { playAt(index); });
+            list.appendChild(button);
+        });
 
-            // 切到第 i 项：更新 src 并播放；越界时循环（最后一首结束回到第一首）
-            function playAt(i) {
-                if (i < 0) i = playlist.length - 1;
-                if (i >= playlist.length) i = 0;
-                pIndex = i;
-                player.src = playlist[i].url;   // 每项 URL 已带独立签名令牌
-                player.play().catch(function () {});  // 自动播放被浏览器拦截时静默（用户可手动点播放）
-                document.title = playlist[i].name;    // 标题跟随当前播放项
-                var titleEl = document.getElementById("vp-title");  // 视频页标题（B 站式）
-                if (titleEl) titleEl.textContent = playlist[i].name;
-                var meta = document.querySelector(".meta span:last-child");  // 音频页兜底
-                if (meta) meta.textContent = playlist[i].name;
-                updateActive();
-            }
-
-            // 播放结束（ended 事件）自动切下一项 → 实现"整目录连播"
-            player.addEventListener("ended", function () { playAt(pIndex + 1); });
-
-            // 工具条按钮：上一首/下一首、展开/收起播放列表（音频页）
-            window.plGo = function (d) { playAt(pIndex + d); };
-            window.togglePlaylist = function () {
-                var panel = document.getElementById("pl-panel");
-                var head = document.getElementById("pl-head");
-                if (!panel) return;
-                panel.hidden = !panel.hidden;
-                if (head) head.classList.toggle("open", !panel.hidden);
-            };
-        })();
+        function updateActive() {
+            list.querySelectorAll(".pl-item").forEach(function (element, index) { element.classList.toggle("active", index === pIndex); });
+            var current = list.querySelector(".pl-item.active");
+            if (current) current.scrollIntoView({block: "nearest"});
+        }
+        function playAt(index) {
+            if (index < 0) index = playlist.length - 1;
+            if (index >= playlist.length) index = 0;
+            if (cfg.mediaType === "audio" && !player.ended) rememberAudio(false, false);
+            pIndex = index;
+            player.src = currentItem().url;
+            player.dataset.personalPath = currentItem().path;
+            var videoBox = document.getElementById("vp-player");
+            if (videoBox) videoBox.setAttribute("data-key", currentItem().path);
+            if (window.Personal) window.Personal.recordHistory(currentItem().path).catch(function () {});
+            player.play().catch(function () {});
+            document.title = currentItem().name;
+            var title = document.getElementById("vp-title");
+            if (title) title.textContent = currentItem().name;
+            var meta = document.querySelector(".meta span:last-child");
+            if (meta) meta.textContent = currentItem().name;
+            updateActive();
+        }
+        player.dataset.personalPath = currentItem().path;
+        player.addEventListener("ended", function () { playAt(pIndex + 1); });
+        window.plGo = function (delta) { playAt(pIndex + delta); };
+        window.togglePlaylist = function () {
+            var panel = document.getElementById("pl-panel");
+            var head = document.getElementById("pl-head");
+            if (!panel) return;
+            panel.hidden = !panel.hidden;
+            if (head) head.classList.toggle("open", !panel.hidden);
+        };
+    }());
+}());

@@ -30,6 +30,7 @@
         </div>
 
         <div class="gl-right">
+            <button class="gl-btn gl-icon gl-favorite" type="button" data-personal-favorite data-path="{{ path }}" aria-pressed="{{ 'true' if personal_state.favorite else 'false' }}" title="{{ '取消收藏' if personal_state.favorite else '收藏' }}">{{ '★' if personal_state.favorite else '☆' }}</button>
             <!-- 右上角页码：当前第几页 / 共多少页 -->
             <span class="gl-pos" id="gl-pos">1 / 1</span>
             <button class="gl-btn gl-icon" type="button" data-act="jump" title="跳转页码" aria-label="跳转页码">
@@ -156,12 +157,21 @@
          必须先注入数据再加载逻辑：gallery.js 是 IIFE，解析即执行，
          若放在数据脚本之后会读到空的 GALLERY_DATA 导致页面空白。 -->
     <script>
+        window.PERSONAL_CONFIG = {
+            favoriteUrl: {{ url_for('personal.favorite')|tojson }},
+            historyUrl: {{ url_for('personal.history')|tojson }},
+            progressUrl: {{ url_for('personal.progress')|tojson }},
+            stateUrl: {{ url_for('personal.state')|tojson }}
+        };
         window.GALLERY_DATA = {
-            imageUrls: {{ image_urls | tojson }},  // 全部原图访问地址（带签名令牌）
-            thumbUrls: {{ thumb_urls | tojson }},  // 全部压缩缩略图地址（缩略图栏用）
-            parent: {{ parent | tojson }}          // 父目录（记忆阅读进度用）
+            imageUrls: {{ image_urls|tojson }},
+            imagePaths: {{ images|map(attribute='path')|list|tojson }},
+            thumbUrls: {{ thumb_urls|tojson }},
+            itemPath: {{ path|tojson }},
+            initialProgress: {{ personal_state.progress|tojson }}
         };
     </script>
-    <script src="{{ url_for('static', filename='js/gallery.js') }}?v=6"></script>
+    <script src="{{ url_for('static', filename='js/personal.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/gallery.js') }}?v=7"></script>
 </body>
 </html>

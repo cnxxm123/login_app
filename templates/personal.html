@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人中心 · 云书库</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/personal.css') }}">
+</head>
+<body>
+    {% include 'nav.html' %}
+    <main class="content personal-page">
+        <header class="personal-head">
+            <div>
+                <h1 class="page-title">个人中心</h1>
+                <p class="page-sub">收藏常用内容，回到最近访问，继续上次的阅读和播放。</p>
+            </div>
+            <div class="page-stats" aria-label="个人中心统计">
+                <span class="stat">收藏 <b id="favorite-count">{{ stats.favorites }}</b></span>
+                <span class="stat">最近 <b>{{ stats.history }}</b></span>
+                <span class="stat">继续 <b>{{ stats.progress }}</b></span>
+            </div>
+        </header>
+
+        <nav class="personal-tabs" aria-label="个人中心分区">
+            <a href="#continue">继续</a>
+            <a href="#favorites">收藏</a>
+            <a href="#history">最近浏览</a>
+        </nav>
+
+        <section class="personal-section" id="continue">
+            <div class="section-heading">
+                <div><h2>继续阅读与播放</h2><p>从上次停下的位置继续</p></div>
+                <span>{{ progress_items|length }} 项</span>
+            </div>
+            {% if progress_items %}
+                <div class="personal-grid">
+                    {% for item in progress_items %}
+                        <article class="personal-card{% if not item.exists %} stale{% endif %}" data-path="{{ item.path }}">
+                            {% if item.url %}<a class="pc-open" href="{{ item.url }}" target="_blank" rel="noopener" aria-label="继续 {{ item.title }}"></a>{% endif %}
+                            <div class="pc-icon" aria-hidden="true">{{ item.icon }}</div>
+                            <div class="pc-body">
+                                <h3>{{ item.title }}</h3>
+                                <p class="pc-path">{{ item.path }}</p>
+                                {% if item.exists %}
+                                    <div class="pc-progress-head"><span>{{ item.progress_label }}</span>{% if item.progress_percent is not none %}<b>{{ item.progress_percent }}%</b>{% endif %}</div>
+                                    {% if item.progress_percent is not none %}<div class="pc-progress"><i style="width: {{ item.progress_percent }}%"></i></div>{% endif %}
+                                {% else %}
+                                    <p class="pc-stale">资源已移动或删除</p>
+                                {% endif %}
+                            </div>
+                            <div class="pc-actions">
+                                <button type="button" data-personal-favorite data-path="{{ item.path }}" aria-pressed="{{ 'true' if item.favorite else 'false' }}" title="{{ '取消收藏' if item.favorite else '收藏' }}">{{ '★' if item.favorite else '☆' }}</button>
+                                <button type="button" data-personal-clear-progress data-path="{{ item.path }}" title="清除进度">清除</button>
+                            </div>
+                        </article>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty personal-empty">打开文档、图集、EPUB 或媒体后，这里会显示续读进度。</div>
+            {% endif %}
+        </section>
+
+        <section class="personal-section" id="favorites">
+            <div class="section-heading">
+                <div><h2>我的收藏</h2><p>常用文件与目录集中访问</p></div>
+                <span>{{ favorites|length }} 项</span>
+            </div>
+            {% if favorites %}
+                <div class="personal-grid" id="favorite-grid">
+                    {% for item in favorites %}
+                        <article class="personal-card{% if not item.exists %} stale{% endif %}" data-path="{{ item.path }}">
+                            {% if item.url %}<a class="pc-open" href="{{ item.url }}" {% if not item.is_dir %}target="_blank" rel="noopener"{% endif %} aria-label="打开 {{ item.title }}"></a>{% endif %}
+                            <div class="pc-icon" aria-hidden="true">{{ item.icon }}</div>
+                            <div class="pc-body">
+                                <h3>{{ item.title }}</h3>
+                                <p class="pc-path">{{ item.path }}</p>
+                                {% if item.exists %}
+                                    <p class="pc-meta">收藏于 {{ item.favorited_at_text }}{% if item.progress_label %} · {{ item.progress_label }}{% endif %}</p>
+                                {% else %}
+                                    <p class="pc-stale">资源已移动或删除</p>
+                                {% endif %}
+                            </div>
+                            <div class="pc-actions">
+                                <button type="button" data-personal-favorite data-remove-on-unfavorite data-path="{{ item.path }}" aria-pressed="true" title="取消收藏">★</button>
+                            </div>
+                        </article>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty personal-empty" id="favorite-empty">还没有收藏，可在目录卡片或查看页点击星标。</div>
+            {% endif %}
+        </section>
+
+        <section class="personal-section" id="history">
+            <div class="section-heading">
+                <div><h2>最近浏览</h2><p>按最近访问时间排列</p></div>
+                <span>{{ history|length }} 项</span>
+            </div>
+            {% if history %}
+                <div class="personal-list">
+                    {% for item in history %}
+                        <article class="history-item{% if not item.exists %} stale{% endif %}" data-path="{{ item.path }}">
+                            <span class="history-icon" aria-hidden="true">{{ item.icon }}</span>
+                            <div class="history-main">
+                                {% if item.url %}<a href="{{ item.url }}" {% if not item.is_dir %}target="_blank" rel="noopener"{% endif %}>{{ item.title }}</a>{% else %}<span>{{ item.title }}</span>{% endif %}
+                                <small>{{ item.path }}</small>
+                            </div>
+                            <div class="history-meta">
+                                <span>{{ item.last_viewed_at_text }}</span><small>访问 {{ item.view_count }} 次{% if not item.exists %} · 已失效{% endif %}</small>
+                            </div>
+                            {% if item.exists %}<button class="history-fav" type="button" data-personal-favorite data-path="{{ item.path }}" aria-pressed="{{ 'true' if item.favorite else 'false' }}" title="{{ '取消收藏' if item.favorite else '收藏' }}">{{ '★' if item.favorite else '☆' }}</button>{% endif %}
+                        </article>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty personal-empty">浏览目录、文档、图集或媒体后，访问记录会出现在这里。</div>
+            {% endif %}
+        </section>
+    </main>
+
+    <script>
+        window.PERSONAL_CONFIG = {
+            favoriteUrl: {{ url_for('personal.favorite')|tojson }},
+            historyUrl: {{ url_for('personal.history')|tojson }},
+            progressUrl: {{ url_for('personal.progress')|tojson }}
+        };
+    </script>
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/personal.js') }}"></script>
+</body>
+</html>

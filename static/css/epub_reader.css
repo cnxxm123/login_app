@@ -334,3 +334,8 @@ body.dark .epub-bottombar {
         gap: 8px;
     }
 }
+
+/* EPUB 收藏状态 */
+.epub-topbar .epub-favorite { min-width: 38px; justify-content: center; color: var(--text-3); font-size: 17px; }
+.epub-topbar .epub-favorite[aria-pressed="true"] { color: #f59e0b; border-color: rgba(245, 158, 11, .45); }
+.epub-chapter.chapter-error { color: var(--text-3); text-align: center; padding: 40px; }

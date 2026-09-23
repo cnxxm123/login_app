@@ -400,4 +400,8 @@
             /* "已保存"提示：上移避开底部导航栏 */
             .save-toast { bottom: calc(76px + env(safe-area-inset-bottom)); }
         }
-    
+
+/* 查看页收藏状态 */
+.favorite-tool { min-width: 42px; justify-content: center; color: var(--text-3); font-size: 17px; }
+.favorite-tool[aria-pressed="true"] { color: #f59e0b; border-color: rgba(245, 158, 11, .45); }
+.favorite-tool:disabled { opacity: .55; cursor: wait; }

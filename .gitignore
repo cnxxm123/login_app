@@ -46,3 +46,6 @@ debug-*.md
 _test_*.html
 _check_*.js
 _extracted.js
+
+# 个人中心运行时数据库（收藏 / 历史 / 阅读进度）
+个人中心/
