@@ -82,6 +82,60 @@
             .finally(function () { button.disabled = false; });
     });
 
+    // 删除收藏卡片（取消收藏并移除卡片）
+    document.addEventListener("click", function (event) {
+        var button = event.target.closest("[data-personal-delete-card]");
+        if (!button) return;
+        event.preventDefault();
+        var path = button.getAttribute("data-path");
+        button.disabled = true;
+        // 收藏区域的删除按钮：取消收藏
+        requestJson(config.favoriteUrl, "PUT", {path: path, favorite: false})
+            .then(function () {
+                var card = button.closest(".personal-card");
+                if (card) card.remove();
+                var count = document.getElementById("favorite-count");
+                if (count) count.textContent = String(Math.max(0, parseInt(count.textContent || "0", 10) - 1));
+                toast("已删除");
+            })
+            .catch(function (error) { toast(error.message, true); })
+            .finally(function () { button.disabled = false; });
+    });
+
+    // 删除继续阅读卡片（清除进度并移除卡片）
+    document.addEventListener("click", function (event) {
+        var button = event.target.closest("[data-personal-delete-progress]");
+        if (!button) return;
+        event.preventDefault();
+        var path = button.getAttribute("data-path");
+        button.disabled = true;
+        requestJson(config.progressUrl, "DELETE", {path: path})
+            .then(function () {
+                var card = button.closest(".personal-card");
+                if (card) card.remove();
+                toast("已删除");
+            })
+            .catch(function (error) { toast(error.message, true); })
+            .finally(function () { button.disabled = false; });
+    });
+
+    // 删除历史记录
+    document.addEventListener("click", function (event) {
+        var button = event.target.closest("[data-personal-delete-history]");
+        if (!button) return;
+        event.preventDefault();
+        var path = button.getAttribute("data-path");
+        button.disabled = true;
+        requestJson(config.historyUrl, "DELETE", {path: path})
+            .then(function () {
+                var item = button.closest(".history-item");
+                if (item) item.remove();
+                toast("已删除");
+            })
+            .catch(function (error) { toast(error.message, true); })
+            .finally(function () { button.disabled = false; });
+    });
+
     window.Personal = {
         setFavorite: function (path, favorite) {
             return requestJson(config.favoriteUrl, "PUT", {path: path, favorite: !!favorite});

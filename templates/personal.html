@@ -52,6 +52,7 @@
                             <div class="pc-actions">
                                 <button type="button" data-personal-favorite data-path="{{ item.path }}" aria-pressed="{{ 'true' if item.favorite else 'false' }}" title="{{ '取消收藏' if item.favorite else '收藏' }}">{{ '★' if item.favorite else '☆' }}</button>
                                 <button type="button" data-personal-clear-progress data-path="{{ item.path }}" title="清除进度">清除</button>
+                                <button type="button" data-personal-delete-progress data-path="{{ item.path }}" title="删除">删除</button>
                             </div>
                         </article>
                     {% endfor %}
@@ -83,6 +84,7 @@
                             </div>
                             <div class="pc-actions">
                                 <button type="button" data-personal-favorite data-remove-on-unfavorite data-path="{{ item.path }}" aria-pressed="true" title="取消收藏">★</button>
+                                <button type="button" data-personal-delete-card data-path="{{ item.path }}" title="删除">删除</button>
                             </div>
                         </article>
                     {% endfor %}
@@ -110,6 +112,7 @@
                                 <span>{{ item.last_viewed_at_text }}</span><small>访问 {{ item.view_count }} 次{% if not item.exists %} · 已失效{% endif %}</small>
                             </div>
                             {% if item.exists %}<button class="history-fav" type="button" data-personal-favorite data-path="{{ item.path }}" aria-pressed="{{ 'true' if item.favorite else 'false' }}" title="{{ '取消收藏' if item.favorite else '收藏' }}">{{ '★' if item.favorite else '☆' }}</button>{% endif %}
+                            <button class="history-delete" type="button" data-personal-delete-history data-path="{{ item.path }}" title="删除">×</button>
                         </article>
                     {% endfor %}
                 </div>

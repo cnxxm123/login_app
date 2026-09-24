@@ -19,6 +19,7 @@ from services.dir_utils import dir_all_images, is_cover_image
 from services.path_utils import safe_path
 from services.personal_store import (
     delete_favorite,
+    delete_history,
     delete_progress,
     get_state,
     get_states,
@@ -51,9 +52,7 @@ def _json_error(message: str, status: int = 400):
 
 
 def _json_body():
-    if not request.is_json:
-        return None
-    data = request.get_json(silent=True)
+    data = request.get_json(silent=True, force=True)
     return data if isinstance(data, dict) else None
 
 
@@ -304,9 +303,15 @@ def favorite():
     return jsonify({"ok": True, "path": resource["path"], "favorite": value})
 
 
-@personal_bp.route("/api/personal/history", methods=["POST"])
+@personal_bp.route("/api/personal/history", methods=["POST", "DELETE"])
 def history():
     data = _json_body()
+    if request.method == "DELETE":
+        key = _stored_key(data.get("path")) if data else None
+        if not key:
+            return _json_error("路径无效", 400)
+        delete_history(key)
+        return jsonify({"ok": True, "path": key})
     resource = _resource(data.get("path") if data else None)
     if not resource:
         return _json_error("资源不存在或路径无效", 404)

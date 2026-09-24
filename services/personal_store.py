@@ -191,6 +191,12 @@ def delete_progress(path: str) -> None:
         conn.execute("DELETE FROM progress WHERE path = ?", (path,))
 
 
+def delete_history(path: str) -> None:
+    """删除单条浏览历史记录。"""
+    with _connection() as conn, conn:
+        conn.execute("DELETE FROM history WHERE path = ?", (path,))
+
+
 def get_state(path: str) -> dict:
     """返回单个资源的收藏和进度状态。"""
     with _connection() as conn:
