@@ -28,9 +28,8 @@ from config import (
     VIDEO_EXTENSIONS,
 )  # 扩展名配置表
 from services.dir_utils import dir_all_images, dir_images, dir_media, is_cover_image  # 图集判定 / 目录图片列表 / 目录音视频列表 / 封面图判定
-from services.office_utils import render_office_to_html  # Office 文档解析（docx/xlsx/xls）
+from services.media_utils import get_image_size
 from services.path_utils import safe_path                # 路径安全校验
-from blueprints.personal import get_resource_state, record_resource_history
 from services.text_utils import read_text_file, render_content_to_html  # 读文本 + Markdown 渲染
 
 # 创建"查看"蓝图；模板里 url_for('view.xxx') 的 view 即此名字
@@ -59,7 +58,8 @@ def view_file(subpath: str):
     images = []         # 图片预览：所在目录的全部图片（长条漫画式纵向排列）
     image_urls = []     # 图片预览地址列表（单页阅读器翻页 / 记忆位置用）
     playlist = []       # 音视频连播列表：[{"name","path","url"}, ...]（整目录同类媒体）
-    playlist_index = 0  # 当前文件在连播列表中的下标
+    playlist_index = 0  # 当前文件在连播列表里的下标
+    poster_url = None   # 视频播放器首屏封面（优先使用当前视频缩略图）
 
     # 可预览文本 = 常规文本扩展名 或 代码扩展名（如 .c/.java 等）
     if ext in TEXT_EXTENSIONS or ext in CODE_LANGUAGES:
@@ -94,6 +94,7 @@ def view_file(subpath: str):
                 "name": item["name"],
                 "path": item["path"],
                 "url": url_for("media.media", subpath=item["path"]),
+                "download": url_for("download.download_dir", subpath=item["path"]),
                 # B 站式右侧"接下来播放"列表缩略图（仅视频有；m3u8 分片流无法抽帧，无封面）
                 "thumb": (
                     url_for("media.thumb", subpath=item["path"])
@@ -111,14 +112,11 @@ def view_file(subpath: str):
             if item["path"] == subpath:
                 playlist_index = i
                 break
+        if playlist:
+            poster_url = playlist[playlist_index].get("thumb")
 
     # 返回"上一级"相对路径，供模板里的返回按钮使用。
     parent = os.path.dirname(subpath).replace("\\", "/")
-    # 普通图片按所在目录保存序列进度；根目录图片退回使用自身路径。
-    progress_path = parent if media_type == "image" and parent else subpath
-    # 只在成功打开查看页面时记录历史，媒体 Range/缩略图请求不会污染记录。
-    record_resource_history(subpath)
-    personal_state = get_resource_state(progress_path)
     return render_template(
         "view.html",
         filename=os.path.basename(target),  # 文件名（不含路径）
@@ -136,50 +134,49 @@ def view_file(subpath: str):
         image_paths=[item["path"] for item in images],  # 服务端进度保存稳定相对路径
         playlist=playlist,                  # 音视频连播列表
         playlist_index=playlist_index,      # 当前文件在连播列表中的下标
-        personal_state=personal_state,      # 收藏及服务端阅读/播放进度
-        progress_path=progress_path,        # 图片序列可与入口图片使用不同稳定 key
+        poster_url=poster_url,              # 视频首屏封面缩略图地址
     )
 
 
 @view_bp.route("/gallery/<path:subpath>")
 def view_gallery(subpath: str):
-    """图集阅读页：点击"封面文件夹"（全是图片的目录）时进入的全屏漫画阅读器。
+    """图集阅读页：点击"封面文件夹"（全是图片的目录）时进入全屏漫画阅读器。
 
-    - 目标必须是 TEXT_DIR 内的**目录**，且"无子目录、直接文件全是图片"
-      （判定逻辑收敛在 services.dir_utils.dir_all_images）；
-    - 不符合图集条件时回退到普通目录浏览页（如内容后来被改动）；
-    - 页面直接加载第一张图并全屏展示，左右箭头翻页、右上角显示页码，
-      单页/长条两种阅读模式可切换。
+    - 目标必须是 TEXT_DIR 内的目录，且无子目录、直接文件全部为图片；
+    - 不符合图集条件时回退到普通目录浏览页；
+    - PhotoSwipe 负责单页模式，项目脚本负责长条模式、缩略图和本地进度。
     """
-    if dir_all_images(subpath) is None:
+    images = dir_all_images(subpath)
+    if images is None:
         # 不是"纯图片图集" → 退回目录浏览，不报 404，保证始终可浏览
         return redirect(url_for("browser.browse", subpath=subpath))
-    images = dir_all_images(subpath) or []
     # 排除"封面"图：它只作文件夹封面，进入图集阅读时不显示
     images = [img for img in images if not is_cover_image(img["name"])]
     if not images:
         # 排除封面后没有可读图片（如文件夹里只有"封面"一张）→ 退回目录浏览
         return redirect(url_for("browser.browse", subpath=subpath))
-    # 每张图直接加载原图（media 蓝图流式返回），供前端单页阅读器翻页
+
     image_urls = [
         url_for("media.media", subpath=img["path"])
         for img in images
     ]
-    # 缩略图栏：加载 /imgthumb 压缩缩略图（JPG）而非原图，图多时不卡
+    # 缩略图栏优先加载压缩 JPEG；SVG/ICO 没有 Pillow 缩略图时直接退回原图。
     thumb_urls = [
-        url_for("media.imgthumb", subpath=img["path"])
+        (url_for("media.media", subpath=img["path"])
+         if os.path.splitext(img["path"])[1].lower() in (".svg", ".ico")
+         else url_for("media.imgthumb", subpath=img["path"]))
         for img in images
     ]
+    # PhotoSwipe 需要每张原图的宽高才能计算首屏布局。
+    image_sizes = [get_image_size(safe_path(img["path"])) for img in images]
     parent = os.path.dirname(subpath).replace("\\", "/")
-    record_resource_history(subpath)
-    personal_state = get_resource_state(subpath)
     return render_template(
         "gallery.html",
-        gallery_name=os.path.basename(subpath),  # 图集名（如漫画书名），用于标题
+        gallery_name=os.path.basename(subpath),
         path=subpath,
         parent=parent,
-        images=images,       # [{name, path}, ...]（长条模式逐张渲染用）
-        image_urls=image_urls,  # 全部图片的访问地址（单页模式翻页用）
-        thumb_urls=thumb_urls,  # 全部图片的压缩缩略图地址（缩略图导航栏用）
-        personal_state=personal_state,
+        images=images,
+        image_urls=image_urls,
+        thumb_urls=thumb_urls,
+        image_sizes=image_sizes,
     )

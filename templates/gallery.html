@@ -6,12 +6,11 @@
     <title>{{ gallery_name }} - 图集阅读</title>
     <!-- 图集阅读页：全屏沉浸式漫画阅读器（参照主流漫画阅读器的交互设计）。
          设计上刻意不引入 common.css / nav.html：它是"全屏播放器"式的独立页面
-         （类似视频播放页），始终深色背景、无侧边栏、无主题切换。
+         （类似视频播放页），始终深色背景、无侧栏、无主题切换。
          结构/样式/逻辑三分离：模板只留骨架，样式在 static/css/gallery.css，
-         逻辑在 static/js/gallery.js（require.md：代码按文件组织，方便维护）。 -->
-    <!-- ?v=3：静态文件版本号，改动样式/脚本后递增即可强制浏览器拉新，避免吃到旧缓存
-         （服务端 debug=False，Flask 默认对静态资源缓存 12 小时） -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/gallery.css') }}?v=4">
+         PhotoSwipe 通过官方 CDN 加载，业务适配逻辑在 static/js/gallery_photoswipe.js。 -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/gallery.css') }}?v=5">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@5.4.4/dist/photoswipe.css">
 </head>
 <body>
     <!-- 顶部控制条：返回 + 图集名 + 阅读模式切换 + 右侧页码/跳页/设置/全屏 -->
@@ -23,25 +22,14 @@
         </a>
         <span class="gl-title" title="{{ gallery_name }}">{{ gallery_name }}</span>
 
-        <!-- 阅读模式切换：单页 / 长条（事件委托，见 gallery.js） -->
+        <!-- 阅读模式切换：单页由 PhotoSwipe 负责，长条由项目适配层负责 -->
         <div class="gl-seg" role="group" aria-label="阅读模式">
             <button type="button" class="gl-seg-btn" data-set="mode" data-val="single" title="单页模式：一页一图，箭头/点击翻页">单页</button>
             <button type="button" class="gl-seg-btn" data-set="mode" data-val="strip" title="长条模式：全部图片纵向排开，滚动阅读">长条</button>
         </div>
 
         <div class="gl-right">
-            <button class="gl-btn gl-icon gl-favorite" type="button" data-personal-favorite data-path="{{ path }}" aria-pressed="{{ 'true' if personal_state.favorite else 'false' }}" title="{{ '取消收藏' if personal_state.favorite else '收藏' }}">{{ '★' if personal_state.favorite else '☆' }}</button>
-            <!-- 右上角页码：当前第几页 / 共多少页 -->
             <span class="gl-pos" id="gl-pos">1 / 1</span>
-            <button class="gl-btn gl-icon" type="button" data-act="jump" title="跳转页码" aria-label="跳转页码">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/><circle cx="18.5" cy="17.5" r="3"/></svg>
-            </button>
-            <button class="gl-btn gl-icon" type="button" data-act="settings" title="阅读设置" aria-label="阅读设置">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-            </button>
-            <button class="gl-btn gl-icon" type="button" data-act="fullscreen" title="全屏（F）" aria-label="全屏">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-            </button>
         </div>
     </header>
 
@@ -58,6 +46,19 @@
         <button class="gl-nav gl-prev" id="nav-prev" type="button" data-act="prev" title="上一页（←）" aria-label="上一页">‹</button>
         <button class="gl-nav gl-next" id="nav-next" type="button" data-act="next" title="下一页（→）" aria-label="下一页">›</button>
     </main>
+
+    <!-- PhotoSwipe 数据源：保留可直接打开原图的链接，同时为开源画廊提供准确尺寸。 -->
+    <div class="pswp-gallery" id="pswp-gallery" hidden>
+        {% for img in images %}
+            <a href="{{ image_urls[loop.index0] }}"
+               data-pswp-width="{{ image_sizes[loop.index0][0] }}"
+               data-pswp-height="{{ image_sizes[loop.index0][1] }}"
+               data-index="{{ loop.index0 }}"
+               target="_blank" rel="noopener">
+                <img src="{{ thumb_urls[loop.index0] }}" alt="{{ img.name }}" loading="lazy" decoding="async">
+            </a>
+        {% endfor %}
+    </div>
 
     <!-- 长条模式：全部图片纵向排开（默认隐藏，切换后显示并滚动到当前位置） -->
     <div class="gl-strip" id="gl-strip" hidden>
@@ -94,30 +95,9 @@
                 </div>
             </div>
             <div class="gl-set-row">
-                <span class="gl-set-label">适配方式</span>
-                <div class="gl-seg" role="group">
-                    <button type="button" class="gl-seg-btn" data-set="fit" data-val="screen">屏幕</button>
-                    <button type="button" class="gl-seg-btn" data-set="fit" data-val="width">宽度</button>
-                    <button type="button" class="gl-seg-btn" data-set="fit" data-val="height">高度</button>
-                    <button type="button" class="gl-seg-btn" data-set="fit" data-val="original">原图</button>
-                </div>
-            </div>
-            <div class="gl-set-row">
-                <span class="gl-set-label">阅读方向</span>
-                <div class="gl-seg" role="group">
-                    <button type="button" class="gl-seg-btn" data-set="dir" data-val="ltr">左→右</button>
-                    <button type="button" class="gl-seg-btn" data-set="dir" data-val="rtl">右→左</button>
-                </div>
-            </div>
-            <div class="gl-set-row">
-                <span class="gl-set-label">点击翻页</span>
-                <button type="button" class="gl-toggle" id="set-click" data-act="toggle-click">开</button>
-            </div>
-            <div class="gl-set-row">
                 <span class="gl-set-label">自动翻页</span>
                 <div class="gl-auto">
                     <button type="button" class="gl-toggle" id="set-auto" data-act="toggle-auto">关</button>
-                    <!-- 间隔步进：− / + 调整秒数，仅自动翻页开启时可用 -->
                     <div class="gl-auto-step">
                         <button type="button" class="gl-auto-btn" data-act="auto-slower" title="减慢（+1 秒）" aria-label="减慢">−</button>
                         <span class="gl-auto-val" id="auto-interval">4s</span>
@@ -153,25 +133,19 @@
     <!-- 加载提示 -->
     <div class="gl-loading" id="gl-loading" hidden>加载中…</div>
 
-    <!-- 阅读器逻辑全部在 gallery.js（外部文件，便于复用与维护）。
-         必须先注入数据再加载逻辑：gallery.js 是 IIFE，解析即执行，
-         若放在数据脚本之后会读到空的 GALLERY_DATA 导致页面空白。 -->
+    <!-- PhotoSwipe 负责单页缩放/翻页/全屏，适配层负责长条模式、进度和项目偏好。 -->
     <script>
-        window.PERSONAL_CONFIG = {
-            favoriteUrl: {{ url_for('personal.favorite')|tojson }},
-            historyUrl: {{ url_for('personal.history')|tojson }},
-            progressUrl: {{ url_for('personal.progress')|tojson }},
-            stateUrl: {{ url_for('personal.state')|tojson }}
-        };
         window.GALLERY_DATA = {
             imageUrls: {{ image_urls|tojson }},
             imagePaths: {{ images|map(attribute='path')|list|tojson }},
             thumbUrls: {{ thumb_urls|tojson }},
+            imageSizes: {{ image_sizes|tojson }},
             itemPath: {{ path|tojson }},
-            initialProgress: {{ personal_state.progress|tojson }}
+            initialProgress: null
         };
     </script>
-    <script src="{{ url_for('static', filename='js/personal.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/gallery.js') }}?v=7"></script>
+    <script src="https://cdn.jsdelivr.net/npm/photoswipe@5.4.4/dist/umd/photoswipe.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/photoswipe@5.4.4/dist/umd/photoswipe-lightbox.umd.min.js"></script>
+    <script src="{{ url_for('static', filename='js/gallery_photoswipe.js') }}?v=1"></script>
 </body>
 </html>

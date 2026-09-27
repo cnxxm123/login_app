@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ filename }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/player.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/video.js@8.24.0/dist/video-js.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/view.css') }}">
 </head>
 <body{% if media_type == "image" %} class="no-sidebar"{% elif media_type == "video" %} class="no-sidebar video-page"{% endif %}>
@@ -14,7 +14,6 @@
         <div class="toolbar">
         <a class="back" href="{{ url_for('browser.browse', subpath=parent) if parent else url_for('browser.main') }}">← 返回目录</a>
         <div class="toolbar-right">
-            <button class="tool-btn favorite-tool" type="button" data-personal-favorite data-path="{{ path }}" aria-pressed="{{ 'true' if personal_state.favorite else 'false' }}" title="{{ '取消收藏' if personal_state.favorite else '收藏' }}">{{ '★' if personal_state.favorite else '☆' }}</button>
             <!-- 编辑按钮：仅文本/代码文件显示，进入在线编辑器（manage 蓝图 edit 路由） -->
             {% if is_text %}
                 <button class="tool-btn" type="button" onclick="location.href='{{ url_for('manage.edit', subpath=path) }}'">✏️ 编辑</button>
@@ -128,27 +127,30 @@
                  <video> 只负责解码播放（媒体流来自 /media 蓝图，服务端支持 Range 可拖进度条） -->
             <div class="vp-page" id="vp-page">
                 <div class="vp-main">
-                    <div class="vp" id="vp-player" data-key="{{ path }}">
-                        <video id="media-player" class="vp-video" playsinline preload="metadata" src="{{ media_url }}"></video>
-                        <!-- B站式顶部悬浮栏：返回键 + 标题。
-                             仅移动端显示（CSS 控制），随控制栏一起自动隐藏/显示（player.js 同步 .hidden）。 -->
-                        <div class="vp-top" id="vp-top">
-                            <a class="vp-top-back" href="{{ url_for('browser.browse', subpath=parent) if parent else url_for('browser.main') }}" title="返回目录" aria-label="返回目录">
-                                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
-                            </a>
-                            <span class="vp-top-title">{{ filename }}</span>
-                        </div>
+                    <div class="vp" id="vp-player" data-key="{{ path }}" data-download-url="{{ url_for('download.download_dir', subpath=path) }}">
+                        <video id="media-player" class="video-js vjs-big-play-centered vp-video" controls playsinline preload="metadata" aria-label="{{ filename }}"{% if poster_url %} poster="{{ poster_url }}"{% endif %} src="{{ media_url }}">
+                            <p class="vjs-no-js">请启用 JavaScript 以播放此视频。</p>
+                        </video>
                     </div>
                     <div class="vp-info">
-                        <h1 class="vp-title" id="vp-title">{{ filename }}</h1>
-                        <span class="vp-badge">视频</span>
+                        <div class="vp-heading">
+                            <h1 class="vp-title" id="vp-title">{{ filename }}</h1>
+                            <span class="vp-badge">视频</span>
+                        </div>
+                        <div class="vp-actions">
+                            <a class="vp-action" href="{{ url_for('download.download_dir', subpath=path) }}" download>⬇ 下载视频</a>
+                            <button class="vp-action" id="vp-playlist-toggle" type="button" aria-expanded="false">☷ 播放列表</button>
+                        </div>
                     </div>
                 </div>
                 <!-- 右侧"接下来播放"：整目录视频列表（播放结束自动切下一集） -->
                 <aside class="vp-side">
                     <div class="vp-side-title">
                         <span>接下来播放</span>
-                        <span class="vp-side-count" id="pl-count"></span>
+                        <span class="vp-side-meta">
+                            <span class="vp-side-count" id="pl-count"></span>
+                            <button class="vp-side-close" id="vp-playlist-close" type="button" aria-label="关闭播放列表" title="关闭播放列表">×</button>
+                        </span>
                     </div>
                     <div class="pl-list" id="pl-list"></div>
                 </aside>
@@ -160,20 +162,14 @@
     </div>
     <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
     <script>
-        // 页面配置必须在 personal/player/view 脚本前注入，供初始化和服务端进度恢复使用。
-        window.PERSONAL_CONFIG = {
-            favoriteUrl: {{ url_for('personal.favorite')|tojson }},
-            historyUrl: {{ url_for('personal.history')|tojson }},
-            progressUrl: {{ url_for('personal.progress')|tojson }},
-            stateUrl: {{ url_for('personal.state')|tojson }}
-        };
+        // 页面配置：供 player/view 脚本使用
         window.VIEW_CONFIG = {
             path: {{ path|tojson }},
-            progressPath: {{ progress_path|tojson }},
+            progressPath: {{ path|tojson }},
             mediaType: {{ media_type|tojson }},
             trackScroll: {{ (is_text or media_type == 'office')|tojson }},
             isText: {{ is_text|tojson }},
-            initialProgress: {{ personal_state.progress|tojson }},
+            initialProgress: null,
             imageUrls: {{ image_urls|tojson }},
             imagePaths: {{ image_paths|tojson }},
             currentUrl: {{ url_for('media.media', subpath=path)|tojson }},
@@ -182,8 +178,9 @@
             playlistIndex: {{ playlist_index }}
         };
     </script>
-    <script src="{{ url_for('static', filename='js/personal.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/player.js') }}"></script>
+    <script>window.HELP_IMPROVE_VIDEOJS = false;</script>
+    <script src="https://cdn.jsdelivr.net/npm/video.js@8.24.0/dist/video.min.js"></script>
+    <script src="{{ url_for('static', filename='js/videojs_player.js') }}"></script>
     <script src="{{ url_for('static', filename='js/view.js') }}"></script>
     <script src="{{ url_for('static', filename='js/confirm-download.js') }}"></script>
 </body>

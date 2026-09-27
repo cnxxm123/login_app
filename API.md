@@ -109,52 +109,29 @@
 | 图片 | `IMAGE_EXTENSIONS` | 同目录全部图片长条预览 + 单页阅读器 |
 | PDF | `PDF_EXTENSIONS` | 在新标签页用浏览器原生查看器打开 `/media/<path>` |
 | Office | `OFFICE_EXTENSIONS`（docx/xlsx/xls） | 服务端解析成 HTML 在页面内直接预览（无需下载） |
-| 视频 | `VIDEO_EXTENSIONS` | 页面内嵌**自定义网页播放器**（`templates/view.html` + `player.js`），加载 `/media/<path>` 二进制流；支持进度记忆/续播提示/结束覆盖层（见 3.1.1） |
+| 视频 | `VIDEO_EXTENSIONS` | 页面内嵌 **Video.js 开源播放器**（`templates/view.html` + `static/js/videojs_player.js`），加载 `/media/<path>` 二进制流；支持响应式控件、进度记忆、倍速、全屏和播放列表 |
 | 音频 | `AUDIO_EXTENSIONS` | 页面内嵌浏览器原生 `<audio>` 播放器，加载 `/media/<path>` 二进制流 |
 
 - 视频/音频会同时构建"整目录同类媒体"连播列表（`dir_media`），播放结束自动切下一首/集。
 - 渲染 `templates/view.html`，含：`content_html`、`office_html`、`encoding`、`media_type`、`media_url`、
   `images`、`image_urls`、`playlist`（连播列表）、`playlist_index`（当前文件下标）、`parent` 等。
 
-### 3.1.1 视频播放器（自定义控制栏 + 进度记忆）
+### 3.1.1 视频播放器（Video.js 开源控件 + 进度记忆）
 
-- 播放器容器带 `data-key`（= 当前文件相对路径），播放进度按该 key 存入 localStorage（`vp_pos_<key>`，每 5 秒节流保存，播放完成自动清除）。
-- **续播提示**：重新进入未看完的视频时，弹出"上次看到 分:秒 / 总时长"询问"继续播放 / 从头播放"（仅页面首次加载弹一次，切集不弹）。
-- **结束覆盖层**：播放完成显示"↻ 重播"与"下一集"（播放列表 ≥ 2 项时出现），接续连播。
-- 控制栏含：播放/暂停、进度条（可拖动 + 缓冲分区）、时间显示、音量滑块 + 静音、倍速菜单（0.5~2 倍）、画中画、全屏/网页全屏、播放列表开关、上一集/下一集；鼠标闲置自动隐藏控制栏，快捷键（空格/←→/↑↓/M/F 等）齐全。
+- 播放器使用 Video.js 8.24.0（官方 npm 包通过 jsDelivr 加载），模板提供 HTML5 `<video>` 和 poster，Video.js 负责响应式控制栏、播放/暂停、进度拖动、音量、倍速、画中画、全屏和键盘操作。
+- 播放进度按当前文件相对路径存入 localStorage（`vp_pos_<key>`，每 5 秒节流保存，播放完成自动清除）；同目录媒体由查看页播放列表负责切换。
+- 移动端播放列表使用页面底部抽屉，下载使用播放器下方的单文件下载链接。
 
 ### 3.2 GET /gallery/<path:subpath>（图集 / 漫画阅读）
 
 - 目标必须是 `TEXT_DIR` 内的**目录**，且满足"图集"条件：**无子目录、直接文件全是图片**
   （判定收敛在 `services.dir_utils.dir_all_images`，与封面区卡片共用同一逻辑）。
-- 不符合图集条件（如内容后来被改动）→ `302` 回退到 `/browse/<path>` 普通目录浏览，不报错。
-- 渲染 `templates/gallery.html`：**全屏沉浸式漫画阅读器**（深色无侧栏独立页面，不引入 common.css/nav.html，类似视频播放页），进入即从第一张图（或记忆的页码）开始播放。
-- 页面能力（参照主流漫画阅读器交互；结构/样式/逻辑三分离：模板 `gallery.html` + `static/css/gallery.css` + `static/js/gallery.js`）：
-
-| 功能 | 说明 |
-| --- | --- |
-| 两种阅读模式 | 顶部分段控制器切换：**单页**（一页一图）/ **长条**（Webtoon 式全部图片纵向排开滚动） |
-| 四种适配方式 | 设置弹层切换：适合屏幕 / 适合宽度 / 适合高度 / 原始大小（缩放以光标/手指为中心） |
-| 缩放与平移 | 滚轮缩放、双指捏合、双击放大/还原、放大后拖拽平移（鼠标/触摸统一 pointer 事件） |
-| 左右箭头翻页 | 屏幕两侧悬浮箭头，上一页 / 下一页（到头/到尾自动禁用）；**手机端不显示箭头**，改为滑动屏幕翻页（左右横滑，RTL 反转）与实体音量键翻页 |
-| 右上角页码 | `当前页 / 总页数` 胶囊提示，翻页实时刷新 |
-| 顶部阅读进度条 | 控制条上方细进度条显示当前阅读位置，点击任意位置跳页 |
-| 自动翻页 | 设置弹层内可开关，间隔 1~30 秒可调（± 1 秒步进），到末页自动停止；长条模式不适用 |
-| 翻页过渡动画 | 翻页时当前图淡入过渡，切换自然不生硬 |
-| 缩略图导航栏 | 底部横向滚动小图列表（走 `/imgthumb` 压缩缩略图，图多不卡），点击任意页跳转，当前页高亮自动滚到可见，`T` 键或按钮开关 |
-| 跳转页码 | 弹层输入页码直达（`数据弹层`按钮或 `J` 键） |
-| 阅读方向 | 左→右 / 右→左：RTL 时箭头位置、点击翻页区域同步反转 |
-| 点击翻页 | 可开关：点舞台左右区域翻页，点中间唤出/收起控制条（闲置自动隐藏，移动/翻页唤出） |
-| 键盘操作 | `←`/`→`/`PageUp`/`PageDown`/`Space` 翻页，`Home`/`End` 首末页，`+`/`-` 缩放、`0` 复位、`F` 全屏、`T` 缩略图栏、`J` 跳页、`Esc` 关弹层；**手机端实体音量键（VolumeUp/Down）翻页** |
-| 进度记忆 | 按"图集目录"记住上次页码（长条模式记滚动比例），再打开同一本续读 |
-| 偏好记忆 | 记住模式 / 适配 / 方向 / 点击翻页 / 缩略图栏开关（localStorage），下次沿用；触屏设备默认收起缩略图栏 |
-
-- 页面上下文：`gallery_name`（图集名）、`path`、`parent`、`images`（`[{name, path}]`，长条渲染用）、
-  `image_urls`（全部图片的访问地址，供 `<img>` 加载）、
-  `thumb_urls`（全部图片的 `/imgthumb` 压缩缩略图地址，供缩略图导航栏使用）。
-- 图集入口：目录浏览页中"封面文件夹"（有封面的文件夹，`cover.gallery=True` 的图集）的卡片点击**直接进入本页**，不再进文件夹列表
-  （由 `blueprints/browser.py` 的 `folder_cover_info` + `dir_all_images` 联合决定）。
-- **名为"封面"的图片不参与阅读**：进入图集时从 `images` / `image_urls` / `thumb_urls` 中排除，不计入总页数、缩略图栏不显示（它只作文件夹封面）。
+- 不符合图集条件（如内容后来被改动）→ `302` 回 `/browse/<path>` 普通目录浏览，不报错。
+- 渲染 `templates/gallery.html`：**全屏沉浸式漫画阅读器**，单页模式使用 PhotoSwipe，长条模式由本地适配脚本处理。
+- 页面能力包括单页/长条、适配屏幕、缩放平移、缩略图、跳页、阅读方向、自动翻页、全屏、键盘快捷键和手机触摸滑动；阅读页码与偏好保存在浏览器 `localStorage`。
+- 页面上下文：`gallery_name`、`path`、`parent`、`images`、`image_urls`、`thumb_urls`、`image_sizes`。
+- 图集入口：目录浏览页中 `cover.gallery=True` 的纯图片文件夹卡片点击后在新标签页打开 `/gallery/<path>`。
+- 名为"封面"的图片只作文件夹封面，进入图集时不计入阅读页数。
 
 ---
 
@@ -504,37 +481,3 @@
 - **新增文件类型预览**：只需改 `config.py` 的扩展名表（如把新扩展名加进 `TEXT_EXTENSIONS`），并在 `blueprints/view.py` 的分派处补充渲染逻辑。
 - **新增接口**：在对应的 `blueprints/*.py` 中加路由；若涉及磁盘路径，一律经 `services/path_utils.safe_path()` 校验。
 - **修改内容根目录**：设置环境变量 `TEXT_DIR`（如 `$env:TEXT_DIR="F:\某目录"`）后重启服务；不设置则用默认 `login_app/text/`。改完保存并**删除 `__pycache__` 目录**再重启才生效。
-
-
----
-
-## 13. 个人中心接口（`blueprints/personal.py`）
-
-个人中心使用 `services/personal_store.py` 的 SQLite 数据库，统一保存收藏、最近浏览和阅读/播放进度。资源主键始终是相对 `TEXT_DIR` 的路径；服务端会重新校验路径并根据当前文件类型生成访问 URL。
-
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| GET | `/personal` | 个人中心页面：继续、收藏、最近浏览 |
-| GET | `/api/personal/state?path=...` | 查询单个资源的收藏和进度 |
-| POST | `/api/personal/state/batch` | 批量查询状态，JSON `{"paths": [...]}`，最多 500 项 |
-| PUT | `/api/personal/favorite` | 幂等设置收藏，JSON `{"path": "...", "favorite": true}` |
-| POST | `/api/personal/history` | 记录同页媒体切换历史，JSON `{"path": "..."}` |
-| PUT | `/api/personal/progress` | 保存阅读或播放进度 |
-| DELETE | `/api/personal/progress` | 清除进度，JSON `{"path": "..."}` |
-
-### 13.1 进度请求
-
-```json
-{
-  "path": "书籍/示例.epub",
-  "kind": "chapter",
-  "position": 3,
-  "total": 20,
-  "locator": "chapter-3",
-  "completed": false
-}
-```
-
-`kind` 支持：`seconds`（音视频秒数）、`chapter`（EPUB 章节）、`page`（图片/图集页码）、`scroll`（文档滚动比例）。`position` 必须为非负有限数值，`total` 如提供则必须大于 0。
-
-所有写接口只接受 `application/json`。当前项目没有用户账户，因此个人中心数据为该服务实例共享的单一档案，并非按访问设备隔离。

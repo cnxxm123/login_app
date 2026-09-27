@@ -247,6 +247,37 @@ def get_cover_thumb(image_path: str) -> bytes | None:
         return f.read()
 
 
+@lru_cache(maxsize=4096)
+def _get_image_size_cached(image_path: str, mtime_ns: int, file_size: int) -> tuple[int, int]:
+    """按文件指纹缓存图片尺寸，避免每次打开图集都重复探测。"""
+    try:
+        from PIL import Image
+        with Image.open(image_path) as im:
+            width, height = int(im.width), int(im.height)
+            # 只交换 EXIF 方向，不调用 exif_transpose，避免为读尺寸解码/复制整张图。
+            try:
+                orientation = im.getexif().get(274, 1)
+                if orientation in (5, 6, 7, 8):
+                    width, height = height, width
+            except Exception:
+                pass
+            return max(1, width), max(1, height)
+    except Exception:
+        # SVG、损坏文件或未安装 Pillow 时仍让画廊可打开。
+        return 1600, 1200
+
+
+def get_image_size(image_path: str) -> tuple[int, int]:
+    """读取图片展示尺寸并按路径、修改时间和大小缓存。"""
+    try:
+        stat = os.stat(image_path)
+    except OSError:
+        return 1600, 1200
+    return _get_image_size_cached(
+        os.path.abspath(image_path), stat.st_mtime_ns, stat.st_size
+    )
+
+
 def _moov_at_head(video_path: str) -> bool:
     """判断 mp4 的 moov 元数据原子是否在文件头部（前 64KB 内）。
 

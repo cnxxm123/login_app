@@ -212,6 +212,7 @@
     (function () {
         var playlist = cfg.playlist || [];
         var player = document.getElementById("media-player");
+        var videoApi = cfg.mediaType === "video" ? (window.videoPlayer || null) : null;
         if (!player || !playlist.length) return;
         var pIndex = cfg.playlistIndex || 0;
         var list = document.getElementById("pl-list");
@@ -221,6 +222,20 @@
         var restoreToken = 0;
 
         function currentItem() { return playlist[pIndex]; }
+        function mediaEnded() { return videoApi ? videoApi.ended() : player.ended; }
+        function mediaSetSource(item) {
+            if (videoApi) {
+                videoApi.src({src: item.url});
+                videoApi.poster(item.thumb || "");
+            } else {
+                player.src = item.url;
+                if (cfg.mediaType === "video") player.poster = item.thumb || "";
+            }
+        }
+        function mediaPlay() {
+            var result = videoApi ? videoApi.play() : player.play();
+            if (result && typeof result.catch === "function") result.catch(function () {});
+        }
         function localKey() { return "media_pos_" + currentItem().path; }
         function rememberAudio(completed, keepalive) {
             if (cfg.mediaType !== "audio" || !isFinite(player.duration) || player.duration <= 0) return;
@@ -281,6 +296,11 @@
                 thumb.className = "pl-thumb";
                 var image = document.createElement("img");
                 image.src = item.thumb; image.alt = ""; image.loading = "lazy";
+                image.addEventListener("error", function () {
+                    // 缩略图抽帧失败时保留列表项，不让破图图标破坏布局。
+                    thumb.classList.add("thumb-fallback");
+                    image.remove();
+                });
                 thumb.appendChild(image); button.appendChild(thumb);
             } else {
                 var number = document.createElement("span");
@@ -295,30 +315,45 @@
         });
 
         function updateActive() {
-            list.querySelectorAll(".pl-item").forEach(function (element, index) { element.classList.toggle("active", index === pIndex); });
+            list.querySelectorAll(".pl-item").forEach(function (element, index) {
+                var active = index === pIndex;
+                element.classList.toggle("active", active);
+                if (active) element.setAttribute("aria-current", "true");
+                else element.removeAttribute("aria-current");
+            });
             var current = list.querySelector(".pl-item.active");
             if (current) current.scrollIntoView({block: "nearest"});
         }
         function playAt(index) {
             if (index < 0) index = playlist.length - 1;
             if (index >= playlist.length) index = 0;
-            if (cfg.mediaType === "audio" && !player.ended) rememberAudio(false, false);
+            if (cfg.mediaType === "audio" && !mediaEnded()) rememberAudio(false, false);
             pIndex = index;
-            player.src = currentItem().url;
-            player.dataset.personalPath = currentItem().path;
+            var item = currentItem();
+            mediaSetSource(item);
+            player.dataset.personalPath = item.path;
             var videoBox = document.getElementById("vp-player");
-            if (videoBox) videoBox.setAttribute("data-key", currentItem().path);
-            if (window.Personal) window.Personal.recordHistory(currentItem().path).catch(function () {});
-            player.play().catch(function () {});
-            document.title = currentItem().name;
+            if (videoBox) {
+                videoBox.setAttribute("data-key", item.path);
+                videoBox.setAttribute("data-download-url", item.download || "");
+            }
+            if (window.Personal && typeof window.Personal.recordHistory === "function") {
+                var historyResult = window.Personal.recordHistory(item.path);
+                if (historyResult && typeof historyResult.catch === "function") historyResult.catch(function () {});
+            }
+            mediaPlay();
+            document.title = item.name;
             var title = document.getElementById("vp-title");
-            if (title) title.textContent = currentItem().name;
+            if (title) title.textContent = item.name;
             var meta = document.querySelector(".meta span:last-child");
-            if (meta) meta.textContent = currentItem().name;
+            if (meta) meta.textContent = item.name;
             updateActive();
         }
         player.dataset.personalPath = currentItem().path;
-        player.addEventListener("ended", function () { playAt(pIndex + 1); });
+        // 视频结束后由自定义结束层让用户决定是否播放下一集；音频仍保持自动连播。
+        if (cfg.mediaType === "audio") {
+            player.addEventListener("ended", function () { playAt(pIndex + 1); });
+        }
         window.plGo = function (delta) { playAt(pIndex + delta); };
         window.togglePlaylist = function () {
             var panel = document.getElementById("pl-panel");
@@ -326,6 +361,39 @@
             if (!panel) return;
             panel.hidden = !panel.hidden;
             if (head) head.classList.toggle("open", !panel.hidden);
+        };
+
+        // 视频页移动端播放列表：使用页面抽屉，不侵入 Video.js 官方控制栏。
+        var videoPage = document.getElementById("vp-page");
+        var videoSide = videoPage && videoPage.querySelector(".vp-side");
+        var videoToggle = document.getElementById("vp-playlist-toggle");
+        var videoClose = document.getElementById("vp-playlist-close");
+        var videoBackdrop = null;
+        function setVideoPlaylistOpen(open) {
+            if (!videoPage || !videoSide) return;
+            videoPage.classList.toggle("playlist-open", !!open);
+            if (videoToggle) videoToggle.setAttribute("aria-expanded", open ? "true" : "false");
+            if (videoBackdrop) videoBackdrop.setAttribute("aria-hidden", open ? "false" : "true");
+        }
+        if (videoPage && videoSide) {
+            videoBackdrop = document.createElement("button");
+            videoBackdrop.type = "button";
+            videoBackdrop.className = "vp-playlist-backdrop";
+            videoBackdrop.setAttribute("aria-label", "关闭播放列表");
+            videoBackdrop.setAttribute("aria-hidden", "true");
+            videoPage.appendChild(videoBackdrop);
+            videoBackdrop.addEventListener("click", function () { setVideoPlaylistOpen(false); });
+            if (videoToggle) videoToggle.addEventListener("click", function () {
+                setVideoPlaylistOpen(!videoPage.classList.contains("playlist-open"));
+            });
+            if (videoClose) videoClose.addEventListener("click", function () { setVideoPlaylistOpen(false); });
+            list.addEventListener("click", function () { setVideoPlaylistOpen(false); });
+            document.addEventListener("keydown", function (event) {
+                if (event.key === "Escape") setVideoPlaylistOpen(false);
+            });
+        }
+        window.toggleVideoPlaylist = function () {
+            setVideoPlaylistOpen(!videoPage.classList.contains("playlist-open"));
         };
     }());
 }());

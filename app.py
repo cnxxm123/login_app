@@ -15,7 +15,6 @@
   - logs.py      日志蓝图：工作日志增删改 / 转待办
   - todos.py     待办蓝图：待办增删改 / 完成切换
   - memos.py     备忘蓝图：备忘增删改 / 图片上传与展示
-  - personal.py  个人中心蓝图：收藏 / 最近浏览 / 阅读进度
   - epub.py      EPUB 蓝图：电子书阅读器 / 元数据 / 章节 / 内嵌资源
 - services 包（纯业务逻辑层，不依赖 Flask，不处理 HTTP）
   - path_utils.py  路径安全校验（防目录穿越）
@@ -26,7 +25,6 @@
   - log_store.py   工作日志 JSON 存储
   - todo_store.py  待办事项 JSON 存储
   - memo_store.py  备忘录 JSON 存储 + 图片文件存取
-  - personal_store.py 个人中心 SQLite 存储
   - epub_utils.py  EPUB 解析（元数据/章节/资源提取）"""
 
 from flask import Flask  # Flask 框架核心：创建应用对象
@@ -38,20 +36,16 @@ from blueprints.logs import logs_bp           # 日志蓝图（/logs、/log/add.
 from blueprints.manage import manage_bp       # 管理蓝图（/upload/...、/mkdir、/edit/...）
 from blueprints.media import media_bp         # 媒体蓝图（/media/...、/thumb/...）
 from blueprints.memos import memos_bp         # 备忘蓝图（/memos、/memo/add...）
-from blueprints.personal import personal_bp   # 个人中心蓝图（/personal、/api/personal/...）
 from blueprints.todos import todos_bp         # 待办蓝图（/todos、/todo/add、/todo/toggle...）
 from blueprints.view import view_bp           # 查看蓝图（/view/...）
 from config import MAX_FORM_PARTS, MAX_UPLOAD_BYTES  # 上传上限
 from db import init_db                        # 数据库初始化函数（幂等）
-from services.personal_store import init_personal_db
 
 
 def create_app() -> Flask:
     """应用工厂：创建应用并注册蓝图。"""
     app = Flask(__name__)  # 创建 Flask 应用实例
-    # 所有启动方式（直接运行、flask run、WSGI、测试）都初始化个人中心表。
-    init_personal_db()
-    # 模板改动后即时生效（开发期无需每次手动重启服务）
+    # 模板改动后即时生效（开发期无需每次手动重启）
     app.config["TEMPLATES_AUTO_RELOAD"] = True
     # 上传上限（重点针对"整个文件夹一次性打包上传"）：
     # - MAX_FORM_PARTS 默认只有 1000，文件夹里文件数一多就报 413 失败，已放宽
@@ -75,7 +69,6 @@ def create_app() -> Flask:
     app.register_blueprint(logs_bp)      # 工作日志
     app.register_blueprint(todos_bp)     # 待办事项
     app.register_blueprint(memos_bp)     # 备忘录
-    app.register_blueprint(personal_bp)  # 收藏、历史、阅读进度
     app.register_blueprint(epub_bp)      # EPUB 阅读器
     return app
 

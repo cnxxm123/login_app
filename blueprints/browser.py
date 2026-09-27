@@ -26,7 +26,6 @@ from config import (
 from services.dir_utils import dir_all_images, find_cover_image, is_cover_image, list_entries, search_content, search_files  # 纯逻辑：列目录 / 递归搜索 / 图集判定 / 封面图
 from services.media_utils import get_video_duration  # 视频时长探测
 from services.path_utils import safe_path  # 相对路径 → 安全绝对路径（越界防护）
-from blueprints.personal import get_resource_states, record_resource_history
 
 # 创建"浏览"蓝图；模板里 url_for('browser.xxx') 的 browser 即此名字
 browser_bp = Blueprint("browser", __name__)
@@ -86,14 +85,6 @@ def browse_context(subpath: str) -> dict | None:
     # （如搜索"封面"仍能直接搜到/打开，不受影响）
     visible_files = [f for f in files if not is_cover_image(f)]
     file_entries = build_file_items(visible_files, rel)
-
-    # 一次查询当前页所有卡片状态，避免每张卡单独请求数据库。
-    all_entries = dir_entries + file_entries
-    states = get_resource_states([item["path"] for item in all_entries])
-    for item in all_entries:
-        state = states.get(item["path"], {"favorite": False, "progress": None})
-        item["favorite"] = state["favorite"]
-        item["progress"] = state["progress"]
 
     # 按"是否有封面"拆分文件夹：有封面的（图片文件夹）排在前区展示，
     # 无封面的（纯文件夹）独立成区，网格各自换行，不再混排
@@ -179,8 +170,8 @@ def safe_file_size(subpath: str) -> int:
 def build_file_items(files, rel):
     """把目录里的文件转成前端展示项（卡片网格用）。
 
-    - 视频（含 m3u8）：指向 view 查看页，由自定义网页播放器播放（static/js/player.js，
-      控制栏/进度条/倍速/连播均在查看页内）；查看页内部生成 /media 流地址。
+    - 视频（含 m3u8）：指向 view 查看页，由 Video.js 开源播放器播放（官方 CDN），
+      查看页内部生成 /media 流地址并提供同目录播放列表。
     - PDF：直接指向 media 蓝图的 /media 二进制流（浏览器原生查看器）。
     - 图片：走 view 查看页（长条漫画式），卡片缩略图用压缩缩略图（/imgthumb），
       仅 SVG/ICO 这类无需缩略的格式退回原图。
@@ -241,8 +232,6 @@ def render_browse(subpath: str):
     if ctx is None:
         # abort(404) 让 Flask 返回"页面不存在"，而不是崩溃
         abort(404)
-    if subpath:
-        record_resource_history(subpath)
     # **ctx 把字典展开成关键字参数：
     # render_template("main.html", path=..., dirs=..., files=..., ...)
     return render_template(

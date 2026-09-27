@@ -33,8 +33,6 @@ text/**/*.png
 text/**/*.gif
 text/**/*.webp
 
-
-
 # 调试会话产物（TRAE-debugger 等调试工具生成，不入库）
 # 调试日志目录（含 *.ndjson 日志与 *.env 会话配置）
 .dbg/

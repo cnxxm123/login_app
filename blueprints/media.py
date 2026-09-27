@@ -28,6 +28,13 @@ from services.path_utils import safe_path         # 路径安全校验
 media_bp = Blueprint("media", __name__)
 
 
+def _cached_jpeg_response(data: bytes) -> Response:
+    """返回带浏览器缓存头的生成型 JPEG，避免重复请求同一缩略图。"""
+    response = Response(data, mimetype="image/jpeg")
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    return response
+
+
 @media_bp.route("/media/<path:subpath>")
 def media(subpath: str):
     """以二进制流返回图片/PDF/视频文件内容（仅限 text 目录内）。
@@ -43,7 +50,11 @@ def media(subpath: str):
     if ext in VIDEO_EXTENSIONS:
         # 先做手机兼容转换（HEVC→H.264 / moov 前置），返回可播放路径
         playable = ensure_playable(target)
-        return send_file(playable, mimetype=VIDEO_MIME.get(ext, "video/mp4"))
+        # ensure_playable 可能返回 H.264 的 .mp4 转码缓存，MIME 必须以实际发送文件为准，
+        # 否则 MOV/MKV 转码后仍携带原始 MIME，部分手机浏览器会拒绝解码。
+        playable_ext = os.path.splitext(playable)[1].lower()
+        mimetype = VIDEO_MIME.get(playable_ext, VIDEO_MIME.get(ext, "video/mp4"))
+        return send_file(playable, mimetype=mimetype, conditional=True)
     if ext in AUDIO_EXTENSIONS:
         # 音频：直接流式返回，浏览器原生 <audio> 播放（同样支持 Range 拖动进度）
         return send_file(target, mimetype=AUDIO_MIME.get(ext, "audio/mpeg"))
@@ -70,7 +81,7 @@ def thumb(subpath: str):
     data = get_video_thumb(target)
     if data is None:
         abort(404)
-    return Response(data, mimetype="image/jpeg")
+    return _cached_jpeg_response(data)
 
 
 @media_bp.route("/imgthumb/<path:subpath>")
@@ -87,7 +98,7 @@ def imgthumb(subpath: str):
     data = get_image_thumb(target)
     if data is None:
         abort(404)
-    return Response(data, mimetype="image/jpeg")
+    return _cached_jpeg_response(data)
 
 
 @media_bp.route("/imgcover/<path:subpath>")
@@ -103,4 +114,4 @@ def imgcover(subpath: str):
     data = get_cover_thumb(target)
     if data is None:
         abort(404)
-    return Response(data, mimetype="image/jpeg")
+    return _cached_jpeg_response(data)

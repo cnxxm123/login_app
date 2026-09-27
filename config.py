@@ -54,15 +54,6 @@ MEMO_FILE = os.path.join(MEMO_DIR, "memos.json")
 # 首次上传图片时自动创建。
 MEMO_IMAGE_DIR = os.path.join(MEMO_DIR, "images")
 
-# 个人中心数据库：存放收藏、最近浏览和阅读/播放进度。
-# 放在 TEXT_DIR 外，避免作为普通文件被浏览、下载或在线编辑；可通过环境变量迁移。
-PERSONAL_DIR = os.path.abspath(
-    os.environ.get("PERSONAL_DIR") or os.path.join(BASE_DIR, "个人中心")
-)
-PERSONAL_DB_PATH = os.path.abspath(
-    os.environ.get("PERSONAL_DB_PATH") or os.path.join(PERSONAL_DIR, "personal.sqlite3")
-)
-
 # 工作类别白名单：待办事项与工作日志共用，新增/编辑时只能从这四类中选择（对应页面上的彩色标签）
 WORK_CATEGORIES = ["上架游戏", "更新游戏", "更新游戏工具", "问题处理", "其他"]
 
