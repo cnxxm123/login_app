@@ -1,5 +1,5 @@
 {
-  "next_id": 142,
+  "next_id": 150,
   "logs": [
     {
       "id": 3,
@@ -839,6 +839,70 @@
       "category": "上架游戏",
       "content": "人渣模组（有问题）",
       "created_at": "2026-09-27 22:01:56",
+      "updated_at": null
+    },
+    {
+      "id": 142,
+      "log_date": "2026-09-28",
+      "category": "上架游戏",
+      "content": "FC26模组 供应商给了新资源还是有问题",
+      "created_at": "2026-09-28 23:17:39",
+      "updated_at": null
+    },
+    {
+      "id": 143,
+      "log_date": "2026-09-28",
+      "category": "上架游戏",
+      "content": "热血无赖模组 配好了，但是模组是英文，不上",
+      "created_at": "2026-09-28 23:18:20",
+      "updated_at": null
+    },
+    {
+      "id": 144,
+      "log_date": "2026-09-28",
+      "category": "上架游戏",
+      "content": "欧陆风云5模组  模组没导入，要自己导入和找出配置文件",
+      "created_at": "2026-09-28 23:18:58",
+      "updated_at": null
+    },
+    {
+      "id": 145,
+      "log_date": "2026-09-28",
+      "category": "上架游戏",
+      "content": "腐烂国度2模组  模组不生效，给了模组文件导入后还是不生效",
+      "created_at": "2026-09-28 23:20:02",
+      "updated_at": null
+    },
+    {
+      "id": 146,
+      "log_date": "2026-09-28",
+      "category": "更新游戏",
+      "content": "崩坏星穹铁道",
+      "created_at": "2026-09-28 23:20:22",
+      "updated_at": null
+    },
+    {
+      "id": 147,
+      "log_date": "2026-09-28",
+      "category": "问题处理",
+      "content": "uid:yjm3m1fmuqs1ooz30a2pwal6\nnsu7mp7tdfmcmz0h\n用户反馈进入游戏后画面太小，无法选择选项，辛苦看看~\n\n\n用户自己改了设置",
+      "created_at": "2026-09-28 23:21:59",
+      "updated_at": null
+    },
+    {
+      "id": 148,
+      "log_date": "2026-09-28",
+      "category": "问题处理",
+      "content": "661a2024a7c432936b05eaaa\nehg3ftuhivmdp4tr\n刺客信条: 英灵殿\t\n用户反馈该游戏无法使用手柄进行游玩，麻烦看看\n\n这个要在游戏的设置把控制方式改为XBOX控制器",
+      "created_at": "2026-09-28 23:22:44",
+      "updated_at": "2026-09-28 23:23:07"
+    },
+    {
+      "id": 149,
+      "log_date": "2026-09-28",
+      "category": "问题处理",
+      "content": "西瓜\n【游玩问题】本局ID:debr6grp5z91uizf问题描述:长按无法转动轮盘已经重开四\n次了这个BUG已经关乎到这个游戏玩不玩得了了之前玩都没事,希望重视\n\n用户自己不会玩",
+      "created_at": "2026-09-28 23:24:11",
       "updated_at": null
     }
   ]
