@@ -150,15 +150,33 @@ BepInEx 通常通过解压安装，但下载来源随版本线不同：
 
 > **和 MelonLoader 的结构差异**：BepInEx 把所有东西都收进 `BepInEx/` 一个文件夹里（配置、日志、插件全在里面），不像 MelonLoader 在游戏根目录摊开好多个文件夹。更整洁，也好备份。
 
-### 2.5 各文件/文件夹的详细作用
+### 2.5 各文件/文件夹的详细作用与注入原理
+
+**BepInEx 是怎么进游戏的（Doorstop 注入器）**：
+
+- **DLL 代理层**：Windows 加载 EXE 时先在 EXE 所在目录找依赖 DLL，找不到才去 `System32`。Unity 游戏通常会加载系统的 `winhttp.dll`（Windows HTTP Services API），BepInEx 把 **UnityDoorstop** 伪装成 `winhttp.dll` 放到 EXE 同级目录，就会被系统优先加载。加载后 Doorstop 会自己去 `System32` 拿真正的 `winhttp.dll` 转发所有调用，游戏无感知。
+- **接管 .NET 运行时启动**：Doorstop 和 MelonLoader 的关键区别在这里——它不直接跑 Mod 代码，而是在 Unity 初始化 Mono/CoreCLR 之前挂钩子。等运行时起来，Doorstop 把控制权交给 `BepInEx/core/` 里的 **BepInEx.Preloader**，让它成为进程里第一段用户级托管代码。这也是为什么 BepInEx 能在很早的阶段做 IL 修改。
+- **配置文件驱动**：Doorstop 的行为由 `doorstop_config.ini` 决定——`enabled` 开关整条注入链，`target_assembly` 指向要加载的 preloader DLL。所以禁用 BepInEx 只要把 `enabled` 改为 `false`，链在 Doorstop 那一层就被自己断开了。
+- **Mono vs IL2CPP 的分叉**：Mono 游戏本身跑在 Mono 运行时上，Mod DLL 可以直接和游戏程序集混在一起加载；IL2CPP 游戏没有 Mono，Doorstop 会先加载 BepInEx 自带的一份 CoreCLR/.NET 运行时（`dotnet/` 目录），再由 Il2CppInterop 生成 C# 桥接层（`BepInEx/interop/`），Mod 才能调用 IL2CPP 里的游戏函数。所以 v6/IL2CPP 构建的完整包不能删 `dotnet/` 或 `interop/`，删了就没有运行时了。
+
+**patchers/ 和 plugins/ 是两条时机不同的加载路径**：
+
+| 目录 | 加载时机 | 干什么 | 适用 |
+|---|---|---|---|
+| `BepInEx/patchers/` | **游戏程序集被 JIT 编译之前**（Preloader 阶段） | 用 Mono.Cecil 直接改写游戏 DLL 的 IL 字节码：改方法体、加字段、替换类型 | 深度补丁 Mod，作者明确要求才用 |
+| `BepInEx/plugins/` | 游戏启动后、Unity 场景加载完毕（Chainloader 阶段） | 用 HarmonyX 挂运行时钩子，或调用游戏 API 改行为 | **绝大多数普通插件都在这里** |
+
+两个目录**不能互换**：patcher 扔进 `plugins/` 会因为时机太晚失效（游戏 IL 已经编译），plugin 扔进 `patchers/` 会因为跑得太早导致游戏 API 还没准备好而崩。
+
+**各文件夹一览**：
 
 | 名称 | 作用 | 注意 |
 |------|------|------|
-| `winhttp.dll` | Doorstop 代理 DLL，负责把 BepInEx 载入目标进程 | 文件名与机制以当前包/游戏要求为准；不要随意替换。 |
-| `doorstop_config.ini` | Doorstop 注入配置 | 一般不改；是否能用 `enabled` 禁用以当前包配置为准。 |
-| `BepInEx/core/` | 框架核心 | 不要删除或混入其他版本文件。 |
-| `BepInEx/plugins/` | 插件目录 | 按插件作者提供的结构合并。 |
-| `BepInEx/patchers/` | 预加载补丁 | 只有作者明确要求时才使用。 |
+| `winhttp.dll` | UnityDoorstop 代理 DLL，负责注入（见上文原理） | 文件名与机制以当前包/游戏要求为准；不要随意替换。 |
+| `doorstop_config.ini` | Doorstop 注入配置 | 通过 `enabled = false` 可临时禁用整个 BepInEx；`target_assembly` 一般不改。 |
+| `BepInEx/core/` | 框架核心（Preloader、Chainloader、Harmony 等） | 不要删除或混入其他版本文件。 |
+| `BepInEx/plugins/` | 普通插件目录，Chainloader 阶段加载 | 按插件作者提供的结构合并，可以有子文件夹。 |
+| `BepInEx/patchers/` | Preloader 阶段的 IL 补丁 | 只有作者明确要求时才使用，不要把普通插件放进来。 |
 | `BepInEx/config/` | BepInEx 与插件配置 | 文件名以首次运行生成的实际文件为准。 |
 | `BepInEx/cache/` | 缓存 | 出现疑难问题时可在备份后按官方/社区建议重建。 |
 | `BepInEx/interop/`、运行时目录 | 预发布或 IL2CPP 构建可能包含 | 不要删减；以当前官方构建和游戏要求为准。 |

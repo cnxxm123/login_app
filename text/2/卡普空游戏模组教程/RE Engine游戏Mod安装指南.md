@@ -71,6 +71,26 @@ RE4 Remake/
 
 ## 三、先安装 REFramework
 
+### 3.1 原理：REFramework 是怎么被加载的
+
+REFramework 用「DLL 代理注入」进入 RE Engine 游戏进程：
+
+- **Windows 的 DLL 搜索顺序**：加载 EXE 时会先在 EXE 所在目录查找依赖 DLL，找不到才去 `System32`。RE Engine 游戏本来就会加载系统的 `dinput8.dll`（DirectInput 8 API 的一部分），REFramework 把自己伪装成 `dinput8.dll` 放到 EXE 同级目录，就会被系统优先加载。
+- **加载后转发调用**：REFramework 进内存后再把真正的系统 `dinput8.dll` 加载起来，并把游戏发来的所有 DirectInput 调用转发过去。游戏完全感知不到，同时框架已经完成了注入。
+- **位置敏感**：由于依赖 Windows 的 DLL 搜索顺序，REFramework 的 `dinput8.dll` **必须放在真实游戏 EXE 同级目录**。放到启动器 EXE 目录、`Binaries` 上级或错误的 `Win64/Win32` 目录都不生效。
+
+框架注入成功后，REFramework 会去 `reframework/` 里加载三类 Mod：
+
+| 目录 | 内容 | 说明 |
+|---|---|---|
+| `reframework/plugins/` | C++ 原生插件（`.dll`） | 框架初始化时加载；可深度改动游戏内部逻辑（例如 FirstNatives 就是这类插件） |
+| `reframework/autorun/` | Lua 脚本（`.lua`） | 游戏进入主循环时按文件名字母序执行，可访问游戏对象、函数与事件 |
+| `reframework/data/` | 插件和 Lua 的持久化数据 | 存配置、状态；一般不手动改 |
+
+所以后续教程里“`dinput8.dll` 放游戏根目录”“Lua 放 `autorun/`”“插件放 `plugins/`”本质上是这一条注入链的三段：DLL 代理 → 框架初始化 → 加载 Mod。
+
+### 3.2 安装步骤
+
 如果 Mod 页面写着 `Requires REFramework`，先安装 REFramework：
 
 1. 从 [REFramework 官方仓库](https://github.com/praydog/REFramework) 获取与目标游戏匹配的版本。
@@ -93,7 +113,7 @@ RE4 Remake/
 
 > REFramework 的安装目录、文件名和兼容版本可能随游戏变化。不要把一个游戏的 `dinput8.dll`、配置或 `reframework` 文件夹复制到另一个游戏。
 
-### `reframework/` 文件夹什么时候出现？
+### 3.3 `reframework/` 文件夹什么时候出现？
 
 安装 REFramework 后，先把正确的 `dinput8.dll` 放到与游戏 EXE 同级的根目录，再启动一次游戏。REFramework 成功加载后，通常会自动创建或使用：
 
@@ -122,8 +142,13 @@ reframework/
 
 如果压缩包只有 `Natives/` 和 `modinfo.ini`，它是资源 Mod，不一定自带 `reframework/`；通常交给 Fluffy 管理，或按作者说明使用 Loose File Loader。
 
+---
 
-### 类型 A：`reframework/` Mod
+## 四、Mod 类型分类
+
+RE Engine Mod 压缩包大致分三类，先按压缩包里的目录结构判断，再决定用 Fluffy 管理器还是手动放。
+
+### 4.1 类型 A：`reframework/` Mod
 
 压缩包里通常有：
 
@@ -134,7 +159,7 @@ reframework/
 └── data/
 ```
 
-安装方法：把整个 `reframework` 文件夹合并到目标游戏根目录：
+这类 Mod 走 REFramework 的插件/Lua 加载链（参考 3.1）。安装方法：把整个 `reframework` 文件夹合并到目标游戏根目录：
 
 ```text
 目标游戏根目录/
@@ -153,7 +178,7 @@ reframework/plugins/reframework/
 
 除非 Mod 作者明确要求额外的子目录。
 
-### 类型 B：`Natives/ + modinfo.ini` 资源 Mod
+### 4.2 类型 B：`Natives/ + modinfo.ini` 资源 Mod
 
 压缩包常见结构：
 
@@ -165,7 +190,12 @@ modinfo.ini
 screenshot.png
 ```
 
-这通常是给 **Fluffy Mod Manager** 使用的资源 Mod。`modinfo.ini` 和截图主要用于管理器识别、显示名称和预览。
+**目录名含义**：
+
+- `Natives/` 是 RE Engine 的“散装资源根目录”，游戏在开启松散加载后会从这里读单个资源文件，覆盖 pak 归档里的同路径资源（详见第六章）。
+- `STM/` 是发行渠道标识（Steam），主机版会对应 `MSG`（微软）、`PS4`/`PS5` 等；PC 玩家几乎都是 `STM`。
+- 里面再按游戏内部资源路径镜像组织，例如 `natives/STM/_Chainsaw/Character/...` 就是 RE4R 内部的角色资源相对路径。
+- `modinfo.ini` 和 `screenshot.png` 是给 **Fluffy Mod Manager** 用的元数据（识别名称、依赖、预览），不参与游戏加载。
 
 常见用途：
 
@@ -176,7 +206,7 @@ screenshot.png
 - 场景资源
 - 声音或其他游戏资源
 
-### 类型 C：其他专用资源包
+### 4.3 类型 C：其他专用资源包
 
 如果压缩包里有：
 
@@ -187,7 +217,7 @@ screenshot.png
 .lua
 ```
 
-但没有清晰的 `reframework/` 或 `Natives/` 结构，不能凭文件名猜安装位置。先查看 README、发布页和 Requirements。
+但没有清晰的 `reframework/` 或 `Natives/` 结构，不能凭文件名猜安装位置。`.pak` 可能是与 REFramework 无关的游戏专用补丁包，`.arc` 是 RE Engine 前身 MT Framework 的归档格式，未必被当前游戏支持。先查看 README、发布页和 Requirements。
 
 ---
 
@@ -269,7 +299,9 @@ reframework/data/
 
 ### 2. 哪些游戏需要开启散装文件加载
 
-并不是所有游戏都需要。`natives/` 文件夹是 RE Engine 的开发调试功能，早期发行的几个游戏（RE2R/RE3R）保留了代码但关掉了这个后门，后续新游戏则放开了：
+**原理**：RE Engine 正常运行时会从游戏内置的 pak 归档（`re_chunk_000.pak` 等）里按索引读资源。开发期为了方便美术/程序快速替换单个文件，引擎保留了另一条路径：**如果游戏根目录下有 `natives/<平台>/<资源相对路径>` 的散装文件，先读这个，再回落到 pak**。这就是所谓的 Loose File Loader / FirstNatives 生效的机制——它并没有解包 pak，只是让引擎多走了一次“先看散装再看归档”的判断。
+
+`natives/` 文件夹是 RE Engine 的开发调试功能，早期发行的几个游戏（RE2R/RE3R）保留了代码但关掉了这个后门，后续新游戏则放开了：
 
 | 游戏 | 是否需要 FirstNatives |
 |------|---------------------|

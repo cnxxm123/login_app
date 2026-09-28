@@ -34,6 +34,8 @@ Unity 游戏编译时有两种代码后端，决定了 Mod 的安装难度：
 | **Mono** | 游戏代码以 C# 程序集（`.dll`）形式保存在 `游戏_Data/Managed/` 里 | 安装简单，Mod 直接可用 |
 | **IL2Cpp** | 游戏代码被编译成原生 C++（`GameAssembly.dll`），看不到 C# 文件 | 需要 MelonLoader 首次启动时"还原"出 C# 接口，耗时较长，且需要安装 .NET 6.0 Desktop Runtime |
 
+**IL2Cpp 为什么要"还原"？** Unity 的 IL2Cpp 编译器把 C# 源码全部转成 C++ 再编译成原生代码，塞进 `GameAssembly.dll`；运行时靠一份元数据（`global-metadata.dat`）在这堆 C++ 里定位类和方法。Mod 用 C# 写，想调用游戏函数就得反着从元数据推断出对应的 C# 类型和方法签名，生成一份"代理程序集"给 Mod 引用——首次启动的那几分钟就是在做这件事。新版 MelonLoader 用 Il2CppInterop、旧版用 UnhollowerBaseLib 完成这一步，也是它需要 .NET 6 Desktop Runtime 的原因。
+
 **怎么判断游戏是哪种？** 打开游戏根目录：
 
 - 根目录或 `游戏名_Data/` 里有 `GameAssembly.dll`（通常是较大的文件）→ **Windows Unity IL2Cpp 的强线索**
@@ -144,11 +146,21 @@ MelonLoader 分两个时代，**用哪个版本由游戏社区决定，不是越
     └── MelonPreferences.cfg ← MelonLoader 主配置（旧版主用，新版也可能有）
 ```
 
-### 2.5 各文件夹的详细作用
+### 2.5 各文件夹的详细作用与注入原理
+
+**MelonLoader 是怎么进入游戏进程的（DLL 代理注入）**：
+
+- **Windows 的 DLL 搜索顺序**：加载 EXE 时会按固定顺序找依赖 DLL——先在 EXE 所在目录里查，找不到再去 `System32` 之类的系统目录。绝大多数 Unity 游戏启动时都会加载系统的 `version.dll`（Windows 版本 API 的一部分）；MelonLoader 把自己伪装成 `version.dll` 放到 EXE 同级目录，就会被系统优先加载，游戏还以为拿到的是真的系统 DLL。
+- **加载后转发调用**：MelonLoader 拿到执行权后再自己去 `System32` 加载真正的 `version.dll`，把游戏发来的所有 API 调用透传过去。游戏在完全正常运行的同时，MelonLoader 已经完成了框架注入，并开始扫 `Mods/`、`Plugins/`、`UserLibs/`。
+- **位置敏感**：由于依赖 EXE 目录的搜索顺序，MelonLoader 必须放**真实游戏 EXE 同级**目录；放到启动器 EXE 目录、快捷方式所在目录或错误的 `Binaries` 上级都不生效——这是 Q1 排错时首先要核对的事。
+- **换代理 DLL 名的本质**：2.7 里让你把 `version.dll` 改名为 `winhttp.dll`、`winmm.dll` 等，不是玄学，只是换一个游戏一定会加载的系统 DLL 当伪装身份。不同游戏依赖的系统 DLL 不同，所以要按社区/日志实际情况挑一个。
+- **`dobby.dll`（新版）**：新版 MelonLoader 需要在游戏运行中动态改写函数入口（inline hook）来接管 Unity 内部方法，Dobby 就是负责改机器码的底层 hook 库。旧版 0.5.x 用的是另一套方案，所以没有这个文件。
+
+**各文件夹一览**：
 
 | 名称 | 作用 | 版本 | 你能做什么 |
 |------|------|------|-----------|
-| `version.dll` | **代理 DLL**。游戏启动时操作系统会加载它，它趁机把 MelonLoader 注入游戏进程 | 新旧都有 | 个别游戏需要改名为 `winhttp.dll` 等才能注入（见 2.7） |
+| `version.dll` | 代理 DLL，负责 MelonLoader 注入（见上文原理） | 新旧都有 | 个别游戏需要改名为 `winhttp.dll` 等才能注入（见 2.7） |
 | `dobby.dll` | 底层 Hook 库，MelonLoader 修改游戏函数靠它 | 仅新版 | 不要动 |
 | `MelonLoader/` | 加载器本体、依赖库 | 新旧都有 | 不要动 |
 | `MelonLoader/Logs/` | 每次启动的日志 | 新旧都有 | 出问题时打开最新的 `.log` 文件找错误信息 |

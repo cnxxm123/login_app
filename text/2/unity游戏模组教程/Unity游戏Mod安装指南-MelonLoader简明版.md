@@ -20,6 +20,8 @@
 
 ## 二、安装 MelonLoader
 
+**原理速查（为什么文件必须放在游戏 EXE 同目录）**：MelonLoader 用「DLL 代理注入」进游戏——Windows 加载 EXE 时会先在 EXE 所在目录找依赖 DLL，Unity 游戏本来就会加载系统的 `version.dll`，MelonLoader 把自己伪装成 `version.dll` 放到 EXE 同级目录，就会被系统优先加载，加载后再把真的系统 DLL 拉进来转发调用。所以放到启动器目录、快捷方式目录都不生效；2.7 章让你改成 `winhttp.dll`、`winmm.dll` 等，本质是换一个游戏一定会加载的系统 DLL 当伪装身份。`dobby.dll`（仅新版）是底层 hook 库，负责运行时改写游戏函数入口。
+
 1. 从 [MelonLoader 官方发布页](https://github.com/LavaGang/MelonLoader/releases)获取安装器或与游戏要求匹配的压缩包。
 2. 关闭游戏，选择真正的游戏 EXE，不要选择快捷方式或启动器 EXE。
 3. 按游戏社区和 Mod 页面要求选择版本与 x86/x64 架构。

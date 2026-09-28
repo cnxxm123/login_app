@@ -43,6 +43,8 @@
 
 ## 四、安装 BepInEx
 
+**原理速查（Doorstop 注入器）**：BepInEx 靠 **UnityDoorstop** 进游戏——Windows 加载 EXE 时先在 EXE 所在目录找依赖 DLL，Unity 游戏本来就会加载系统的 `winhttp.dll`，Doorstop 把自己伪装成 `winhttp.dll` 放到 EXE 同级目录被优先加载；然后它在 Unity 初始化 Mono/CoreCLR 之前就挂钩子，把控制权交给 `BepInEx/core/` 里的 Preloader。所以 `winhttp.dll` + `doorstop_config.ini` 必须和游戏 EXE 同级；`doorstop_config.ini` 里把 `enabled` 改成 `false` 就能整体禁用 BepInEx。IL2CPP 构建的 `dotnet/`（自带的 CoreCLR 运行时）和 `BepInEx/interop/`（Il2CppInterop 生成的 C# 桥接层）不能删。BepInEx 的两条加载路径中，`patchers/` 在游戏 IL 被 JIT 之前跑，用于改写字节码；`plugins/` 在 Unity 场景加载后跑，是绝大多数普通插件的目录——不能互换。
+
 1. 从官方 Release 或社区明确指定的 Bleeding Edge 构建下载与游戏位数匹配的 x86/x64 完整包。
 2. 关闭游戏，把压缩包内容解压到包含游戏 EXE 的根目录。
 3. 不要多套一层目录；`BepInEx/` 和注入相关文件应与游戏 EXE 同级，具体文件名以当前官方包为准。

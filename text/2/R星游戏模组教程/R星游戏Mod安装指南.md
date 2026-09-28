@@ -43,6 +43,41 @@ Rockstar 的现代大型游戏主要使用自研的 **RAGE（Rockstar Advanced G
 - **ScriptHookVDotNet**：GTA V 的 .NET 脚本插件，建立在 Script Hook V 的 ASI 插件机制之上。
 - **RagePluginHook**：GTA V 的另一套插件框架，常用于警察、执法和复杂 .NET 插件生态；不要把 RPH 插件直接丢进 ScriptHookVDotNet 的 `scripts` 目录。
 
+### 工具的层级关系（底层机制）
+
+弄懂几层调用链，就能明白为什么每个文件必须放到指定位置：
+
+```text
+游戏进程 (GTA5.exe / RDR2.exe)
+     │
+     │  ① Windows DLL 搜索顺序
+     ▼
+ASI Loader (dinput8.dll 之类的代理 DLL)
+     │
+     │  ② 遍历 EXE 目录里的 .asi
+     ▼
+Script Hook V/RDR2 (.dll，自身也是 ASI 插件)
+ScriptHookVDotNet.asi         ← 建在 ASI 之上的 .NET 桥
+其他 .asi 插件                 ← 独立功能插件
+     │
+     │  ③ ScriptHookVDotNet 再去扫 scripts/
+     ▼
+scripts/ 里的 .dll / .cs / .vb
+
+  另一条并列的链：
+RagePluginHook (独立注入器，不走 ASI Loader)
+     │
+     ▼
+C#Plugins/ 里的 RPH 插件
+```
+
+- **DLL 代理注入**（第 ① 层）：Windows 加载 EXE 时会先在 EXE 所在目录找依赖 DLL，找不到才去 `System32`。GTA 本来就会加载系统的 `dinput8.dll`；ASI Loader 把自己伪装成 `dinput8.dll` 放到 EXE 同级目录，就会被系统优先加载。加载后它再把真正的系统 DLL 拉进来转发调用——这就是它必须放到**真实游戏 EXE 目录**、启动器目录不生效的原因。
+- **`.asi` 就是改了扩展名的 DLL**（第 ② 层）：ASI Loader 会用 `LoadLibrary` 遍历 EXE 目录（或作者指定目录）里的所有 `.asi` 挨个加载。ScriptHookV/RDR2 本身也是一个 `.asi`，它加载后会挂钩游戏引擎、把内部脚本调用暴露给其他 ASI 插件。
+- **.NET 桥**（第 ③ 层）：ScriptHookVDotNet 是一个 `.asi`，装进来后再扫 `scripts/` 加载 C#/VB 脚本或已编译 DLL；所以它必须和 Script Hook V + ASI Loader 一起用，缺一层都不行。
+- **RagePluginHook 是并列的另一条链**：RPH 用自己的注入器和插件目录，不依赖 ASI Loader。RPH 插件不能丢进 `scripts/`，ScriptHookVDotNet 的 `.cs` 也不能丢进 RPH 的 `C#Plugins/`——两条链的 API、生命周期都不通。
+
+搞清楚这四点，后面章节里各种“放游戏根目录”“放 `scripts/`”“放 RPH 目录”就都能对上号了。
+
 ---
 
 ## 三、通用准备工作
@@ -182,6 +217,18 @@ Script Hook V 官方说明的关键点：
 不要把 `ScriptHookRDR2.dll`、RDR2 的 `dinput8.dll` 配置或 LML 文件混入 GTA V。
 
 ### 5.2 OpenIV 的 `mods` 镜像目录
+
+**原理**：`.rpf`（Rockstar 自研的资源归档格式）里塞着模型、贴图、脚本、地图等所有游戏资源。以前的老办法是直接编辑原版 `update.rpf`、`x64*.rpf`，问题在于：
+
+1. 游戏更新会覆盖 RPF，Mod 一夜清零；
+2. Rockstar 客户端和 Social Club 会做完整性校验，改过的原版 RPF 可能触发 GTA Online 封禁；
+3. 卸载一个 Mod 时经常连累其他 Mod。
+
+OpenIV 的 ASI 插件（`OpenIV.asi`）解决办法是给游戏挂钩：**运行时先去 `mods/` 目录找同名 RPF，找不到再回退到原版**。你把要改的原始 RPF 按**相同相对路径**复制进 `mods/`，再在这个副本上装 Mod；原版 RPF 从头到尾不动。这样：
+
+- 原版文件保持干净，Rockstar 客户端验证通过；
+- 游戏更新只影响原版 RPF，你自己副本里的 Mod 不会被直接覆盖（但更新后如果 Mod 依赖的原始文件结构变了，还是要重装）；
+- 进 GTA Online 前把 ASI Loader/`OpenIV.asi` 移走或用启动器切换，游戏就走回原版路径。
 
 OpenIV 的 `mods` 目录用于让修改尽量留在副本中，而不是直接改原始 RPF。基本思路：
 
