@@ -19,8 +19,6 @@ _thumbs/
 _imgthumbs/
 # H.264/HLS 转码缓存
 _transcodes/
-# 游戏卸载备份目录（卸载 = 软删除移入这里，可还原）
-_removed_games/
 
 # text/ 内容目录中的个人媒体文件（不入库；学习笔记 .md/.py 等文本仍入库存档）
 text/**/*.mp4
@@ -44,6 +42,3 @@ debug-*.md
 _test_*.html
 _check_*.js
 _extracted.js
-
-# 个人中心运行时数据库（收藏 / 历史 / 阅读进度）
-个人中心/

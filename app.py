@@ -5,7 +5,6 @@
 - 入口/配置层（项目根目录）
   - app.py       项目入口：把各部分组装起来并启动
   - config.py    全局配置：路径、扩展名表等
-  - db.py        数据库：连接、建库
 - blueprints 包（路由处理层，只处理 HTTP 交互）
   - browser.py   浏览蓝图：主页 / 目录浏览 / 搜索
   - view.py      查看蓝图：文档/图片/PDF/视频 查看页
@@ -39,7 +38,6 @@ from blueprints.memos import memos_bp         # 备忘蓝图（/memos、/memo/ad
 from blueprints.todos import todos_bp         # 待办蓝图（/todos、/todo/add、/todo/toggle...）
 from blueprints.view import view_bp           # 查看蓝图（/view/...）
 from config import MAX_FORM_PARTS, MAX_UPLOAD_BYTES  # 上传上限
-from db import init_db                        # 数据库初始化函数（幂等）
 
 
 def create_app() -> Flask:
@@ -77,7 +75,5 @@ def create_app() -> Flask:
 app = create_app()
 
 if __name__ == "__main__":
-    # 只有直接运行本文件时初始化旧 MySQL 数据库并启动开发服务器。
-    init_db()
     # 监听 0.0.0.0 供同一局域网设备访问；debug 必须关闭。
     app.run(host="0.0.0.0", port=5000, debug=False)

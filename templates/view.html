@@ -165,13 +165,9 @@
         // 页面配置：供 player/view 脚本使用
         window.VIEW_CONFIG = {
             path: {{ path|tojson }},
-            progressPath: {{ path|tojson }},
             mediaType: {{ media_type|tojson }},
-            trackScroll: {{ (is_text or media_type == 'office')|tojson }},
             isText: {{ is_text|tojson }},
-            initialProgress: null,
             imageUrls: {{ image_urls|tojson }},
-            imagePaths: {{ image_paths|tojson }},
             currentUrl: {{ url_for('media.media', subpath=path)|tojson }},
             parent: {{ parent|tojson }},
             playlist: {{ playlist|tojson }},

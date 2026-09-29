@@ -4,39 +4,26 @@
 
     var cfg = window.VIEW_CONFIG || {};
 
-    // ===== 文档阅读进度：恢复并按滚动比例节流同步 =====
+    // ===== 文档阅读进度：滚动节流显示进度条 =====
     (function () {
         var bar = document.getElementById("reading-bar");
         if (!bar) return;
-        var restored = false;
 
         function ratio() {
             var root = document.documentElement;
             var max = root.scrollHeight - root.clientHeight;
             return max > 0 ? Math.min(Math.max(window.scrollY / max, 0), 1) : 0;
         }
-        function update(sync) {
-            var value = ratio();
-            bar.style.width = (value * 100) + "%";
-            if (!cfg.trackScroll || !sync) return;
+        function update() {
+            bar.style.width = (ratio() * 100) + "%";
         }
-        window.addEventListener("scroll", function () { update(true); }, {passive: true});
-        window.addEventListener("resize", function () { update(false); });
-        
-        window.requestAnimationFrame(function () {
-            var progress = cfg.initialProgress;
-            if (!restored && cfg.trackScroll && progress && progress.kind === "scroll" && progress.position > 0 && progress.position < 0.98) {
-                restored = true;
-                var root = document.documentElement;
-                window.scrollTo(0, (root.scrollHeight - root.clientHeight) * progress.position);
-            }
-            update(false);
-        });
+        window.addEventListener("scroll", update, {passive: true});
+        window.addEventListener("resize", update);
+        window.requestAnimationFrame(update);
     }());
 
     // ===== 图片阅读器：单页/长条、翻页、缩放、全屏、进度 =====
     var imgs = cfg.imageUrls || [];
-    var imagePaths = cfg.imagePaths || [];
     var reader = document.getElementById("reader-single");
     var strip = document.getElementById("img-strip");
     if (reader) {
@@ -45,14 +32,9 @@
         var saved = null;
         try { saved = JSON.parse(localStorage.getItem(posKey) || "null"); } catch (e) {}
         var cur = 0;
-        var serverProgress = cfg.initialProgress;
-        if (serverProgress && serverProgress.kind === "page" && serverProgress.locator) {
-            cur = imagePaths.indexOf(serverProgress.locator);
-        }
-        if (cur < 0 || cur >= imgs.length) cur = 0;
-        if ((!serverProgress || serverProgress.kind !== "page") && saved && saved.path === currentUrl && saved.index >= 0 && saved.index < imgs.length) {
+        if (saved && saved.path === currentUrl && saved.index >= 0 && saved.index < imgs.length) {
             cur = saved.index;
-        } else if ((!serverProgress || serverProgress.kind !== "page") && imgs.indexOf(currentUrl) >= 0) {
+        } else if (imgs.indexOf(currentUrl) >= 0) {
             cur = imgs.indexOf(currentUrl);
         }
         var scale = 1;
@@ -238,11 +220,7 @@
                     saved = Number(saved || 0);
                     if (saved > 5 && saved < player.duration - 5) player.currentTime = saved;
                 }
-                if (item.path === cfg.path && cfg.initialProgress && cfg.initialProgress.kind === "seconds") {
-                    applySaved(cfg.initialProgress.position);
-                } else {
-                    applySaved(localSaved());
-                }
+                applySaved(localSaved());
             });
             player.addEventListener("ended", function () { rememberAudio(true); });
         }

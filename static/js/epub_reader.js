@@ -270,10 +270,6 @@
 
     // ── 加载 / 保存阅读进度 ──
     function loadProgress() {
-        var serverProgress = window.EPUB_CONFIG.initialProgress;
-        if (serverProgress && serverProgress.kind === "chapter" && serverProgress.locator) {
-            return serverProgress.locator;
-        }
         try {
             var key = "epub_progress_" + filePath;
             return localStorage.getItem(key);

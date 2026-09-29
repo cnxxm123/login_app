@@ -64,8 +64,7 @@
     <script>
         // 页面配置：供 epub_reader.js 使用
         window.EPUB_CONFIG = {
-            filePath: {{ path|tojson }},
-            initialProgress: null
+            filePath: {{ path|tojson }}
         };
     </script>
     <script src="{{ url_for('static', filename='js/epub_reader.js') }}"></script>

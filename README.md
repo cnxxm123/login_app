@@ -1,4 +1,4 @@
-# 云书库（Flask + MySQL）
+# 云书库（Flask）
 
 一个局域网文件浏览/阅读/管理应用：运行后直接进入主页面，无需登录；支持浏览、查看、播放、下载、上传、搜索等功能。
 
@@ -6,7 +6,6 @@
 
 - Python 3.11+（本项目以 3.11 开发验证）
 - Flask 3.x
-- MySQL 8.0（使用 `pymysql` 驱动）
 - markdown（把 Markdown 文档与代码文件渲染成网页）
 - bleach（对 Markdown 渲染产物做白名单过滤，防存储型 XSS；markdown 默认保留文件内原始 HTML）
 - Pillow（为图片生成压缩缩略图；未安装时图片缩略图返回 404，卡片退用原图，不影响其它功能）
@@ -19,7 +18,6 @@
 login_app/
 ├── app.py                 # 项目入口：创建 Flask 应用、注册蓝图、启动
 ├── config.py              # 配置常量：TEXT_DIR、扩展名表等
-├── db.py                  # 数据库初始化：建库
 ├── blueprints/            # 路由处理层（只处理 HTTP 交互）
 │   ├── browser.py         # 浏览蓝图：主页、目录浏览、搜索
 │   ├── view.py            # 查看蓝图：文档/图片/PDF/Office/视频/音频 查看页
@@ -125,32 +123,10 @@ login_app/
 ### 1. 安装依赖
 
 ```bash
-pip install flask pymysql markdown bleach imageio-ffmpeg pillow python-docx openpyxl xlrd
+pip install flask markdown bleach imageio-ffmpeg pillow python-docx openpyxl xlrd
 ```
 
-### 2. 数据库配置（可选）
-
-[db.py](db.py) 会自动适配本机 MySQL，一般无需改动：
-
-- 用户名：默认 `root`，可用环境变量 `DB_USER` 覆盖；
-- 密码：优先读环境变量 `DB_PASSWORD`，未设置时自动在常见候选密码中探测可用项并缓存；
-- 库名：`login_db`（见 `DB_NAME`，首次运行自动创建）。
-
-如需显式指定，可临时设置环境变量后启动：
-
-```powershell
-$env:DB_USER="root"; $env:DB_PASSWORD="你的密码"; python app.py
-```
-
-### 3. 初始化数据库
-
-首次运行前执行（会创建 `login_db` 库，可重复执行）：
-
-```bash
-python db.py
-```
-
-### 4. 启动应用
+### 2. 启动应用
 
 ```bash
 python app.py
@@ -165,12 +141,6 @@ python app.py
 - 局域网其他设备：`http://<本机IP>:5000`（需放行防火墙 TCP 5000 端口，如 `New-NetFirewallRule -DisplayName 'Flask App 5000' -Direction Inbound -Protocol TCP -LocalPort 5000 -Action Allow -Profile Any`）
 
 > 无需登录，启动后访问任意地址（`/`、`/browse/...` 等）直接进入对应页面。
-
-## 数据库说明
-
-| 项目 | 说明 |
-| --- | --- |
-| 数据库名 | `login_db` |
 
 ## 关键接口
 

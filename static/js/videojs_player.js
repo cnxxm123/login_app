@@ -116,12 +116,7 @@
         if (!path || resumeForPath === path) return;
         resumeForPath = path;
         var token = ++resumeToken;
-        var initial = cfg.initialProgress;
-        if (path === cfg.path && initial && initial.kind === "seconds") {
-            offerResume(path, token, initial.position);
-        } else {
-            offerResume(path, token, localSaved());
-        }
+        offerResume(path, token, localSaved());
     });
 
     player.on("ended", function () {

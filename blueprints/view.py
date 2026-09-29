@@ -131,7 +131,6 @@ def view_file(subpath: str):
         media_url=media_url,                # 媒体加载地址
         images=images,                      # 图片预览用的全部图片列表
         image_urls=image_urls,              # 图片地址列表（单页阅读器用）
-        image_paths=[item["path"] for item in images],  # 服务端进度保存稳定相对路径
         playlist=playlist,                  # 音视频连播列表
         playlist_index=playlist_index,      # 当前文件在连播列表中的下标
         poster_url=poster_url,              # 视频首屏封面缩略图地址
