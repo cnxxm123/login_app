@@ -1,5 +1,5 @@
 {
-  "next_id": 150,
+  "next_id": 151,
   "logs": [
     {
       "id": 3,
@@ -903,6 +903,14 @@
       "category": "问题处理",
       "content": "西瓜\n【游玩问题】本局ID:debr6grp5z91uizf问题描述:长按无法转动轮盘已经重开四\n次了这个BUG已经关乎到这个游戏玩不玩得了了之前玩都没事,希望重视\n\n用户自己不会玩",
       "created_at": "2026-09-28 23:24:11",
+      "updated_at": null
+    },
+    {
+      "id": 150,
+      "log_date": "2026-09-29",
+      "category": "上架游戏",
+      "content": "沙丘觉醒",
+      "created_at": "2026-09-29 10:11:50",
       "updated_at": null
     }
   ]
