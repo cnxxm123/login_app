@@ -4,17 +4,10 @@
 
     var cfg = window.VIEW_CONFIG || {};
 
-    function report(payload, keepalive) {
-        if (!window.Personal || !cfg.path) return;
-        payload.path = payload.path || cfg.progressPath || cfg.path;
-        window.Personal.reportProgress(payload, keepalive);
-    }
-
     // ===== 文档阅读进度：恢复并按滚动比例节流同步 =====
     (function () {
         var bar = document.getElementById("reading-bar");
         if (!bar) return;
-        var timer = null;
         var restored = false;
 
         function ratio() {
@@ -26,16 +19,10 @@
             var value = ratio();
             bar.style.width = (value * 100) + "%";
             if (!cfg.trackScroll || !sync) return;
-            window.clearTimeout(timer);
-            timer = window.setTimeout(function () {
-                report({kind: "scroll", position: value, total: 1, completed: value >= 0.98});
-            }, 1200);
         }
         window.addEventListener("scroll", function () { update(true); }, {passive: true});
         window.addEventListener("resize", function () { update(false); });
-        window.addEventListener("pagehide", function () {
-            if (cfg.trackScroll) report({kind: "scroll", position: ratio(), total: 1, completed: ratio() >= 0.98}, true);
-        });
+        
         window.requestAnimationFrame(function () {
             var progress = cfg.initialProgress;
             if (!restored && cfg.trackScroll && progress && progress.kind === "scroll" && progress.position > 0 && progress.position < 0.98) {
@@ -73,13 +60,6 @@
 
         function saveImageProgress() {
             try { localStorage.setItem(posKey, JSON.stringify({index: cur, path: imgs[cur]})); } catch (e) {}
-            report({
-                kind: "page",
-                position: cur + 1,
-                total: imgs.length,
-                locator: imagePaths[cur] || null,
-                completed: cur >= imgs.length - 1
-            });
         }
         function show(i) {
             if (!imgs.length) return;
@@ -157,15 +137,6 @@
             }, {root: null, rootMargin: "-20% 0px -55% 0px", threshold: 0});
             stripItems.forEach(function (item) { observer.observe(item); });
         }
-        window.addEventListener("pagehide", function () {
-            report({
-                kind: "page",
-                position: cur + 1,
-                total: imgs.length,
-                locator: imagePaths[cur] || null,
-                completed: cur >= imgs.length - 1
-            }, true);
-        });
         setMode(mode);
     }
 
@@ -237,26 +208,23 @@
             if (result && typeof result.catch === "function") result.catch(function () {});
         }
         function localKey() { return "media_pos_" + currentItem().path; }
-        function rememberAudio(completed, keepalive) {
+        function rememberAudio(completed) {
             if (cfg.mediaType !== "audio" || !isFinite(player.duration) || player.duration <= 0) return;
             var position = completed ? player.duration : player.currentTime;
             try {
                 if (completed) localStorage.removeItem(localKey());
                 else if (position > 5 && position < player.duration - 5) localStorage.setItem(localKey(), String(Math.floor(position)));
             } catch (e) {}
-            if (position > 5 || completed) {
-                report({path: currentItem().path, kind: "seconds", position: position, total: player.duration, completed: !!completed}, keepalive);
-            }
         }
         if (cfg.mediaType === "audio") {
             player.addEventListener("timeupdate", function () {
                 var now = Date.now();
                 if (now - lastSaveAt < 5000) return;
                 lastSaveAt = now;
-                rememberAudio(false, false);
+                rememberAudio(false);
             });
-            player.addEventListener("pause", function () { if (!player.ended) rememberAudio(false, false); });
-            window.addEventListener("pagehide", function () { rememberAudio(false, true); });
+            player.addEventListener("pause", function () { if (!player.ended) rememberAudio(false); });
+            window.addEventListener("pagehide", function () { rememberAudio(false); });
             player.addEventListener("loadedmetadata", function () {
                 var item = currentItem();
                 if (restoredPath === item.path) return;
@@ -272,16 +240,11 @@
                 }
                 if (item.path === cfg.path && cfg.initialProgress && cfg.initialProgress.kind === "seconds") {
                     applySaved(cfg.initialProgress.position);
-                } else if (window.Personal) {
-                    window.Personal.getState(item.path).then(function (state) {
-                        var progress = state.progress;
-                        applySaved(progress && progress.kind === "seconds" ? progress.position : localSaved());
-                    }).catch(function () { applySaved(localSaved()); });
                 } else {
                     applySaved(localSaved());
                 }
             });
-            player.addEventListener("ended", function () { rememberAudio(true, false); });
+            player.addEventListener("ended", function () { rememberAudio(true); });
         }
 
         if (count) count.textContent = "共 " + playlist.length + " 项";
@@ -327,19 +290,14 @@
         function playAt(index) {
             if (index < 0) index = playlist.length - 1;
             if (index >= playlist.length) index = 0;
-            if (cfg.mediaType === "audio" && !mediaEnded()) rememberAudio(false, false);
+            if (cfg.mediaType === "audio" && !mediaEnded()) rememberAudio(false);
             pIndex = index;
             var item = currentItem();
             mediaSetSource(item);
-            player.dataset.personalPath = item.path;
             var videoBox = document.getElementById("vp-player");
             if (videoBox) {
                 videoBox.setAttribute("data-key", item.path);
                 videoBox.setAttribute("data-download-url", item.download || "");
-            }
-            if (window.Personal && typeof window.Personal.recordHistory === "function") {
-                var historyResult = window.Personal.recordHistory(item.path);
-                if (historyResult && typeof historyResult.catch === "function") historyResult.catch(function () {});
             }
             mediaPlay();
             document.title = item.name;
@@ -349,7 +307,6 @@
             if (meta) meta.textContent = item.name;
             updateActive();
         }
-        player.dataset.personalPath = currentItem().path;
         // 视频结束后由自定义结束层让用户决定是否播放下一集；音频仍保持自动连播。
         if (cfg.mediaType === "audio") {
             player.addEventListener("ended", function () { playAt(pIndex + 1); });

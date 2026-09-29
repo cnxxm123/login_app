@@ -423,7 +423,7 @@
 
 > 操作成功后统一 `302` 跳回**上级目录**（上级为空则跳 `/`），避免停留在失效路径。
 
-### 8.1 POST /upload/ 与 /upload/<path:subpath>
+### 10.1 POST /upload/ 与 /upload/<path:subpath>
 
 - **Content-Type**: `multipart/form-data`，字段名 **`files`**（可一次传多个文件）。
 - 支持**文件夹上传**：前端把 `webkitRelativePath`（如 `漫画/第1话/001.jpg`）作为文件名提交，
@@ -432,20 +432,20 @@
   再用 `realpath` + `commonpath` 确认最终路径仍落在目标目录内，否则丢弃该文件。
 - 目标目录不存在 → `404`。
 
-### 8.2 POST /mkdir/ 与 /mkdir/<path:subpath>
+### 10.2 POST /mkdir/ 与 /mkdir/<path:subpath>
 
 - **参数**（表单）: `new_folder`（新文件夹名，去首尾空格）。
 - `new_folder` 为空、为 `.`/`..` 或含 `/`、`\` → `400`（防目录穿越）。
 - 新路径已存在 → `409`；目标目录不存在 → `404`。
 
-### 8.3 GET /edit/<path:subpath>
+### 10.3 GET /edit/<path:subpath>
 
 - 打开在线文本编辑器（渲染 `templates/editor.html`），仅**文本类扩展名**（`config.TEXT_EXTENSIONS`）可编辑，否则 `400`。
 - 用 `services/text_utils.read_text_file` 自动识别编码（utf-8 / gbk 等）读取内容。
 - 目标不存在或越界 → `404`；读取失败 → `400`。
 - 页面通过 `url_for('manage.save', subpath=path)` 拿到保存接口地址。
 
-### 8.4 POST /save/<path:subpath>
+### 10.4 POST /save/<path:subpath>
 
 - **参数**（表单）: `content`（编辑后的全文）。
 - 目标必须存在且为文本类文件，否则 `400`。

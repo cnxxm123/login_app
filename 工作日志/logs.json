@@ -1,5 +1,5 @@
 {
-  "next_id": 151,
+  "next_id": 155,
   "logs": [
     {
       "id": 3,
@@ -911,6 +911,38 @@
       "category": "上架游戏",
       "content": "沙丘觉醒",
       "created_at": "2026-09-29 10:11:50",
+      "updated_at": null
+    },
+    {
+      "id": 151,
+      "log_date": "2026-09-29",
+      "category": "上架游戏",
+      "content": "JDM赛车模组",
+      "created_at": "2026-09-29 21:15:12",
+      "updated_at": null
+    },
+    {
+      "id": 152,
+      "log_date": "2026-09-29",
+      "category": "上架游戏",
+      "content": "FC27",
+      "created_at": "2026-09-29 21:15:17",
+      "updated_at": null
+    },
+    {
+      "id": 153,
+      "log_date": "2026-09-29",
+      "category": "更新游戏",
+      "content": "龙岛异兽",
+      "created_at": "2026-09-29 21:17:47",
+      "updated_at": null
+    },
+    {
+      "id": 154,
+      "log_date": "2026-09-29",
+      "category": "上架游戏",
+      "content": "洛克王国悟空神辅",
+      "created_at": "2026-09-29 21:18:01",
       "updated_at": null
     }
   ]

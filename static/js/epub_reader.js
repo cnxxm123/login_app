@@ -289,16 +289,6 @@
         } catch (e) {
             // 存储不可用时仍继续使用服务端同步。
         }
-        if (window.Personal && currentIndex >= 0) {
-            window.Personal.reportProgress({
-                path: filePath,
-                kind: "chapter",
-                position: currentIndex + 1,
-                total: chapters.length,
-                locator: currentChapterId,
-                completed: currentIndex >= chapters.length - 1
-            });
-        }
     }
 
     // ── UI 状态 ──

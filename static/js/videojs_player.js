@@ -56,26 +56,13 @@
         var path = currentPath();
         return path ? "vp_pos_" + path : "";
     }
-    function reportProgress(completed, keepalive) {
-        var path = currentPath();
-        var total = duration();
-        if (!path || total <= 30 || !window.Personal || typeof window.Personal.reportProgress !== "function") return;
-        window.Personal.reportProgress({
-            path: path,
-            kind: "seconds",
-            position: completed ? total : currentTime(),
-            total: total,
-            completed: !!completed
-        }, !!keepalive);
-    }
-    function rememberProgress(keepalive) {
+    function rememberProgress() {
         var total = duration();
         var position = currentTime();
         var key = localKey();
         if (!key || total <= 30) return;
         if (position > 5 && position < total - 10) {
             try { localStorage.setItem(key, String(Math.floor(position))); } catch (e) {}
-            reportProgress(false, keepalive);
         }
     }
     function clearProgress() {
@@ -117,12 +104,12 @@
         var now = Date.now();
         if (now - lastSaveAt < 5000) return;
         lastSaveAt = now;
-        rememberProgress(false);
+        rememberProgress();
     });
     player.on("pause", function () {
-        if (!player.ended()) rememberProgress(false);
+        if (!player.ended()) rememberProgress();
     });
-    window.addEventListener("pagehide", function () { rememberProgress(true); });
+    window.addEventListener("pagehide", function () { rememberProgress(); });
 
     player.on("loadedmetadata", function () {
         var path = currentPath();
@@ -132,11 +119,6 @@
         var initial = cfg.initialProgress;
         if (path === cfg.path && initial && initial.kind === "seconds") {
             offerResume(path, token, initial.position);
-        } else if (window.Personal && typeof window.Personal.getState === "function") {
-            window.Personal.getState(path).then(function (state) {
-                var progress = state && state.progress;
-                offerResume(path, token, progress && progress.kind === "seconds" ? progress.position : localSaved());
-            }).catch(function () { offerResume(path, token, localSaved()); });
         } else {
             offerResume(path, token, localSaved());
         }
@@ -144,6 +126,5 @@
 
     player.on("ended", function () {
         clearProgress();
-        reportProgress(true, false);
     });
 }());

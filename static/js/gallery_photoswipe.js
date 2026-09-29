@@ -64,29 +64,6 @@
         }
     }
 
-    function progressPayload() {
-        return {
-            path: itemPath,
-            kind: "page",
-            position: S.cur + 1,
-            total: total,
-            locator: paths[S.cur] || null,
-            completed: S.cur >= total - 1
-        };
-    }
-    function syncGlobalProgress() {
-        if (!window.Personal || typeof window.Personal.reportProgress !== "function" || !itemPath) return;
-        clearTimeout(syncTimer);
-        syncTimer = setTimeout(function () { window.Personal.reportProgress(progressPayload()); }, 600);
-    }
-    var syncTimer = null;
-    window.addEventListener("pagehide", function () {
-        clearTimeout(syncTimer);
-        if (window.Personal && typeof window.Personal.reportProgress === "function" && itemPath) {
-            window.Personal.reportProgress(progressPayload(), true);
-        }
-    });
-
     function savePosition() {
         var value = {mode: S.mode, index: S.cur};
         if (S.mode === "strip") {
@@ -94,7 +71,6 @@
             value.ratio = range > 0 ? strip.scrollTop / range : 0;
         }
         savePref(posKey, value);
-        syncGlobalProgress();
     }
 
     function markThumb() {
