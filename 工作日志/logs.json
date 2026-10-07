@@ -1,5 +1,5 @@
 {
-  "next_id": 155,
+  "next_id": 164,
   "logs": [
     {
       "id": 3,
@@ -39,7 +39,7 @@
       "content": "西瓜：l0v9xkvmqvogzgqv 问题描述：无法进入一直卡在进入画面说啟动成功后一会又退回",
       "created_at": "2026-09-07 09:33:58",
       "updated_at": "2026-09-07 21:33:12",
-      "category": "问题处理"
+      "category": "工单处理"
     },
     {
       "id": 23,
@@ -47,7 +47,7 @@
       "content": "西瓜：u3852af5dd82f8b0\n【游戏上架】 游戏名 + 版本号：黎明行者之血 问题描述：好游戏，上就完了",
       "created_at": "2026-09-07 09:36:47",
       "updated_at": "2026-09-07 21:33:06",
-      "category": "问题处理"
+      "category": "工单处理"
     },
     {
       "id": 24,
@@ -55,7 +55,7 @@
       "content": "西瓜：【游玩问题】 本局ID：frvr5nngcrmdmtax 问题描述：根本就打不开 一直在那个页面等了好久都不行",
       "created_at": "2026-09-07 09:40:03",
       "updated_at": "2026-09-07 21:32:58",
-      "category": "问题处理"
+      "category": "工单处理"
     },
     {
       "id": 26,
@@ -92,7 +92,7 @@
     {
       "id": 40,
       "log_date": "2026-09-07",
-      "category": "问题处理",
+      "category": "工单处理",
       "content": "西瓜cp901610755617456128\n问题描述：卡着不动了",
       "created_at": "2026-09-07 22:18:55",
       "updated_at": null
@@ -100,7 +100,7 @@
     {
       "id": 44,
       "log_date": "2026-09-07",
-      "category": "更新游戏工具",
+      "category": "更新游戏",
       "content": "雷神加速器更新",
       "created_at": "2026-09-07 22:40:15",
       "updated_at": "2026-09-10 23:56:10"
@@ -108,7 +108,7 @@
     {
       "id": 45,
       "log_date": "2026-09-07",
-      "category": "更新游戏工具",
+      "category": "更新游戏",
       "content": "wegame",
       "created_at": "2026-09-07 22:47:46",
       "updated_at": "2026-09-10 23:56:15"
@@ -124,7 +124,7 @@
     {
       "id": 47,
       "log_date": "2026-09-08",
-      "category": "问题处理",
+      "category": "工单处理",
       "content": "测试FC26模组是否正常",
       "created_at": "2026-09-08 10:58:17",
       "updated_at": null
@@ -172,7 +172,7 @@
     {
       "id": 56,
       "log_date": "2026-09-09",
-      "category": "问题处理",
+      "category": "工单处理",
       "content": "查出模拟人生4问题，用户进了一组深圳机房，但是后台没有挂那组机房",
       "created_at": "2026-09-09 19:32:41",
       "updated_at": "2026-09-10 23:39:56"
@@ -204,7 +204,7 @@
     {
       "id": 60,
       "log_date": "2026-09-10",
-      "category": "问题处理",
+      "category": "工单处理",
       "content": "瘟疫公司解锁不了病毒，重新更换资源",
       "created_at": "2026-09-10 19:39:03",
       "updated_at": "2026-09-10 23:39:00"
@@ -324,7 +324,7 @@
     {
       "id": 76,
       "log_date": "2026-09-13",
-      "category": "问题处理",
+      "category": "工单处理",
       "content": "处理3个工单",
       "created_at": "2026-09-13 19:17:56",
       "updated_at": null
@@ -332,7 +332,7 @@
     {
       "id": 77,
       "log_date": "2026-09-13",
-      "category": "问题处理",
+      "category": "工单处理",
       "content": "西瓜本局ID：这个游戏好像卡了，是在 9月13日4:51的时候。 问题描述：我玩骑马与砍杀的时候，卡顿了，就是停在那不动了。",
       "created_at": "2026-09-13 19:22:43",
       "updated_at": null
@@ -340,7 +340,7 @@
     {
       "id": 78,
       "log_date": "2026-09-13",
-      "category": "问题处理",
+      "category": "工单处理",
       "content": "西瓜游玩问题】 本局ID：ue24a58ec1818c6e 问题描述：有点卡，但是很好，安的线x线时候有点不好按",
       "created_at": "2026-09-13 19:23:57",
       "updated_at": null
@@ -348,7 +348,7 @@
     {
       "id": 79,
       "log_date": "2026-09-13",
-      "category": "问题处理",
+      "category": "工单处理",
       "content": "西瓜1个",
       "created_at": "2026-09-13 19:29:08",
       "updated_at": null
@@ -372,7 +372,7 @@
     {
       "id": 82,
       "log_date": "2026-09-14",
-      "category": "问题处理",
+      "category": "工单处理",
       "content": "骑马与砍杀2三国模组",
       "created_at": "2026-09-14 22:38:43",
       "updated_at": null
@@ -380,7 +380,7 @@
     {
       "id": 83,
       "log_date": "2026-09-14",
-      "category": "问题处理",
+      "category": "工单处理",
       "content": "异形火力精英",
       "created_at": "2026-09-14 23:14:58",
       "updated_at": null
@@ -516,7 +516,7 @@
     {
       "id": 100,
       "log_date": "2026-09-19",
-      "category": "问题处理",
+      "category": "工单处理",
       "content": "生化危机4重制版存档问题",
       "created_at": "2026-09-19 21:25:44",
       "updated_at": null
@@ -524,7 +524,7 @@
     {
       "id": 101,
       "log_date": "2026-09-19",
-      "category": "问题处理",
+      "category": "工单处理",
       "content": "用户玩生化危机4重制版操作不跟收手，用户手机解码能力不行",
       "created_at": "2026-09-19 21:26:23",
       "updated_at": null
@@ -532,7 +532,7 @@
     {
       "id": 102,
       "log_date": "2026-09-19",
-      "category": "问题处理",
+      "category": "工单处理",
       "content": "龙岛异兽没删登录凭证文件，导致用户会进到上一个用户的账号",
       "created_at": "2026-09-19 21:27:28",
       "updated_at": null
@@ -540,7 +540,7 @@
     {
       "id": 103,
       "log_date": "2026-09-18",
-      "category": "问题处理",
+      "category": "工单处理",
       "content": "瘟疫传说bug",
       "created_at": "2026-09-19 21:29:53",
       "updated_at": null
@@ -572,7 +572,7 @@
     {
       "id": 108,
       "log_date": "2026-09-20",
-      "category": "问题处理",
+      "category": "工单处理",
       "content": "2个西瓜问题",
       "created_at": "2026-09-20 20:10:40",
       "updated_at": null
@@ -588,7 +588,7 @@
     {
       "id": 110,
       "log_date": "2026-09-19",
-      "category": "问题处理",
+      "category": "工单处理",
       "content": "月光光新慌慌",
       "created_at": "2026-09-20 23:17:18",
       "updated_at": null
@@ -652,7 +652,7 @@
     {
       "id": 118,
       "log_date": "2026-09-22",
-      "category": "问题处理",
+      "category": "工单处理",
       "content": "(3a商务合作)赛博朋克2077【夜之城模组】\n09-21 19:26:47\n ianudk1hznzqsij8\n用户反馈保存了存档退出游戏，然后显示云端连接出现问题，再回来存档就没了，后台看是正常释放的，辛苦看看是什么原因，还能找回嘛\n\n存档程序死了",
       "created_at": "2026-09-23 00:44:57",
       "updated_at": null
@@ -660,7 +660,7 @@
     {
       "id": 119,
       "log_date": "2026-09-22",
-      "category": "问题处理",
+      "category": "工单处理",
       "content": "红色沙漠（性能优化版）\n68bc48cebd02209f5beb4251\n86s3rxqqaqsdbgof\n用户反馈：差不多9月17日之前两三天凌晨12:30吃个夜宵回来就变这样了，没出这个问题之前也出现过，当时重启可以修复，现在重启也无法修复。\n（因用户提供截图和录播内画面一致，所以采用录播的截图了）\n\n\n显卡满负荷，游戏崩溃",
       "created_at": "2026-09-23 00:45:53",
       "updated_at": null
@@ -668,7 +668,7 @@
     {
       "id": 120,
       "log_date": "2026-09-22",
-      "category": "问题处理",
+      "category": "工单处理",
       "content": "颂钟长鸣\n68969e4f213929ab1dbee3e9\n9oe5m19u9mwn2sjk\n辛苦看下这次存档丢失是什么原因\n\n存档程序死了",
       "created_at": "2026-09-23 00:46:45",
       "updated_at": null
@@ -676,7 +676,7 @@
     {
       "id": 121,
       "log_date": "2026-09-22",
-      "category": "问题处理",
+      "category": "工单处理",
       "content": "wwe2k26  错误码200100\n2026-09-22 18:47:59\ncjk0c11vz5sxwiznvmw8v104\nmbqzpijr6bnfngbi\n\n网络问题，丢包多",
       "created_at": "2026-09-23 00:48:29",
       "updated_at": "2026-09-23 00:48:42"
@@ -692,7 +692,7 @@
     {
       "id": 123,
       "log_date": "2026-09-23",
-      "category": "问题处理",
+      "category": "工单处理",
       "content": "僵尸毁灭工程\n66b07b050d2b315fafda35d5\neqtegveu3sw26uky\n用户反馈云存档加载中100%一直卡在这里。\n查看结束游戏录播里确实一直在这里停滞着\n\n\n正常，这个存档太大了，还没解压完",
       "created_at": "2026-09-23 12:45:52",
       "updated_at": "2026-09-24 01:21:05"
@@ -724,7 +724,7 @@
     {
       "id": 127,
       "log_date": "2026-09-23",
-      "category": "问题处理",
+      "category": "工单处理",
       "content": "遨游中国2黑金至尊限量版\n2026-09-23 03:03:12\nw90mb8096biepwl6kd4ekdho\nu4gb8qiaosjuy3qx\n用户反馈排队时报错202002\n\n分配到的机器正在被使用，被其他用户顶下去了",
       "created_at": "2026-09-24 01:13:08",
       "updated_at": "2026-09-24 01:21:42"
@@ -732,7 +732,7 @@
     {
       "id": 128,
       "log_date": "2026-09-23",
-      "category": "问题处理",
+      "category": "工单处理",
       "content": "最终幻想XVI\nk8x5va37562l3gnjyw9787m2\n这个游戏可以看下能不能提前渲染吗？用户反馈每次进游戏都要等待渲染\n\n可能着色器配错了，我重新配",
       "created_at": "2026-09-24 01:17:13",
       "updated_at": "2026-09-24 01:23:07"
@@ -740,7 +740,7 @@
     {
       "id": 129,
       "log_date": "2026-09-23",
-      "category": "问题处理",
+      "category": "工单处理",
       "content": "植物大战僵尸:射击版\n2026-09-22 21:58:20\nmihmb5zgb9ebn1wm20a1pf8e\nfez6hsfou2vzrtwp\n用户反馈：存档进不去，也没法删掉\n\n\n他存档有问题，我用他存档测试复现了",
       "created_at": "2026-09-24 01:17:50",
       "updated_at": "2026-09-24 01:26:18"
@@ -748,7 +748,7 @@
     {
       "id": 130,
       "log_date": "2026-09-23",
-      "category": "问题处理",
+      "category": "工单处理",
       "content": "霍格沃茨之遗[steam]\n64e60749e0ec19bea19fe573\nb1a1kq61k7mdustz\n1杭州3-I\n用户反馈多次丢档；\n查后台确实多个设备重启，辛苦看一下是什么情况\n\n\n他打了模组，存档不兼容",
       "created_at": "2026-09-24 01:18:58",
       "updated_at": "2026-09-24 01:23:33"
@@ -756,7 +756,7 @@
     {
       "id": 131,
       "log_date": "2026-09-23",
-      "category": "问题处理",
+      "category": "工单处理",
       "content": "choa7tdmzksk1lpgchiqtd87\n这个用户买了这个套餐，进游戏提示要下载，是我们只有泰坦陨落2的本体资源，没有下豪华版内容吗？\n\n是游戏有更新200mb，但是下载慢，只有18kb/s",
       "created_at": "2026-09-24 01:25:24",
       "updated_at": "2026-09-24 01:25:35"
@@ -812,7 +812,7 @@
     {
       "id": 138,
       "log_date": "2026-09-24",
-      "category": "问题处理",
+      "category": "工单处理",
       "content": "(实体机)植物大战僵尸：花园战争2豪华版[steam]\n6663163821821b6d2b8318c4\nkepomvctpewbnmx3\nxbulukgjxkfly8oa\n这个用户这两次token都出现了这样的报错，看着像游戏崩溃，麻烦查下是什么原因\n\nEA反作弊系统崩溃",
       "created_at": "2026-09-25 01:03:11",
       "updated_at": null
@@ -820,7 +820,7 @@
     {
       "id": 139,
       "log_date": "2026-09-26",
-      "category": "问题处理",
+      "category": "工单处理",
       "content": "朋友收集用户反馈存档丢失\n\n经过测试发现是济南的机器有问题，在济南的机器上面玩都没有存到档",
       "created_at": "2026-09-26 14:34:38",
       "updated_at": null
@@ -884,7 +884,7 @@
     {
       "id": 147,
       "log_date": "2026-09-28",
-      "category": "问题处理",
+      "category": "工单处理",
       "content": "uid:yjm3m1fmuqs1ooz30a2pwal6\nnsu7mp7tdfmcmz0h\n用户反馈进入游戏后画面太小，无法选择选项，辛苦看看~\n\n\n用户自己改了设置",
       "created_at": "2026-09-28 23:21:59",
       "updated_at": null
@@ -892,7 +892,7 @@
     {
       "id": 148,
       "log_date": "2026-09-28",
-      "category": "问题处理",
+      "category": "工单处理",
       "content": "661a2024a7c432936b05eaaa\nehg3ftuhivmdp4tr\n刺客信条: 英灵殿\t\n用户反馈该游戏无法使用手柄进行游玩，麻烦看看\n\n这个要在游戏的设置把控制方式改为XBOX控制器",
       "created_at": "2026-09-28 23:22:44",
       "updated_at": "2026-09-28 23:23:07"
@@ -900,7 +900,7 @@
     {
       "id": 149,
       "log_date": "2026-09-28",
-      "category": "问题处理",
+      "category": "工单处理",
       "content": "西瓜\n【游玩问题】本局ID:debr6grp5z91uizf问题描述:长按无法转动轮盘已经重开四\n次了这个BUG已经关乎到这个游戏玩不玩得了了之前玩都没事,希望重视\n\n用户自己不会玩",
       "created_at": "2026-09-28 23:24:11",
       "updated_at": null
@@ -940,9 +940,81 @@
     {
       "id": 154,
       "log_date": "2026-09-29",
-      "category": "上架游戏",
+      "category": "更新游戏",
       "content": "洛克王国悟空神辅",
       "created_at": "2026-09-29 21:18:01",
+      "updated_at": "2026-10-07 19:54:03"
+    },
+    {
+      "id": 155,
+      "log_date": "2026-09-30",
+      "category": "上架游戏",
+      "content": "神秘科莎赛车模组",
+      "created_at": "2026-10-01 11:38:29",
+      "updated_at": null
+    },
+    {
+      "id": 156,
+      "log_date": "2026-09-30",
+      "category": "上架游戏",
+      "content": "空战奇兵8",
+      "created_at": "2026-10-01 11:39:16",
+      "updated_at": "2026-10-01 11:39:26"
+    },
+    {
+      "id": 157,
+      "log_date": "2026-09-30",
+      "category": "上架游戏",
+      "content": "针影裁梦",
+      "created_at": "2026-10-01 11:40:44",
+      "updated_at": null
+    },
+    {
+      "id": 158,
+      "log_date": "2026-09-30",
+      "category": "上架游戏",
+      "content": "拆迁",
+      "created_at": "2026-10-01 11:41:18",
+      "updated_at": null
+    },
+    {
+      "id": 159,
+      "log_date": "2026-09-30",
+      "category": "更新游戏",
+      "content": "异环",
+      "created_at": "2026-10-01 11:41:31",
+      "updated_at": null
+    },
+    {
+      "id": 160,
+      "log_date": "2026-09-30",
+      "category": "更新游戏",
+      "content": "鸣潮",
+      "created_at": "2026-10-01 11:41:48",
+      "updated_at": null
+    },
+    {
+      "id": 161,
+      "log_date": "2026-10-02",
+      "category": "更新游戏",
+      "content": "刺客信条奥德赛",
+      "created_at": "2026-10-02 21:15:17",
+      "updated_at": null
+    },
+    {
+      "id": 162,
+      "log_date": "2026-10-02",
+      "category": "更新游戏",
+      "content": "坦克世界",
+      "created_at": "2026-10-02 21:15:24",
+      "updated_at": null
+    },
+    {
+      "id": 163,
+      "log_date": "2026-10-02",
+      "category": "更新游戏",
+      "content": "王者荣耀世界",
+      "created_at": "2026-10-02 21:15:34",
       "updated_at": null
     }
   ]

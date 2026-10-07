@@ -15,15 +15,17 @@
 """
 
 import datetime  # 日期解析
+import io  # 内存缓冲区：用于在内存中生成 Excel 文件再返回给客户端下载
 import json  # 序列化日志内容给前端编辑弹窗预填
 
 from flask import Blueprint, jsonify, render_template, request, Response
 from markupsafe import Markup, escape  # 安全转义日志正文后插入 <br>
+from openpyxl import Workbook  # 生成 .xlsx Excel 文件
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side  # Excel 单元格样式
 
 from blueprints._common import group_label, safe_int_id, valid_category, valid_date  # 共享工具
-from config import WORK_CATEGORIES  # 工作类别白名单（上架游戏 / 更新游戏 / 问题处理）
+from config import WORK_CATEGORIES  # 工作类别白名单（上架游戏 / 更新游戏 / 工单处理）
 from services import log_store  # 工作日志读写（纯逻辑层）
-from services import todo_store  # 待办读写：日志转待办时写入今天的待办
 
 # 创建"工作日志"蓝图；模板里 url_for('logs.xxx') 的 logs 即此名字
 logs_bp = Blueprint("logs", __name__)
@@ -144,45 +146,68 @@ def log_delete():
 
 @logs_bp.route("/log/export")
 def log_export():
-    """导出全部工作日志为 Markdown 文本（.md 下载）。"""
+    """导出全部工作日志为 Excel 表格（.xlsx 下载）。"""
     rows = log_store.all_logs()
-    today = datetime.date.today().isoformat()
-    lines = ["# 工作日志", "", f"导出时间：{today}", "", "---", ""]
-    cur_date = None
-    for r in rows:
-        if r["log_date"] != cur_date:
-            cur_date = r["log_date"]
-            lines.append(f"## {cur_date}")
-            lines.append("")
-        cat = f'【{r["category"]}】' if r.get("category") else ""
-        lines.append(f"- {cat} {r['content']}")
-    lines.append("")
-    content = "\n".join(lines)
+
+    # 创建 Excel 工作簿
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "工作日志"
+
+    # ---------- 表头样式 ----------
+    header_font = Font(name="微软雅黑", bold=True, size=11, color="FFFFFF")
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    header_alignment = Alignment(horizontal="center", vertical="center")
+    thin_border = Border(
+        left=Side(style="thin"),
+        right=Side(style="thin"),
+        top=Side(style="thin"),
+        bottom=Side(style="thin"),
+    )
+
+    # ---------- 写表头 ----------
+    headers = ["日期", "类别", "内容"]
+    for col_idx, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_idx, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_alignment
+        cell.border = thin_border
+
+    # ---------- 写数据行 ----------
+    body_font = Font(name="微软雅黑", size=10)
+    body_alignment = Alignment(vertical="center", wrap_text=True)
+
+    for row_idx, r in enumerate(rows, 2):
+        # 日期
+        ws.cell(row=row_idx, column=1, value=r["log_date"])
+        # 类别
+        ws.cell(row=row_idx, column=2, value=r.get("category", ""))
+        # 内容
+        ws.cell(row=row_idx, column=3, value=r["content"])
+        # 应用数据行样式
+        for col_idx in range(1, 4):
+            cell = ws.cell(row=row_idx, column=col_idx)
+            cell.font = body_font
+            cell.alignment = body_alignment
+            cell.border = thin_border
+
+    # ---------- 设置列宽 ----------
+    ws.column_dimensions["A"].width = 14   # 日期
+    ws.column_dimensions["B"].width = 16   # 类别
+    ws.column_dimensions["C"].width = 60   # 内容
+
+    # ---------- 冻结首行（表头固定，滚动时可见）----------
+    ws.freeze_panes = "A2"
+
+    # ---------- 写入内存缓冲区并返回下载 ----------
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
     return Response(
-        content.encode("utf-8"),
-        mimetype="text/markdown",
-        headers={"Content-Disposition": "attachment; filename=logs.md"},
+        output.getvalue(),
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": "attachment; filename=logs.xlsx",
+        },
     )
-
-
-@logs_bp.route("/log/move_todo", methods=["POST"])
-def log_move_todo():
-    """把一条日志转移到待办事项。
-
-    规则：以今天的日期、日志原有的类别与内容写入一条待办，然后删除原日志。
-    与"完成待办→转日志"互为逆向操作。
-    日志类别若不在白名单内（如老数据未分类），转为待办时类别置空，待办页显示灰色"未分类"。
-    """
-    try:
-        log_id = safe_int_id(request.form.get("id"))
-    except ValueError:
-        return jsonify({"ok": False, "error": "参数不正确"}), 400
-    log = log_store.get_log(log_id)
-    if log is None:
-        return jsonify({"ok": False, "error": "日志不存在"}), 404
-    todo_store.add_todo(
-        datetime.date.today().isoformat(),  # 转成待办后默认安排到今天
-        log["content"],
-    )
-    log_store.delete_log(log_id)  # 原日志已转移，删除
-    return jsonify({"ok": True})

@@ -126,10 +126,9 @@ function refreshList() {
         var fresh = doc.getElementById("log-list");
         var cur = document.getElementById("log-list");
         if (fresh && cur) cur.innerHTML = fresh.innerHTML;
-        // 兜底：操作成功后关闭可能仍打开的所有弹窗（删除 / 转移 / 编辑等）
+        // 兜底：操作成功后关闭可能仍打开的所有弹窗（删除 / 编辑等）
         document.querySelectorAll(".modal-mask").forEach(function (m) { m.hidden = true; });
         pendingDel = null;
-        pendingMove = null;
         editingId = null;
         restoreExpanded();  // 恢复用户展开的分组
         applySearch(kw);    // 保留当前搜索过滤
@@ -176,15 +175,9 @@ document.addEventListener("keydown", function (ev) {
     }
 });
 
-// ===== 编辑 / 转为待办 / 删除按钮（事件委托，避免动态内容绑定）=====
+// ===== 编辑 / 删除按钮（事件委托，避免动态内容绑定）=====
 document.addEventListener("click", function (ev) {
-    var moveBtn = ev.target.closest(".log-item .op-btn.move");
-    if (moveBtn) {
-        pendingMove = moveBtn.getAttribute("data-id");
-        moveMask.hidden = false;
-        return;
-    }
-    var editBtn = ev.target.closest(".log-item .op-btn:not(.danger):not(.move)");
+    var editBtn = ev.target.closest(".log-item .op-btn:not(.danger)");
     if (editBtn) {
         var id = editBtn.getAttribute("data-id");
         var item = editBtn.closest(".log-item");
@@ -222,29 +215,7 @@ document.getElementById("del-ok").onclick = function () {
     });
 };
 
-// ===== 转为待办：确认后转移到今天的待办并删除原日志 =====
-var moveMask = document.getElementById("move-mask");
-var pendingMove = null;
-document.getElementById("move-cancel").onclick = function () { moveMask.hidden = true; pendingMove = null; };
-moveMask.addEventListener("click", function (ev) { if (ev.target === moveMask) { moveMask.hidden = true; pendingMove = null; } });
-
-document.getElementById("move-ok").onclick = function () {
-    if (!pendingMove) return;
-    var id = pendingMove;
-    this.disabled = true;
-    fetch(window.LOGS_CONFIG.urls.moveTodo, {
-        method: "POST",
-        body: new URLSearchParams({ id: id })
-    }).then(function (r) { return r.json(); }).then(function (data) {
-        if (!data.ok) { toast(data.error || "转移失败", true); return; }
-        delete LOG_CONTENT[String(id)];  // 原日志已转移，移除编辑预填缓存
-        moveMask.hidden = true;          // 立即关闭转移确认弹窗
-        pendingMove = null;
-        refreshList();  // 局部刷新：日志消失、今天的待办新增
-    }).catch(function () { toast("网络错误，请重试", true); }).finally(function () {
-        document.getElementById("move-ok").disabled = false;
-    });
-};
+// ===== 删除确认 =====
 
 // ===== 客户端即时搜索：按内容过滤，空分组自动隐藏 =====
 // 抽成独立函数：输入时调用；列表局部刷新后也用当前搜索词重新过滤

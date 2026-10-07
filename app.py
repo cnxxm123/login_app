@@ -11,8 +11,7 @@
   - media.py     媒体蓝图：图片/PDF/视频 流式返回 + 视频封面缩略图
   - download.py  下载蓝图：单文件下载 / 目录打包 zip 下载
   - manage.py    管理蓝图：上传 / 新建文件夹 / 在线编辑
-  - logs.py      日志蓝图：工作日志增删改 / 转待办
-  - todos.py     待办蓝图：待办增删改 / 完成切换
+  - logs.py      日志蓝图：工作日志增删改
   - memos.py     备忘蓝图：备忘增删改 / 图片上传与展示
   - epub.py      EPUB 蓝图：电子书阅读器 / 元数据 / 章节 / 内嵌资源
 - services 包（纯业务逻辑层，不依赖 Flask，不处理 HTTP）
@@ -22,7 +21,6 @@
   - media_utils.py 视频封面抽帧（ffmpeg + 缓存）
   - office_utils.py Office 文档解析（docx/xlsx/xls → HTML）
   - log_store.py   工作日志 JSON 存储
-  - todo_store.py  待办事项 JSON 存储
   - memo_store.py  备忘录 JSON 存储 + 图片文件存取
   - epub_utils.py  EPUB 解析（元数据/章节/资源提取）"""
 
@@ -35,7 +33,7 @@ from blueprints.logs import logs_bp           # 日志蓝图（/logs、/log/add.
 from blueprints.manage import manage_bp       # 管理蓝图（/upload/...、/mkdir、/edit/...）
 from blueprints.media import media_bp         # 媒体蓝图（/media/...、/thumb/...）
 from blueprints.memos import memos_bp         # 备忘蓝图（/memos、/memo/add...）
-from blueprints.todos import todos_bp         # 待办蓝图（/todos、/todo/add、/todo/toggle...）
+
 from blueprints.view import view_bp           # 查看蓝图（/view/...）
 from config import MAX_FORM_PARTS, MAX_UPLOAD_BYTES  # 上传上限
 
@@ -65,7 +63,7 @@ def create_app() -> Flask:
     app.register_blueprint(download_bp)  # 文件与目录下载
     app.register_blueprint(manage_bp)    # 上传、目录、编辑
     app.register_blueprint(logs_bp)      # 工作日志
-    app.register_blueprint(todos_bp)     # 待办事项
+    
     app.register_blueprint(memos_bp)     # 备忘录
     app.register_blueprint(epub_bp)      # EPUB 阅读器
     return app

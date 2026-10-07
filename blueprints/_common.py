@@ -1,5 +1,5 @@
 """blueprints 包内部共享工具模块
-供 logs / todos 蓝图复用，避免 _valid_date、_valid_category、_group_label 等函数
+供 logs / memos 蓝图复用，避免 _valid_date、_valid_category、_group_label 等函数
 在两处重复定义。
 """
 
@@ -37,7 +37,7 @@ def group_label(d: datetime.date) -> str:
 def safe_int_id(value, default=0) -> int:
     """安全地将表单 id 参数转为 int，失败时抛出 ValueError 或返回 default。
 
-    用于统一 logs / todos / memos 三处 POST 接口中获取 id 的方式，
+    用于统一 logs / memos 两处 POST 接口中获取 id 的方式，
     避免各处用不同的默认值（"" vs 0）导致的细微不一致。
     """
     try:

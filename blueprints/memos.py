@@ -13,7 +13,7 @@
 
 【与其它模块的分工】
 - 备忘读写与图片文件存取全部委托给 services/memo_store（纯逻辑层），本模块只处理 HTTP
-- 与 logs / todos 蓝图的写法保持一致：POST 接口返回 JSON，页面用 fetch 调用
+- 与 logs 蓝图的写法保持一致：POST 接口返回 JSON，页面用 fetch 调用
 """
 
 import json  # 序列化备忘内容给前端编辑弹窗预填

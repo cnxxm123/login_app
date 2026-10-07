@@ -131,6 +131,22 @@
                         <video id="media-player" class="video-js vjs-big-play-centered vp-video" controls playsinline preload="metadata" aria-label="{{ filename }}"{% if poster_url %} poster="{{ poster_url }}"{% endif %} src="{{ media_url }}">
                             <p class="vjs-no-js">请启用 JavaScript 以播放此视频。</p>
                         </video>
+                        <!-- 视频结束覆盖层：有下一集时倒计时自动续播，可点"重播""立即下一集""取消"。
+                             由 videojs_player.js 控制显隐；绝对定位铺满 .vp 容器，网页全屏时也跟着铺满。 -->
+                        <div class="vp-ended" id="vp-ended" hidden aria-live="polite">
+                            <div class="vp-ended-card">
+                                <div class="vp-ended-title">本集已结束</div>
+                                <div class="vp-ended-sub" id="vp-ended-sub" hidden>
+                                    <span class="vp-ended-count" id="vp-ended-count">5</span>
+                                    <span>秒后播放下一集</span>
+                                </div>
+                                <div class="vp-ended-ops">
+                                    <button type="button" class="vp-ended-btn" id="vp-ended-replay">↻ 重播</button>
+                                    <button type="button" class="vp-ended-btn primary" id="vp-ended-next" hidden>▶ 立即下一集</button>
+                                    <button type="button" class="vp-ended-btn ghost" id="vp-ended-cancel">取消</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="vp-info">
                         <div class="vp-heading">

@@ -1,4 +1,4 @@
-// ===== 备忘录页交互（仿 todos.js，去掉日期/类别/完成状态）=====
+// ===== 备忘录页交互 =====
 // 后端注入的配置：window.MEMOS_CONFIG = {memoData: {id: {title, content, tags, images}}, tags: [], imageUrl, urls: {...}}
 var MEMO_DATA = window.MEMOS_CONFIG.memoData;
 

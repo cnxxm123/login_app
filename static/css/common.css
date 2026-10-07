@@ -342,7 +342,7 @@ body.dark .empty { background: var(--surface-2); }
 .toast.err { background: var(--danger); }
 .toast.hide { opacity: 0; }
 
-/* ===== 8. 页面通用组件：统计条 / 搜索框 / FAB（logs/todos/memos 共用）===== */
+/* ===== 8. 页面通用组件：统计条 / 搜索框 / FAB（logs/memos 共用）===== */
 
 /* 统计条 */
 .page-stats { display: flex; gap: 10px; flex-wrap: wrap; }

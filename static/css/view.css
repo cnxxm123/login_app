@@ -500,11 +500,20 @@ body.video-page .toolbar { padding-left: 0; padding-right: 0; }
 .vp .video-js .vjs-poster { background-size: contain; }
 .vp .video-js .vjs-big-play-button {
     width: 2.6em; height: 2.6em;
+    /* line-height 必须等于 height，让 ::before 文本图标在圆形按钮里垂直居中。
+       Video.js 默认是 1.5em（配合默认的扁矩形），改成正圆就要同步覆盖。 */
+    line-height: 2.6em;
     top: 50%; left: 50%;
     margin: -1.3em 0 0 -1.3em;
     border: 0; border-radius: 50%;
     background: rgba(79, 94, 232, .88);
     box-shadow: 0 8px 22px rgba(0, 0, 0, .28);
+}
+/* Video.js 的三角字符 \f101 字形左侧有竖边、右侧收尖，视觉中心偏左。
+   给 ::before 轻微右移 .08em，让三角在圆圈里"看起来"正中。 */
+.vp .video-js .vjs-big-play-button .vjs-icon-placeholder:before {
+    line-height: inherit;
+    padding-left: .08em;
 }
 .vp .video-js:hover .vjs-big-play-button,
 .vp .video-js .vjs-big-play-button:focus { background: var(--primary); }
@@ -568,3 +577,52 @@ body.video-page .toolbar { padding-left: 0; padding-right: 0; }
 
 body.dark .vp-action { background: var(--surface); border-color: var(--border); color: var(--text-2); }
 body.dark .vp-action:hover { background: var(--accent-soft); color: var(--primary-2); }
+
+/* ===== 视频结束覆盖层：倒计时自动连播 + 重播 + 取消 =====
+   绝对定位铺满 .vp 容器；位于 Video.js 控件之上，由 videojs_player.js 控制显隐。
+   .vp[hidden] 由 common.css 处理；本层单独声明 [hidden] 以免 flex 覆盖 */
+.vp-ended {
+    position: absolute; inset: 0; z-index: 20;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0, 0, 0, .72);
+    animation: fadeUp .18s ease both;
+}
+.vp-ended[hidden] { display: none; }
+.vp-ended-card {
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+    padding: 24px 28px; max-width: 86%;
+    background: rgba(15, 23, 42, .9); color: #f8fafc;
+    border-radius: 14px; box-shadow: 0 18px 42px rgba(0, 0, 0, .35);
+}
+.vp-ended-title { font-size: 18px; font-weight: 700; letter-spacing: .5px; }
+.vp-ended-sub { font-size: 14px; color: rgba(248, 250, 252, .78); display: flex; align-items: baseline; gap: 6px; }
+.vp-ended-count {
+    font-size: 28px; font-weight: 700; color: #fff;
+    font-variant-numeric: tabular-nums;  /* 数字等宽，倒计时不跳动 */
+    min-width: 28px; text-align: center;
+}
+.vp-ended-ops { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 2px; }
+.vp-ended-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-height: 38px; padding: 8px 18px;
+    border: 1px solid rgba(248, 250, 252, .3); border-radius: 999px;
+    background: rgba(255, 255, 255, .08); color: #f8fafc;
+    font: inherit; font-size: 13.5px; cursor: pointer;
+    transition: var(--t);
+}
+.vp-ended-btn:hover { background: rgba(255, 255, 255, .18); border-color: rgba(248, 250, 252, .55); }
+.vp-ended-btn.primary {
+    background: var(--primary); border-color: var(--primary); color: #fff;
+    box-shadow: 0 6px 16px rgba(79, 94, 232, .35);
+}
+.vp-ended-btn.primary:hover { background: var(--primary-2); border-color: var(--primary-2); }
+.vp-ended-btn.ghost { background: transparent; }
+.vp-ended-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+@media (max-width: 480px) {
+    .vp-ended-card { padding: 18px 20px; gap: 12px; }
+    .vp-ended-title { font-size: 16px; }
+    .vp-ended-sub { font-size: 13px; }
+    .vp-ended-count { font-size: 26px; }
+    .vp-ended-btn { min-height: 42px; padding: 9px 16px; flex: 1 1 auto; }
+}

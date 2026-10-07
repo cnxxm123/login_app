@@ -43,7 +43,7 @@
             cursor: pointer; font-family: inherit; outline: none; transition: var(--t);
         }
         .memo-filter select:focus { border-color: var(--primary); }
-        /* 已编辑小圆点（与待办页一致） */
+        /* 已编辑小圆点 */
         .edited-dot {
             flex: none; width: 7px; height: 7px; border-radius: 50%;
             background: var(--primary); opacity: .75;

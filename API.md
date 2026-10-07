@@ -116,11 +116,13 @@
 - 渲染 `templates/view.html`，含：`content_html`、`office_html`、`encoding`、`media_type`、`media_url`、
   `images`、`image_urls`、`playlist`（连播列表）、`playlist_index`（当前文件下标）、`parent` 等。
 
-### 3.1.1 视频播放器（Video.js 开源控件 + 进度记忆）
+### 3.1.1 视频播放器（Video.js 开源控件 + 进度/偏好记忆 + 结束覆盖层）
 
-- 播放器使用 Video.js 8.24.0（官方 npm 包通过 jsDelivr 加载），模板提供 HTML5 `<video>` 和 poster，Video.js 负责响应式控制栏、播放/暂停、进度拖动、音量、倍速、画中画、全屏和键盘操作。
-- 播放进度按当前文件相对路径存入 localStorage（`vp_pos_<key>`，每 5 秒节流保存，播放完成自动清除）；同目录媒体由查看页播放列表负责切换。
-- 移动端播放列表使用页面底部抽屉，下载使用播放器下方的单文件下载链接。
+- 播放器使用 Video.js 8.24.0（官方 npm 包通过 jsDelivr 加载），模板提供 HTML5 `<video>` 和 poster，Video.js 负责响应式控制栏、播放/暂停、进度拖动、音量、倍速、画中画、全屏和键盘操作。控制栏闲置 3.5 秒自动隐藏（`inactivityTimeout: 3500`，移动端操作窗口更从容）。
+- **进度记忆**：按当前文件相对路径存入 localStorage（`vp_pos_<key>`，每 5 秒节流保存，播放完成自动清除）。再次打开大于 30 秒的视频且有未看完进度时，弹出项目统一的自定义确认框（`theme.js` 的 `confirmBox`，不走原生 `window.confirm`）：点"继续播放"从记忆位置续播，点"从头开始"清掉记忆并从 0 播。
+- **偏好记忆**：音量（`vp_volume`，0~1）、静音（`vp_muted`，`"0"`/`"1"`）、倍速（`vp_rate`，0.25~4）各自存 localStorage，监听 `volumechange`/`ratechange` 事件写入，`player.ready` 时读回并应用。刷新页面或切换视频保持上次设置。
+- **结束覆盖层**：视频播完后在播放器上方弹出覆盖层（DOM 由 `view.html` 渲染为 `.vp-ended`，样式见 `view.css`）。同目录存在下一集时（`cfg.playlist.length > 1`）启动 5 秒倒计时，到点自动调用 `view.js` 暴露的 `window.plGo(1)` 切下一集，期间可点"立即下一集""重播""取消"；无下一集时仅"重播""取消"。监听 `loadstart`（切换视频源）和 `play`（用户主动续播）事件自动关闭覆盖层。
+- 同目录媒体由查看页播放列表负责切换；移动端播放列表使用页面底部抽屉，下载使用播放器下方的单文件下载链接。
 
 ### 3.2 GET /gallery/<path:subpath>（图集 / 漫画阅读）
 

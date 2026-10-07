@@ -39,12 +39,7 @@ TEXT_DIR = (
 LOG_DIR = os.path.join(BASE_DIR, "工作日志")
 LOG_FILE = os.path.join(LOG_DIR, "logs.json")
 
-# 待办事项存储目录：与"工作日志"同一套设计，独立放在项目根目录下的"待办事项"文件夹。
-# 待办以 JSON 文件（todos.json）保存在其中，首次写入时自动创建。
-TODO_DIR = os.path.join(BASE_DIR, "待办事项")
-TODO_FILE = os.path.join(TODO_DIR, "todos.json")
-
-# 备忘录存储目录：与"工作日志"/"待办事项"同一套设计，独立放在项目根目录下的"备忘录"文件夹。
+# 备忘录存储目录：与"工作日志"同一套设计，独立放在项目根目录下的"备忘录"文件夹。
 # 备忘以 JSON 文件（memos.json）保存在其中，首次写入时自动创建。
 MEMO_DIR = os.path.join(BASE_DIR, "备忘录")
 MEMO_FILE = os.path.join(MEMO_DIR, "memos.json")
@@ -54,8 +49,8 @@ MEMO_FILE = os.path.join(MEMO_DIR, "memos.json")
 # 首次上传图片时自动创建。
 MEMO_IMAGE_DIR = os.path.join(MEMO_DIR, "images")
 
-# 工作类别白名单：待办事项与工作日志共用，新增/编辑时只能从这四类中选择（对应页面上的彩色标签）
-WORK_CATEGORIES = ["上架游戏", "更新游戏", "更新游戏工具", "问题处理", "其他"]
+# 工作类别白名单：工作日志新增/编辑时只能从这四类中选择（对应页面上的彩色标签）
+WORK_CATEGORIES = ["上架游戏", "更新游戏", "工单处理", "其他"]
 
 
 # 视频封面缩略图缓存目录（生成后按文件指纹命名缓存，避免每次重复抽帧）
